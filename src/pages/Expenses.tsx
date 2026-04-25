@@ -4,14 +4,43 @@ import { useRBAC } from '@/hooks/useRBAC';
 import { Expense } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, ReceiptIndianRupee, Sparkles, Trash2, CheckCircle2, XCircle } from 'lucide-react';
+import { 
+  Plus, 
+  ReceiptIndianRupee, 
+  Sparkles, 
+  Trash2, 
+  CheckCircle2, 
+  XCircle, 
+  MoreHorizontal,
+  ChevronDown,
+  Tag,
+  Check,
+  Loader2
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { ExpenseForm } from '@/components/expenses/ExpenseForm';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel
+} from '@/components/ui/dropdown-menu';
+import { writeBatch, doc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useAuth } from '@/contexts/AuthContext';
+
+const CATEGORIES = [
+  'Inventory', 'Travel', 'Rent', 'Utilities', 'Marketing', 
+  'Legal', 'Softwares', 'Office Supplies', 'Meals', 'Misc'
+];
 
 export default function Expenses() {
+  const { profile } = useAuth();
   const { canCreate, canEdit, canDelete } = useRBAC();
   const { data: expenses, loading, addItem, updateItem, deleteItem } = useData<Expense>('expenses');
   const [isAiLoading, setIsAiLoading] = React.useState(false);
@@ -60,14 +89,18 @@ export default function Expenses() {
       setIsBulkUpdating(true);
       const loadingToast = toast.loading(`Deleting ${selectedIds.length} expenses...`);
       
-      for (const id of selectedIds) {
-        await deleteItem(id);
-      }
+      const batch = writeBatch(db);
+      selectedIds.forEach(id => {
+        batch.delete(doc(db, 'expenses', id));
+      });
+      
+      await batch.commit();
 
       toast.dismiss(loadingToast);
       toast.success('Bulk delete complete');
       setSelectedIds([]);
     } catch (err) {
+      console.error(err);
       toast.error('Bulk delete failed');
     } finally {
       setIsBulkUpdating(false);
@@ -77,14 +110,51 @@ export default function Expenses() {
   const handleBulkUpdateITC = async (status: boolean) => {
     try {
       setIsBulkUpdating(true);
-      const loadingToast = toast.loading(`Updating ${selectedIds.length} expenses...`);
+      const loadingToast = toast.loading(`${status ? 'Marking' : 'Unmarking'} ITC status for ${selectedIds.length} items...`);
       
-      await Promise.all(selectedIds.map(id => updateItem(id, { itcClaimed: status })));
+      const batch = writeBatch(db);
+      selectedIds.forEach(id => {
+        batch.update(doc(db, 'expenses', id), { 
+          itcClaimed: status,
+          updatedAt: new Date().toISOString(),
+          updatedBy: profile?.uid
+        });
+      });
+      
+      await batch.commit();
 
       toast.dismiss(loadingToast);
-      toast.success('Bulk update complete');
+      toast.success('Selected expenses updated');
       setSelectedIds([]);
     } catch (err) {
+      console.error(err);
+      toast.error('Bulk update failed');
+    } finally {
+      setIsBulkUpdating(false);
+    }
+  };
+
+  const handleBulkUpdateCategory = async (category: string) => {
+    try {
+      setIsBulkUpdating(true);
+      const loadingToast = toast.loading(`Updating category to ${category}...`);
+      
+      const batch = writeBatch(db);
+      selectedIds.forEach(id => {
+        batch.update(doc(db, 'expenses', id), { 
+          category,
+          updatedAt: new Date().toISOString(),
+          updatedBy: profile?.uid
+        });
+      });
+      
+      await batch.commit();
+
+      toast.dismiss(loadingToast);
+      toast.success('Categories updated');
+      setSelectedIds([]);
+    } catch (err) {
+      console.error(err);
       toast.error('Bulk update failed');
     } finally {
       setIsBulkUpdating(false);
@@ -134,35 +204,62 @@ export default function Expenses() {
       </div>
 
       {selectedIds.length > 0 && (
-        <div className="bg-slate-900 text-white rounded-lg p-3 flex items-center justify-between shadow-lg animate-in slide-in-from-top-4">
-          <div className="flex items-center gap-4 pl-4">
+        <div className="bg-slate-900 text-white rounded-xl p-3 flex flex-wrap items-center justify-between shadow-2xl animate-in slide-in-from-top-4 sticky top-4 z-50 ring-4 ring-slate-900/10">
+          <div className="flex items-center gap-4 pl-4 mr-4">
             <div className="flex items-center justify-center w-6 h-6 rounded-full bg-[#FFAA00] text-black text-[10px] font-black">
               {selectedIds.length}
             </div>
-            <span className="text-xs font-bold uppercase tracking-widest text-white/70">Selected</span>
+            <span className="text-xs font-bold uppercase tracking-widest text-white/70">Expenses Selected</span>
           </div>
 
           <div className="flex items-center gap-2">
             {canEdit && (
               <>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-8 gap-2 text-white hover:bg-white/10 font-bold text-[10px] uppercase tracking-widest"
-                  onClick={() => handleBulkUpdateITC(true)}
-                  disabled={isBulkUpdating}
-                >
-                  <CheckCircle2 className="w-3 h-3" /> Mark ITC
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-8 gap-2 text-white hover:bg-white/10 font-bold text-[10px] uppercase tracking-widest"
-                  onClick={() => handleBulkUpdateITC(false)}
-                  disabled={isBulkUpdating}
-                >
-                  <XCircle className="w-3 h-3" /> Unmark ITC
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-8 gap-2 text-white hover:bg-white/10 font-bold text-[10px] uppercase tracking-widest"
+                      disabled={isBulkUpdating}
+                    >
+                      <CheckCircle2 className="w-3 h-3 text-blue-400" /> ITC Status <ChevronDown className="w-3 h-3 opacity-50" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-48">
+                    <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-slate-500">Bulk Update ITC</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem className="gap-3 py-3" onClick={() => handleBulkUpdateITC(true)}>
+                      <CheckCircle2 className="w-4 h-4 text-blue-500" /> Mark as Claimed
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="gap-3 py-3" onClick={() => handleBulkUpdateITC(false)}>
+                      <XCircle className="w-4 h-4 text-slate-400" /> Mark as Not Claimed
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-8 gap-2 text-white hover:bg-white/10 font-bold text-[10px] uppercase tracking-widest"
+                      disabled={isBulkUpdating}
+                    >
+                      <Tag className="w-3 h-3 text-purple-400" /> Category <ChevronDown className="w-3 h-3 opacity-50" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56 h-64 overflow-auto">
+                    <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-slate-500">Set Category</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {CATEGORIES.map(cat => (
+                      <DropdownMenuItem key={cat} className="gap-3 py-2.5" onClick={() => handleBulkUpdateCategory(cat)}>
+                        {cat}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
                 <div className="w-px h-4 bg-white/20 mx-2" />
               </>
             )}
@@ -174,9 +271,12 @@ export default function Expenses() {
                 onClick={handleBulkDelete}
                 disabled={isBulkUpdating}
               >
-                <Trash2 className="w-3 h-3" /> Delete Selected
+                <Trash2 className="w-3 h-3" /> Delete
               </Button>
             )}
+            
+            <div className="w-px h-4 bg-white/20 mx-2" />
+            
             <Button 
               variant="ghost" 
               size="icon" 
@@ -189,42 +289,69 @@ export default function Expenses() {
         </div>
       )}
 
-      <div className="bg-white border rounded-lg overflow-hidden">
+      <div className="bg-white border rounded-lg overflow-hidden shadow-sm">
         <Table>
           <TableHeader className="bg-[#FAFAFA]">
             <TableRow>
-              <TableHead className="w-[40px] px-4">
+              <TableHead className="w-[50px] px-4">
                 <Checkbox 
                   checked={selectedIds.length === expenses.length && expenses.length > 0}
                   onCheckedChange={toggleSelectAll}
+                  className="translate-y-[2px]"
                 />
               </TableHead>
               <TableHead className="font-mono text-[10px] uppercase">Date</TableHead>
               <TableHead className="font-mono text-[10px] uppercase">Description</TableHead>
               <TableHead className="font-mono text-[10px] uppercase">Category</TableHead>
               <TableHead className="font-mono text-[10px] uppercase text-right">Amount</TableHead>
-              <TableHead className="font-mono text-[10px] uppercase text-center">ITC</TableHead>
+              <TableHead className="font-mono text-[10px] uppercase text-center">ITC Claimed</TableHead>
+              <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={6} className="text-center py-12">Loading...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="text-center py-12 text-slate-400 flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Loading expenses...</TableCell></TableRow>
             ) : expenses.length === 0 ? (
-              <TableRow><TableCell colSpan={6} className="text-center py-12">No expenses recorded</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="text-center py-12 text-slate-400">No expenses recorded yet.</TableCell></TableRow>
             ) : expenses.map((exp) => (
-              <TableRow key={exp.id} className={cn(selectedIds.includes(exp.id) && "bg-slate-50")}>
+              <TableRow 
+                key={exp.id} 
+                className={cn(
+                  "transition-colors group",
+                  selectedIds.includes(exp.id) ? "bg-blue-50/50" : "hover:bg-slate-50"
+                )}
+              >
                 <TableCell className="px-4">
                   <Checkbox 
                     checked={selectedIds.includes(exp.id)}
                     onCheckedChange={() => toggleSelect(exp.id)}
+                    className="translate-y-[2px]"
                   />
                 </TableCell>
-                <TableCell className="font-mono text-xs">{exp.date}</TableCell>
-                <TableCell className="font-medium">{exp.description}</TableCell>
-                <TableCell><Badge variant="secondary" className="font-normal">{exp.category}</Badge></TableCell>
-                <TableCell className="text-right font-bold tabular-nums">₹{exp.amount.toLocaleString()}</TableCell>
+                <TableCell className="font-mono text-xs tabular-nums text-slate-500">{exp.date}</TableCell>
+                <TableCell className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{exp.description}</TableCell>
+                <TableCell><Badge variant="secondary" className="font-normal border-slate-100 bg-slate-50 text-slate-600">{exp.category}</Badge></TableCell>
+                <TableCell className="text-right font-black tabular-nums text-slate-900">₹{exp.amount.toLocaleString()}</TableCell>
                 <TableCell className="text-center">
-                  {exp.itcClaimed ? <Badge className="bg-blue-100 text-blue-700">YES</Badge> : <Badge variant="outline">NO</Badge>}
+                  {exp.itcClaimed ? (
+                    <div className="flex items-center justify-center gap-1.5 text-blue-600 font-black text-[10px]">
+                      <Check className="w-3.5 h-3.5" /> CLAIMED
+                    </div>
+                  ) : (
+                    <div className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">Pending</div>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                    onClick={() => {
+                      if (window.confirm('Delete this expense?')) deleteItem(exp.id);
+                    }}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
                 </TableCell>
               </TableRow>
             ))}

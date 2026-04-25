@@ -104,3 +104,20 @@ export interface Expense {
   gstin?: string;
   itcClaimed: boolean;
 }
+
+export interface Purchase {
+  id: string;
+  purchaseNumber: string;
+  date: string;
+  supplierId: string;
+  supplierName: string;
+  supplierGstin?: string;
+  items: InvoiceItem[];
+  subtotal: number;
+  totalCgst: number;
+  totalSgst: number;
+  totalIgst: number;
+  totalAmount: number;
+  status: 'Paid' | 'Pending' | 'Cancelled';
+  notes?: string;
+}

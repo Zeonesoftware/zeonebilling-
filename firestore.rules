@@ -63,6 +63,23 @@ service cloud.firestore {
              data.keys().size() <= 20;
     }
 
+    function isValidPurchase(data) {
+      return data.keys().hasAll(['purchaseNumber', 'supplierName', 'totalAmount', 'status']) &&
+             data.purchaseNumber is string && data.purchaseNumber.size() <= 100 &&
+             data.supplierName is string && data.supplierName.size() <= 200 &&
+             data.totalAmount is number &&
+             data.status in ['Paid', 'Pending', 'Cancelled'] &&
+             data.keys().size() <= 50;
+    }
+
+    function isValidItem(data) {
+      return data.keys().hasAll(['name', 'price', 'gstRate']) &&
+             data.name is string && data.name.size() <= 200 &&
+             data.price is number &&
+             data.gstRate is number &&
+             data.keys().size() <= 20;
+    }
+
     // --- Rules ---
 
     match /users/{userId} {
@@ -89,13 +106,19 @@ service cloud.firestore {
 
     match /items/{itemId} {
       allow read, list: if isAnyUser();
-      allow create, update: if isBilling();
+      allow create, update: if isBilling() && isValidItem(incoming());
       allow delete: if isAdmin();
     }
 
     match /expenses/{expenseId} {
       allow read, list: if isAnyUser();
       allow create, update: if isBilling();
+      allow delete: if isAdmin();
+    }
+
+    match /purchases/{purchaseId} {
+      allow read, list: if isAnyUser();
+      allow create, update: if isBilling() && isValidPurchase(incoming());
       allow delete: if isAdmin();
     }
 

@@ -35,6 +35,7 @@ export default function Clients() {
           const importedData = results.data.map((row: any) => ({
             name: row.name || 'Unnamed Client',
             gstin: row.gstin || '',
+            stateCode: row.stateCode || '',
             email: row.email || '',
             phone: row.phone || '',
             address: row.address || ''
@@ -111,9 +112,13 @@ export default function Clients() {
               <TableRow key={client.id}>
                 <TableCell>
                   <div className="font-medium text-xs sm:text-sm">{client.name}</div>
-                  <div className="sm:hidden text-[10px] font-mono text-slate-400">{client.gstin}</div>
+                  <div className="sm:hidden text-[10px] font-mono text-slate-400">
+                    {client.gstin} {client.stateCode && `(${client.stateCode})`}
+                  </div>
                 </TableCell>
-                <TableCell className="hidden sm:table-cell font-mono text-xs">{client.gstin}</TableCell>
+                <TableCell className="hidden sm:table-cell font-mono text-xs">
+                  {client.gstin} {client.stateCode && <span className="text-slate-400 ml-1">[{client.stateCode}]</span>}
+                </TableCell>
                 <TableCell className="text-xs sm:text-sm">{client.phone}</TableCell>
                 <TableCell className="hidden lg:table-cell text-sm text-[#666666] truncate max-w-xs">{client.address}</TableCell>
                 <TableCell>

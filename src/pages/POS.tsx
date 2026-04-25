@@ -31,6 +31,8 @@ export default function POS() {
   const { settings } = useSettings();
   const [lastInvoice, setLastInvoice] = useState<Invoice | null>(null);
   const [showInvoicePreview, setShowInvoicePreview] = useState(false);
+  const [showQuickDialog, setShowQuickDialog] = useState(false);
+  const [selectedPrintStyle, setSelectedPrintStyle] = useState<Invoice['pdfStyle'] | 'Thermal'>('Professional');
 
   const [cart, setCart] = useState<InvoiceItem[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string>('c1');
@@ -156,10 +158,6 @@ export default function POS() {
     if (cart.length === 0) return toast.error('Cart is empty');
     const client = clients.find(c => c.id === selectedClientId) || clients[0];
     
-    if (!client.stateCode) {
-      return toast.error(`Client ${client.name} is missing a state code. Cannot process checkout.`);
-    }
-
     if (!settings?.stateCode) {
       return toast.error('Business state code is missing in Settings. Please set it for tax calculation.');
     }
@@ -168,17 +166,22 @@ export default function POS() {
       invoiceNumber: `POS-${Date.now().toString().slice(-6)}`,
       type: 'Tax Invoice',
       date: new Date().toISOString().split('T')[0],
+      dueDate: '',
       clientId: client.id,
-      clientName: client.name,
-      clientEmail: client.email,
-      clientGstin: client.gstin,
-      clientStateCode: client.stateCode,
-      items: cart,
-      subtotal,
-      totalCgst,
-      totalSgst,
-      totalIgst,
-      totalAmount: total,
+      clientName: client.name || 'Walk-in Customer',
+      clientEmail: client.email || '',
+      clientGstin: client.gstin || '',
+      clientStateCode: client.stateCode || '',
+      clientAddress: client.address || '',
+      items: cart.map(item => ({
+        ...item,
+        hsn: item.hsn || '',
+      })),
+      subtotal: subtotal || 0,
+      totalCgst: totalCgst || 0,
+      totalSgst: totalSgst || 0,
+      totalIgst: totalIgst || 0,
+      totalAmount: total || 0,
       status: 'Paid',
     };
 
@@ -198,7 +201,7 @@ export default function POS() {
       toast.success('Checkout successful!', {
         description: 'Invoice generated and stock updated.'
       });
-      setShowInvoicePreview(true);
+      setShowQuickDialog(true);
     } catch (err) {
       toast.error('Checkout failed');
     }
@@ -226,6 +229,7 @@ export default function POS() {
 
   const handlePrint = () => {
     if (lastInvoice) {
+      setSelectedPrintStyle('Professional');
       setShowInvoicePreview(true);
     } else {
       toast.error('No recent invoice found to print. Please complete a payment first.');
@@ -349,12 +353,7 @@ export default function POS() {
                 className="bg-transparent text-sm font-bold w-full focus:outline-none text-slate-800 cursor-pointer truncate"
                 value={selectedClientId}
                 onChange={(e) => {
-                  const val = e.target.value;
-                  const client = clients.find(c => c.id === val);
-                  if (client && !client.stateCode) {
-                    toast.warning(`Client ${client.name} has no state code. This is required for GST.`);
-                  }
-                  setSelectedClientId(val);
+                  setSelectedClientId(e.target.value);
                 }}
               >
                 {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -478,11 +477,63 @@ export default function POS() {
         </div>
       </div>
 
+      {showQuickDialog && lastInvoice && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full text-center space-y-6">
+            <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CheckCircle2 className="w-10 h-10" />
+            </div>
+            <div>
+              <h3 className="text-xl font-black text-slate-800">Payment Complete!</h3>
+              <p className="text-sm text-slate-500 font-medium mt-1">Invoice #{lastInvoice.invoiceNumber} generated successfully.</p>
+            </div>
+            
+            <div className="grid grid-cols-1 gap-3">
+              <Button 
+                className="h-12 bg-[#237227] text-white hover:bg-[#1B561E] rounded-xl font-black gap-2"
+                onClick={() => {
+                  setSelectedPrintStyle('Professional');
+                  setShowInvoicePreview(true);
+                  setShowQuickDialog(false);
+                }}
+              >
+                <Printer className="w-5 h-5" /> Standard Print (A4)
+              </Button>
+              <Button 
+                variant="outline" 
+                className="h-12 border-2 border-slate-200 hover:border-black rounded-xl font-black gap-2"
+                onClick={() => {
+                  setSelectedPrintStyle('Thermal');
+                  setShowInvoicePreview(true);
+                  setShowQuickDialog(false);
+                }}
+              >
+                <Printer className="w-5 h-5" /> Quick Thermal Receipt
+              </Button>
+              <Button 
+                variant="ghost" 
+                className="h-10 text-slate-400 font-bold uppercase text-[10px] tracking-widest"
+                onClick={() => {
+                  setShowQuickDialog(false);
+                  setLastInvoice(null);
+                }}
+              >
+                Dismiss / New Sale
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showInvoicePreview && lastInvoice && (
         <InvoiceView 
           invoice={lastInvoice}
           settings={settings}
-          onClose={() => setShowInvoicePreview(false)}
+          initialStyle={selectedPrintStyle}
+          onClose={() => {
+            setShowInvoicePreview(false);
+            setLastInvoice(null);
+          }}
         />
       )}
     </div>

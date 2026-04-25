@@ -396,9 +396,9 @@ export default function Settings() {
           <Card className="border-[#E5E5E5] shadow-none">
             <CardHeader>
               <CardTitle className="text-sm font-semibold uppercase tracking-wider flex items-center gap-2">
-                <Cloud className="w-4 h-4 text-blue-500" /> Google Drive Sync
+                <Cloud className="w-4 h-4 text-blue-500" /> Google Apps Integration
               </CardTitle>
-              <CardDescription>Archive invoices automatically to your cloud storage</CardDescription>
+              <CardDescription>Connect your Google account to sync with Drive and send emails via Gmail</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex items-center justify-between p-4 bg-[#FAFAFA] rounded-lg border border-[#EEEEEE]">
@@ -411,10 +411,10 @@ export default function Settings() {
                   </div>
                   <div>
                     <div className="text-sm font-bold">
-                      {googleUser ? "Connected to Drive" : "Google Drive Not Connected"}
+                      {googleUser ? "Connected to Google Workspace" : "Google Account Not Connected"}
                     </div>
                     <div className="text-[10px] text-[#999999] uppercase tracking-wider">
-                      {googleUser ? "Ready for auto-upload" : "Requires authentication"}
+                      {googleUser ? "Drive Sync & Gmail Ready" : "Requires authentication"}
                     </div>
                   </div>
                 </div>
@@ -424,21 +424,30 @@ export default function Settings() {
                   </Button>
                 ) : (
                   <Button variant="outline" size="sm" onClick={handleConnectGoogle} className="gap-2">
-                    <Cloud className="w-4 h-4" /> Connect Drive
+                    <Cloud className="w-4 h-4" /> Connect Google
                   </Button>
                 )}
               </div>
 
               {googleUser && (
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label className="text-sm font-bold">Auto-upload PDFs</Label>
-                    <p className="text-xs text-[#666666]">Upload invoices to Drive immediately after download</p>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-bold">Auto-upload PDFs to Drive</Label>
+                      <p className="text-xs text-[#666666]">Archive invoices automatically to your cloud storage</p>
+                    </div>
+                    <Switch 
+                      checked={formData.autoUploadToDrive} 
+                      onCheckedChange={(checked) => setFormData({ ...formData, autoUploadToDrive: checked })} 
+                    />
                   </div>
-                  <Switch 
-                    checked={formData.autoUploadToDrive} 
-                    onCheckedChange={(checked) => setFormData({ ...formData, autoUploadToDrive: checked })} 
-                  />
+                  <div className="flex items-center justify-between opacity-60">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-bold">Gmail Integration Active</Label>
+                      <p className="text-xs text-[#666666]">You can now send invoices directly from the preview screen</p>
+                    </div>
+                    <Check className="w-5 h-5 text-green-600" />
+                  </div>
                 </div>
               )}
             </CardContent>

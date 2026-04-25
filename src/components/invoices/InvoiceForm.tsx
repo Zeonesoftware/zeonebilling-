@@ -133,12 +133,6 @@ export function InvoiceForm({ onSave, onCancel, settings, invoices, initialData 
 
   const handleClientSelect = (val: string) => {
     const client = clients.find(c => c.id === val) || null;
-    if (client && !client.stateCode) {
-      toast.warning(`Client "${client.name}" has no state code. IGST vs CGST/SGST logic requires this field.`, {
-        description: "Please update client details for accurate tax reporting.",
-        duration: 5000
-      });
-    }
     setSelectedClient(client);
   };
 
@@ -261,7 +255,6 @@ export function InvoiceForm({ onSave, onCancel, settings, invoices, initialData 
 
   const handleSave = () => {
     if (!selectedClient) return toast.error('Please select a client');
-    if (!selectedClient.stateCode) return toast.error('Client state code is required for GST validation');
     if (!settings.stateCode) return toast.error('Business state code is missing in Settings. Please set it for correct tax calculation.');
     if (invoiceItems.length === 0) return toast.error('Please add at least one item');
 
@@ -269,31 +262,34 @@ export function InvoiceForm({ onSave, onCancel, settings, invoices, initialData 
       invoiceNumber,
       type: invoiceType,
       date,
-      dueDate,
+      dueDate: dueDate || '',
       clientId: selectedClient.id,
-      clientName: selectedClient.name,
-      clientEmail: selectedClient.email,
-      clientGstin: selectedClient.gstin,
-      clientAddress: selectedClient.address,
-      clientStateCode: selectedClient.stateCode,
-      currency,
-      items: invoiceItems,
-      subtotal,
-      totalCgst,
-      totalSgst,
-      totalIgst,
-      totalAmount,
-      status,
-      notes,
-      internalNotes,
-      extraPages,
-      ewayBillNo,
-      ewayBillStatus,
-      transporterName,
-      transporterId,
-      vehicleNo,
-      distance,
-      transportMode
+      clientName: selectedClient.name || 'Valued Customer',
+      clientEmail: selectedClient.email || '',
+      clientGstin: selectedClient.gstin || '',
+      clientAddress: selectedClient.address || '',
+      clientStateCode: selectedClient.stateCode || '',
+      currency: currency || 'INR',
+      items: invoiceItems.map(item => ({
+        ...item,
+        hsn: item.hsn || '',
+      })),
+      subtotal: subtotal || 0,
+      totalCgst: totalCgst || 0,
+      totalSgst: totalSgst || 0,
+      totalIgst: totalIgst || 0,
+      totalAmount: totalAmount || 0,
+      status: status || 'Pending',
+      notes: notes || '',
+      internalNotes: internalNotes || '',
+      extraPages: extraPages || '',
+      ewayBillNo: ewayBillNo || '',
+      ewayBillStatus: ewayBillStatus || 'Pending',
+      transporterName: transporterName || '',
+      transporterId: transporterId || '',
+      vehicleNo: vehicleNo || '',
+      distance: distance || 0,
+      transportMode: transportMode || 'Road'
     });
   };
 
@@ -367,8 +363,8 @@ export function InvoiceForm({ onSave, onCancel, settings, invoices, initialData 
                   <div className="text-sm font-bold text-slate-900">{selectedClient.name}</div>
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] font-mono text-slate-500 font-bold">
                     <span>GSTIN: {selectedClient.gstin}</span>
-                    <span className={cn(!selectedClient.stateCode && "text-red-600 bg-red-50 px-1 rounded")}>
-                      State: {selectedClient.stateCode || "MISSING"}
+                    <span>
+                      State: {selectedClient.stateCode || "N/A"}
                     </span>
                   </div>
                   <div className="text-[10px] text-slate-400 italic">{selectedClient.address}</div>

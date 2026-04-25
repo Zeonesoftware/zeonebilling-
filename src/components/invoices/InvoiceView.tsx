@@ -5,6 +5,7 @@ import {
   X, 
   Share2, 
   Loader2,
+  Mail,
   Link as LinkIcon,
   Globe,
   Truck
@@ -13,30 +14,94 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Invoice, BusinessSettings } from '@/types';
 import { format } from 'date-fns';
-import { amountToWords, formatCurrency, generateUPIUrl } from '@/lib/invoice-utils';
+import { formatCurrency, amountToWords, generateUPIUrl } from '@/lib/invoice-utils';
 import { QRCodeCanvas } from 'qrcode.react';
 import { toast } from 'sonner';
-import { useReactToPrint } from 'react-to-print';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
+import { ThermalReceipt } from './ThermalReceipt';
 
 interface InvoiceViewProps {
   invoice: Invoice;
   settings: BusinessSettings;
   onClose: () => void;
+  initialStyle?: Invoice['pdfStyle'] | 'Thermal';
 }
 
-export function InvoiceView({ invoice, settings, onClose }: InvoiceViewProps) {
+export function InvoiceView({ invoice, settings, onClose, initialStyle }: InvoiceViewProps) {
   const printRef = useRef<HTMLDivElement>(null);
+  const thermalRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
-  const [currentStyle, setCurrentStyle] = useState<Invoice['pdfStyle']>(invoice.pdfStyle || 'Professional');
+  const [isEmailing, setIsEmailing] = useState(false);
+  const [currentStyle, setCurrentStyle] = useState<Invoice['pdfStyle'] | 'Thermal'>(initialStyle || invoice.pdfStyle || 'Professional');
 
-  const handlePrint = useReactToPrint({
-    contentRef: printRef,
-    documentTitle: `Invoice-${invoice.invoiceNumber}`,
-  });
+  const handlePrint = () => {
+    const content = (currentStyle === 'Thermal' ? thermalRef : printRef).current;
+    if (!content) {
+      toast.error('Print content not ready');
+      return;
+    }
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      toast.error('Popups blocked. Please allow popups for printing.');
+      return;
+    }
+
+    // Get all current styles to preserve look
+    const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+      .map(node => node.outerHTML)
+      .join('\n');
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Invoice - ${invoice.invoiceNumber}</title>
+          ${styles}
+          <style>
+            @media print {
+              @page { 
+                size: ${currentStyle === 'Thermal' ? '58mm auto' : 'A4'}; 
+                margin: 0 !important; 
+              }
+              body { margin: 0 !important; padding: 0 !important; background: white !important; }
+              #invoice-print-area, #thermal-receipt { 
+                width: 100% !important; 
+                box-shadow: none !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                border: none !important;
+              }
+              /* Hide UI elements */
+              .fixed, .sticky, header, button, .toaster { display: none !important; }
+            }
+            #invoice-print-area, #thermal-receipt {
+              background: white !important;
+              color: black !important;
+            }
+          </style>
+        </head>
+        <body class="bg-white">
+          <div class="flex justify-center p-0 m-0">
+            ${content.outerHTML}
+          </div>
+          <script>
+            window.onload = () => {
+              // Small delay to ensure everything is settled
+              setTimeout(() => {
+                window.print();
+                window.close();
+              }, 500);
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
 
   const upiUrl = invoice.currency === 'INR' && settings.upiId 
     ? generateUPIUrl(settings.upiId, settings.companyName, invoice.totalAmount, invoice.invoiceNumber)
@@ -46,6 +111,111 @@ export function InvoiceView({ invoice, settings, onClose }: InvoiceViewProps) {
     const url = `${window.location.origin}/view-invoice/${invoice.id}`;
     navigator.clipboard.writeText(url);
     toast.success('Public view link copied to clipboard');
+  };
+
+  const generatePDFAsBase64 = async () => {
+    const element = printRef.current;
+    if (!element) throw new Error('Print area not found');
+
+    await new Promise(resolve => setTimeout(resolve, 800));
+
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      windowWidth: 1200,
+      onclone: (clonedDoc) => {
+        // Remove dark mode to avoid oklch colors from .dark variables
+        clonedDoc.documentElement.classList.remove('dark');
+        clonedDoc.body.classList.remove('dark');
+
+        // Identify and and neutralize modern color functions in all style tags
+        const styleSheets = clonedDoc.querySelectorAll('style');
+        styleSheets.forEach(sheet => {
+          if (sheet.innerHTML.includes('okl')) {
+            // Replace oklch/oklab with hex or inherit to prevent parsing errors
+            sheet.innerHTML = sheet.innerHTML.replace(/oklch\([^)]+\)/g, '#000000');
+            sheet.innerHTML = sheet.innerHTML.replace(/oklab\([^)]+\)/g, '#000000');
+          }
+        });
+
+        const elements = clonedDoc.getElementsByTagName('*');
+        for (let i = 0; i < elements.length; i++) {
+          const el = elements[i] as HTMLElement;
+          try {
+            // Reset any inline styles that might use modern color functions
+            if (el.style.color?.includes('okl')) el.style.color = '#000000';
+            if (el.style.backgroundColor?.includes('okl')) el.style.backgroundColor = 'transparent';
+            if (el.style.borderColor?.includes('okl')) el.style.borderColor = '#000000';
+          } catch (e) {}
+        }
+
+        const style = clonedDoc.createElement('style');
+        style.innerHTML = `
+          :root { 
+            color-scheme: light !important;
+            --background: 255 255 255 !important;
+            --foreground: 30 41 59 !important;
+          }
+          * {
+            color-scheme: light !important;
+          }
+          #invoice-print-area { background-color: white !important; }
+        `;
+        clonedDoc.head.appendChild(style);
+      }
+    });
+    
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+    pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+    return pdf.output('datauristring').split(',')[1];
+  };
+
+  const handleEmailInvoice = async () => {
+    if (!invoice.clientEmail) {
+      toast.error('Client email is missing');
+      return;
+    }
+
+    const storedTokens = localStorage.getItem('google_tokens');
+    if (!storedTokens) {
+      toast.error('Please connect your Google account in Settings first');
+      return;
+    }
+
+    const tokens = JSON.parse(storedTokens);
+    setIsEmailing(true);
+    const toastId = toast.loading('Generating invoice and sending email...');
+
+    try {
+      const pdfBase64 = await generatePDFAsBase64();
+      
+      const response = await fetch('/api/gmail/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: invoice.clientEmail,
+          subject: `Invoice ${invoice.invoiceNumber} from ${settings.companyName}`,
+          body: `Dear ${invoice.clientName},\n\nPlease find attached the invoice ${invoice.invoiceNumber} for your recent transaction.\n\nTotal Amount: ${formatCurrency(invoice.totalAmount, invoice.currency)}\n\nThank you for your business!\n\nBest regards,\n${settings.companyName}`,
+          fileName: `Invoice-${invoice.invoiceNumber}.pdf`,
+          content: pdfBase64,
+          accessToken: tokens.access_token
+        })
+      });
+
+      const result = await response.json();
+      if (result.error) throw new Error(result.error);
+      
+      toast.success(`Invoice sent to ${invoice.clientEmail}`, { id: toastId });
+    } catch (err: any) {
+      console.error('Email Error:', err);
+      toast.error(err.message || 'Failed to send email', { id: toastId });
+    } finally {
+      setIsEmailing(false);
+    }
   };
 
   const handleDownloadPDF = async () => {
@@ -75,9 +245,9 @@ export function InvoiceView({ invoice, settings, onClose }: InvoiceViewProps) {
           const styleSheets = clonedDoc.querySelectorAll('style');
           styleSheets.forEach(sheet => {
             if (sheet.innerHTML.includes('okl')) {
-              // Replace oklch/oklab with inherit or black to prevent parsing errors
-              sheet.innerHTML = sheet.innerHTML.replace(/oklch\([^)]+\)/g, 'inherit');
-              sheet.innerHTML = sheet.innerHTML.replace(/oklab\([^)]+\)/g, 'inherit');
+              // Replace oklch/oklab with hex or inherit to prevent parsing errors
+              sheet.innerHTML = sheet.innerHTML.replace(/oklch\([^)]+\)/g, '#000000');
+              sheet.innerHTML = sheet.innerHTML.replace(/oklab\([^)]+\)/g, '#000000');
             }
           });
 
@@ -86,9 +256,9 @@ export function InvoiceView({ invoice, settings, onClose }: InvoiceViewProps) {
             const el = elements[i] as HTMLElement;
             try {
               // Reset any inline styles that might use modern color functions
-              if (el.style.color?.includes('okl')) el.style.color = 'inherit';
+              if (el.style.color?.includes('okl')) el.style.color = '#000000';
               if (el.style.backgroundColor?.includes('okl')) el.style.backgroundColor = 'transparent';
-              if (el.style.borderColor?.includes('okl')) el.style.borderColor = 'inherit';
+              if (el.style.borderColor?.includes('okl')) el.style.borderColor = '#000000';
             } catch (e) {}
           }
           
@@ -168,6 +338,14 @@ export function InvoiceView({ invoice, settings, onClose }: InvoiceViewProps) {
       font: "font-serif",
       tableHeader: "border-y-2 border-black text-black",
       heading: "font-bold italic"
+    },
+    Thermal: {
+      header: "",
+      accent: "text-black",
+      border: "border-black",
+      font: "font-mono",
+      tableHeader: "",
+      heading: ""
     }
   };
 
@@ -187,12 +365,17 @@ export function InvoiceView({ invoice, settings, onClose }: InvoiceViewProps) {
                 <SelectItem value="Professional" className="font-sans">Professional</SelectItem>
                 <SelectItem value="Modern" className="font-display">Modern</SelectItem>
                 <SelectItem value="Classic" className="font-serif">Classic</SelectItem>
+                <SelectItem value="Thermal" className="font-mono">Thermal Receipt (58mm)</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={handleCopyLink} className="gap-2 rounded-full">
               <LinkIcon className="w-4 h-4" /> Copy Link
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleEmailInvoice} disabled={isEmailing} className="gap-2 rounded-full border-blue-200 text-blue-600 hover:bg-blue-50">
+              {isEmailing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
+              Email
             </Button>
             <Button variant="outline" size="sm" onClick={handlePrint} className="gap-2 rounded-full">
               <Printer className="w-4 h-4" /> Print
@@ -208,15 +391,20 @@ export function InvoiceView({ invoice, settings, onClose }: InvoiceViewProps) {
         </div>
 
         <div className="flex-1 overflow-y-auto p-12 bg-slate-100/50 flex justify-center">
-          <div 
-            ref={printRef} 
-            id="invoice-print-area"
-            className={cn(
-              "bg-white shadow-2xl w-[210mm] min-h-[297mm] flex flex-col transition-all duration-500",
-              style.font,
-              currentStyle === 'Modern' ? 'rounded-2xl' : ''
-            )}
-          >
+          {currentStyle === 'Thermal' ? (
+            <div className="bg-white p-8 shadow-2xl h-fit">
+              <ThermalReceipt ref={thermalRef} invoice={invoice} settings={settings} />
+            </div>
+          ) : (
+            <div 
+              ref={printRef} 
+              id="invoice-print-area"
+              className={cn(
+                "bg-white shadow-2xl w-[210mm] min-h-[297mm] flex flex-col transition-all duration-500",
+                style.font,
+                currentStyle === 'Modern' ? 'rounded-2xl' : ''
+              )}
+            >
             {/* Header */}
             <div className={style.header}>
               <div className="flex justify-between items-start">
@@ -408,9 +596,9 @@ export function InvoiceView({ invoice, settings, onClose }: InvoiceViewProps) {
               </div>
             )}
           </div>
-        </div>
+        )}
       </div>
-      
+
       <style dangerouslySetInnerHTML={{ __html: `
         #invoice-print-area {
           --color-slate-50: #f8fafc;
@@ -425,31 +613,8 @@ export function InvoiceView({ invoice, settings, onClose }: InvoiceViewProps) {
           --color-slate-900: #0f172a;
           --color-slate-950: #020617;
         }
-        @media print {
-          @page {
-            size: A4;
-            margin: 0 !important;
-          }
-          body {
-            margin: 0 !important;
-            padding: 0 !important;
-            background: white !important;
-          }
-          .fixed, .sticky, header, button, .toaster {
-            display: none !important;
-          }
-          #invoice-print-area {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            box-shadow: none !important;
-            border: none !important;
-          }
-        }
       ` }} />
     </div>
+  </div>
   );
 }

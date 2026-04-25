@@ -92,6 +92,22 @@
         "email": { "type": "string" }
       },
       "required": ["companyName"]
+    },
+    "Purchase": {
+      "title": "Purchase",
+      "description": "Inventory purchase records from suppliers",
+      "type": "object",
+      "properties": {
+        "purchaseNumber": { "type": "string" },
+        "date": { "type": "string" },
+        "supplierId": { "type": "string" },
+        "supplierName": { "type": "string" },
+        "supplierGstin": { "type": "string" },
+        "subtotal": { "type": "number" },
+        "totalAmount": { "type": "number" },
+        "status": { "type": "string", "enum": ["Paid", "Pending", "Cancelled"] }
+      },
+      "required": ["purchaseNumber", "supplierName", "totalAmount"]
     }
   },
   "firestore": {
@@ -114,6 +130,10 @@
     "/expenses/{expenseId}": {
       "schema": "Expense",
       "description": "Cost tracking"
+    },
+    "/purchases/{purchaseId}": {
+      "schema": "Purchase",
+      "description": "Inventory acquisition documents"
     },
     "/settings/{settingId}": {
       "schema": "BusinessSettings",

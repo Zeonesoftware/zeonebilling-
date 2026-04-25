@@ -6,6 +6,7 @@ const translations: Record<Language, Record<string, string>> = {
   en: {
     dashboard: 'Dashboard',
     invoices: 'Invoices',
+    purchases: 'Purchases',
     products: 'Products',
     clients: 'Clients',
     expenses: 'Expenses',
@@ -18,6 +19,7 @@ const translations: Record<Language, Record<string, string>> = {
   hi: {
     dashboard: 'डैशबोर्ड',
     invoices: 'इनवॉइस',
+    purchases: 'खरीद',
     products: 'उत्पाद',
     clients: 'ग्राहक',
     expenses: 'खर्च',
@@ -30,6 +32,7 @@ const translations: Record<Language, Record<string, string>> = {
   gu: {
     dashboard: 'ડેશબોર્ડ',
     invoices: 'ઈનવોઈસ',
+    purchases: 'ખરીદી',
     products: 'ઉત્પાદનો',
     clients: 'ગ્રાહકો',
     expenses: 'ખર્ચ',
@@ -42,6 +45,7 @@ const translations: Record<Language, Record<string, string>> = {
   mr: {
     dashboard: 'डॅशबोर्ड',
     invoices: 'इनव्हॉइस',
+    purchases: 'खरेदी',
     products: 'उत्पादने',
     clients: 'ग्राहक',
     expenses: 'खर्च',

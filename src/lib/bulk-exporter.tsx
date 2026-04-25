@@ -77,8 +77,9 @@ export async function exportInvoices(
           const styleSheets = clonedDoc.querySelectorAll('style');
           styleSheets.forEach(sheet => {
             if (sheet.innerHTML.includes('okl')) {
-              sheet.innerHTML = sheet.innerHTML.replace(/oklch\([^)]+\)/g, 'inherit');
-              sheet.innerHTML = sheet.innerHTML.replace(/oklab\([^)]+\)/g, 'inherit');
+              // Replace oklch/oklab with hex to prevent parsing errors in html2canvas
+              sheet.innerHTML = sheet.innerHTML.replace(/oklch\([^)]+\)/g, '#000000');
+              sheet.innerHTML = sheet.innerHTML.replace(/oklab\([^)]+\)/g, '#000000');
             }
           });
 
@@ -86,9 +87,9 @@ export async function exportInvoices(
           for (let i = 0; i < elements.length; i++) {
             const el = elements[i] as HTMLElement;
             try {
-              if (el.style.color?.includes('okl')) el.style.color = 'inherit';
+              if (el.style.color?.includes('okl')) el.style.color = '#000000';
               if (el.style.backgroundColor?.includes('okl')) el.style.backgroundColor = 'transparent';
-              if (el.style.borderColor?.includes('okl')) el.style.borderColor = 'inherit';
+              if (el.style.borderColor?.includes('okl')) el.style.borderColor = '#000000';
             } catch (e) {}
           }
           const style = clonedDoc.createElement('style');

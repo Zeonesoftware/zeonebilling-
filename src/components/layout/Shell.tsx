@@ -21,7 +21,8 @@ import {
   Bell,
   ShieldCheck,
   Shield,
-  Eye
+  Eye,
+  ShoppingCart
 } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -46,6 +47,7 @@ export function Shell() {
     { icon: LayoutDashboard, label: t('dashboard'), path: '/' },
     { icon: Monitor, label: 'POS Terminal', path: '/pos' },
     { icon: FileText, label: t('invoices'), path: '/invoices' },
+    { icon: ShoppingCart, label: t('purchases'), path: '/purchases' },
     { icon: Package, label: t('products'), path: '/products' },
     { icon: Users, label: t('clients'), path: '/clients' },
     { icon: ReceiptIndianRupee, label: t('expenses'), path: '/expenses' },

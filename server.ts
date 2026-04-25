@@ -176,7 +176,8 @@ app.get("/api/auth/google/url", (req, res) => {
     scope: [
       "https://www.googleapis.com/auth/userinfo.profile",
       "https://www.googleapis.com/auth/userinfo.email",
-      "https://www.googleapis.com/auth/drive.file"
+      "https://www.googleapis.com/auth/drive.file",
+      "https://www.googleapis.com/auth/gmail.send"
     ].join(" "),
   };
 
@@ -220,6 +221,57 @@ app.get("/auth/google/callback", async (req, res) => {
   }
 });
 
+// Gmail Sending
+app.post("/api/gmail/send", async (req, res) => {
+  const { to, subject, body, fileName, content, accessToken } = req.body;
+  
+  try {
+    const boundary = "boundary_" + Date.now();
+    const mailBody = [
+      `To: ${to}`,
+      `Subject: ${subject}`,
+      `Content-Type: multipart/mixed; boundary="${boundary}"`,
+      ``,
+      `--${boundary}`,
+      `Content-Type: text/plain; charset="UTF-8"`,
+      ``,
+      body,
+      ``,
+      `--${boundary}`,
+      `Content-Type: application/pdf`,
+      `Content-Disposition: attachment; filename="${fileName}"`,
+      `Content-Transfer-Encoding: base64`,
+      ``,
+      content,
+      `--${boundary}--`
+    ].join("\r\n");
+
+    const encodedMail = Buffer.from(mailBody)
+      .toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+
+    const response = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        raw: encodedMail
+      })
+    });
+    
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error?.message || "Failed to send email");
+    res.json(result);
+  } catch (err) {
+    console.error("Gmail Error:", err);
+    res.status(500).json({ error: err instanceof Error ? err.message : "Email failed to send" });
+  }
+});
+
 // Upload to Drive
 app.post("/api/drive/upload", async (req, res) => {
   const { fileName, content, mimeType, accessToken } = req.body;
@@ -251,38 +303,54 @@ app.post("/api/drive/upload", async (req, res) => {
 
 // Stripe Checkout
 app.post("/api/create-checkout-session", async (req, res) => {
+  console.log("Stripe Checkout Request:", JSON.stringify(req.body, null, 2));
   const stripe = getStripe();
-  if (!stripe) return res.status(503).json({ error: "Stripe not configured" });
+  if (!stripe) {
+    console.error("Stripe Error: STRIPE_SECRET_KEY is not configured");
+    return res.status(503).json({ error: "Stripe not configured on server" });
+  }
 
   try {
     const { invoiceId, items, customerEmail, currency = 'inr' } = req.body;
     
+    if (!invoiceId || !items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: "Invalid request: missing invoiceId or items" });
+    }
+
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
-      line_items: items.map((item: any) => ({
-        price_data: {
-          currency: currency.toLowerCase(),
-          product_data: {
-            name: item.name,
-            description: item.hsn ? `HSN: ${item.hsn}` : undefined,
+      line_items: items.map((item: any) => {
+        // Ensure total is a valid number, default to 0 if NaN/undefined
+        const amount = Math.round((Number(item.total) || 0) * 100);
+        return {
+          price_data: {
+            currency: currency.toLowerCase(),
+            product_data: {
+              name: item.name || "Product",
+              description: item.hsn ? `HSN: ${item.hsn}` : undefined,
+            },
+            unit_amount: amount,
           },
-          unit_amount: Math.round(item.total * 100), // Stripe expects amounts in cents/paise
-        },
-        quantity: item.quantity || 1,
-      })),
+          quantity: Number(item.quantity) || 1,
+        };
+      }),
       mode: 'payment',
       success_url: `${req.protocol}://${req.get('host')}/invoices?paid=true&id=${invoiceId}`,
       cancel_url: `${req.protocol}://${req.get('host')}/invoices?paid=false&id=${invoiceId}`,
-      customer_email: customerEmail,
+      customer_email: customerEmail || undefined,
       metadata: {
         invoiceId: invoiceId
       }
     });
 
+    console.log("Stripe Session Created:", session.id);
     res.json({ url: session.url });
   } catch (err) {
-    console.error("Stripe Error:", err);
-    res.status(500).json({ error: "Failed to create checkout session" });
+    console.error("Stripe Error Details:", err);
+    res.status(500).json({ 
+      error: err instanceof Error ? err.message : "Failed to create checkout session",
+      details: process.env.NODE_ENV === 'development' ? String(err) : undefined
+    });
   }
 });
 
