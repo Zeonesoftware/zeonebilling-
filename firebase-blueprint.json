@@ -1,0 +1,123 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and role management",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { 
+          "type": "string", 
+          "enum": ["admin", "billing", "view-only"],
+          "description": "admin: total control, billing: create/edit invoices, view-only: read documents"
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "role"]
+    },
+    "Client": {
+      "title": "Client",
+      "description": "Customer information",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "gstin": { "type": "string" },
+        "stateCode": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "address": { "type": "string" }
+      },
+      "required": ["name", "email"]
+    },
+    "Item": {
+      "title": "Item",
+      "description": "Product or service inventory",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "hsn": { "type": "string" },
+        "price": { "type": "number" },
+        "gstRate": { "type": "number" },
+        "stock": { "type": "number" },
+        "unit": { "type": "string" },
+        "category": { "type": "string" },
+        "barcode": { "type": "string" },
+        "description": { "type": "string" }
+      },
+      "required": ["name", "price", "gstRate"]
+    },
+    "Invoice": {
+      "title": "Invoice",
+      "description": "Sales documents",
+      "type": "object",
+      "properties": {
+        "invoiceNumber": { "type": "string" },
+        "type": { "type": "string" },
+        "date": { "type": "string" },
+        "dueDate": { "type": "string" },
+        "clientId": { "type": "string" },
+        "status": { "type": "string" },
+        "totalAmount": { "type": "number" },
+        "irn": { "type": "string" },
+        "ewayBillNo": { "type": "string" },
+        "ewayBillStatus": { "type": "string" },
+        "transporterId": { "type": "string" },
+        "vehicleNo": { "type": "string" }
+      },
+      "required": ["invoiceNumber", "clientId", "totalAmount"]
+    },
+    "Expense": {
+      "title": "Expense",
+      "description": "Business costs",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string" },
+        "description": { "type": "string" },
+        "amount": { "type": "number" },
+        "category": { "type": "string" },
+        "itcClaimed": { "type": "boolean" }
+      },
+      "required": ["date", "description", "amount"]
+    },
+    "BusinessSettings": {
+      "title": "Business Settings",
+      "description": "Global application and business configuration",
+      "type": "object",
+      "properties": {
+        "companyName": { "type": "string" },
+        "gstin": { "type": "string" },
+        "address": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" }
+      },
+      "required": ["companyName"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Registered application users"
+    },
+    "/clients/{clientId}": {
+      "schema": "Client",
+      "description": "Global client database"
+    },
+    "/items/{itemId}": {
+      "schema": "Item",
+      "description": "Global product catalog"
+    },
+    "/invoices/{invoiceId}": {
+      "schema": "Invoice",
+      "description": "Revenue documents"
+    },
+    "/expenses/{expenseId}": {
+      "schema": "Expense",
+      "description": "Cost tracking"
+    },
+    "/settings/{settingId}": {
+      "schema": "BusinessSettings",
+      "description": "Configuration profiles"
+    }
+  }
+}

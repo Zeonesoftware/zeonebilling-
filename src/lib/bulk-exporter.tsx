@@ -1,0 +1,321 @@
+import { jsPDF } from 'jspdf';
+import JSZip from 'jszip';
+import html2canvas from 'html2canvas';
+import { Invoice, BusinessSettings } from '@/types';
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { InvoiceView } from '@/components/invoices/InvoiceView';
+
+// We need a way to render the invoice WITHOUT the modal/preview UI
+// Let's create a specialized minimal renderer for the export
+
+export async function exportInvoices(
+  invoices: Invoice[], 
+  settings: BusinessSettings, 
+  type: 'pdf' | 'zip',
+  onProgress?: (current: number, total: number) => void
+) {
+  const container = document.createElement('div');
+  container.style.position = 'fixed';
+  container.style.left = '-10000px';
+  container.style.top = '0';
+  container.style.width = '210mm'; // A4 width
+  document.body.appendChild(container);
+
+  const root = createRoot(container);
+  
+  const zip = type === 'zip' ? new JSZip() : null;
+  const mergedPdf = type === 'pdf' ? new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' }) : null;
+
+  try {
+    for (let i = 0; i < invoices.length; i++) {
+      const invoice = invoices[i];
+      if (onProgress) onProgress(i + 1, invoices.length);
+      
+      // Render the invoice to the container
+      // Note: We need to pass a dummy onClose and handle the "style" preference
+      // We'll use a specialized component or just the print area part of InvoiceView
+      // For now, let's try to reuse the logic.
+      
+      await new Promise<void>((resolve) => {
+        root.render(
+          <div id="export-root" className="bg-white">
+            <style dangerouslySetInnerHTML={{ __html: `
+              #invoice-print-area {
+                --color-slate-50: #f8fafc;
+                --color-slate-100: #f1f5f9;
+                --color-slate-200: #e2e8f0;
+                --color-slate-300: #cbd5e1;
+                --color-slate-400: #94a3b8;
+                --color-slate-500: #64748b;
+                --color-slate-600: #475569;
+                --color-slate-700: #334155;
+                --color-slate-800: #1e293b;
+                --color-slate-900: #0f172a;
+                --color-slate-950: #020617;
+              }
+            ` }} />
+            <InvoiceExportRenderer invoice={invoice} settings={settings} />
+          </div>
+        );
+        // Give it some time to render and styles to apply
+        setTimeout(resolve, 800);
+      });
+
+      const element = document.getElementById('invoice-print-area');
+      if (!element) continue;
+
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        windowWidth: 1200,
+        onclone: (clonedDoc) => {
+          clonedDoc.documentElement.classList.remove('dark');
+          clonedDoc.body.classList.remove('dark');
+
+          const styleSheets = clonedDoc.querySelectorAll('style');
+          styleSheets.forEach(sheet => {
+            if (sheet.innerHTML.includes('okl')) {
+              sheet.innerHTML = sheet.innerHTML.replace(/oklch\([^)]+\)/g, 'inherit');
+              sheet.innerHTML = sheet.innerHTML.replace(/oklab\([^)]+\)/g, 'inherit');
+            }
+          });
+
+          const elements = clonedDoc.getElementsByTagName('*');
+          for (let i = 0; i < elements.length; i++) {
+            const el = elements[i] as HTMLElement;
+            try {
+              if (el.style.color?.includes('okl')) el.style.color = 'inherit';
+              if (el.style.backgroundColor?.includes('okl')) el.style.backgroundColor = 'transparent';
+              if (el.style.borderColor?.includes('okl')) el.style.borderColor = 'inherit';
+            } catch (e) {}
+          }
+          const style = clonedDoc.createElement('style');
+          style.innerHTML = `
+            :root {
+              color-scheme: light !important;
+              --background: 255 255 255 !important;
+              --foreground: 30 41 59 !important;
+            }
+            * { color-scheme: light !important; }
+            #invoice-print-area { background-color: white !important; color: #1e293b !important; }
+            .bg-background { background-color: #ffffff !important; }
+            .text-foreground { color: #1e293b !important; }
+            .bg-primary { background-color: #237227 !important; }
+            .text-primary { color: #237227 !important; }
+            .bg-slate-50 { background-color: #f8fafc !important; }
+            .bg-slate-100 { background-color: #f1f5f9 !important; }
+            .text-slate-900 { color: #0f172a !important; }
+            .text-slate-600 { color: #475569 !important; }
+            .text-slate-500 { color: #64748b !important; }
+          `;
+          clonedDoc.head.appendChild(style);
+        }
+      });
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      
+      if (type === 'zip' && zip) {
+        const base64Data = imgData.split(',')[1];
+        // We'll actually generate a per-invoice PDF for the ZIP
+        const tempPdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        const pdfWidth = tempPdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        tempPdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+        const pdfBlob = tempPdf.output('blob');
+        zip.file(`${invoice.invoiceNumber}.pdf`, pdfBlob);
+      } else if (type === 'pdf' && mergedPdf) {
+        if (i > 0) mergedPdf.addPage();
+        const pdfWidth = mergedPdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        mergedPdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+      }
+    }
+
+    if (type === 'zip' && zip) {
+      const content = await zip.generateAsync({ type: 'blob' });
+      const url = window.URL.createObjectURL(content);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Invoices_Export_${new Date().getTime()}.zip`;
+      link.click();
+    } else if (type === 'pdf' && mergedPdf) {
+      mergedPdf.save(`Invoices_Merged_${new Date().getTime()}.pdf`);
+    }
+
+  } finally {
+    root.unmount();
+    document.body.removeChild(container);
+  }
+}
+
+// Minimal renderer for export
+import { format } from 'date-fns';
+import { amountToWords, formatCurrency, generateUPIUrl } from '@/lib/invoice-utils';
+import { QRCodeCanvas } from 'qrcode.react';
+import { cn } from '@/lib/utils';
+
+function InvoiceExportRenderer({ invoice, settings }: { invoice: Invoice, settings: BusinessSettings }) {
+  const currentStyle = invoice.pdfStyle || 'Professional';
+  
+  const styles = {
+    Professional: {
+      header: "bg-[#237227] text-white p-12",
+      accent: "text-[#237227]",
+      border: "border-[#237227]/20",
+      font: "font-sans",
+      tableHeader: "border-b-2 border-[#237227] text-[#237227]",
+      heading: "font-black tracking-tight"
+    },
+    Modern: {
+      header: "bg-[#0f172a] text-white p-16 rounded-t-2xl",
+      accent: "text-[#0f172a]",
+      border: "border-[#f1f5f9]",
+      font: "font-display",
+      tableHeader: "bg-[#f8fafc] border-y border-[#f1f5f9] text-[#64748b]",
+      heading: "font-medium tracking-tighter"
+    },
+    Classic: {
+      header: "bg-white text-black p-12 border-b-8 border-double border-black",
+      accent: "text-black",
+      border: "border-black/10",
+      font: "font-serif",
+      tableHeader: "border-y-2 border-black text-black",
+      heading: "font-bold italic"
+    }
+  };
+
+  const style = styles[currentStyle];
+  const upiUrl = invoice.currency === 'INR' && settings.upiId 
+    ? generateUPIUrl(settings.upiId, settings.companyName, invoice.totalAmount, invoice.invoiceNumber)
+    : null;
+
+  return (
+    <div 
+      id="invoice-print-area"
+      className={cn(
+        "bg-white w-[210mm] min-h-[297mm] flex flex-col",
+        style.font,
+        currentStyle === 'Modern' ? 'rounded-2xl' : ''
+      )}
+    >
+      {/* Copy of the rendering logic from InvoiceView */}
+      <div className={style.header}>
+        <div className="flex justify-between items-start">
+          <div className="space-y-6">
+            {settings.logoUrl ? (
+              <img src={settings.logoUrl} alt="Logo" className="h-16 w-auto object-contain" />
+            ) : (
+              <div className={cn("text-4xl uppercase leading-none", style.heading)}>{settings.companyName}</div>
+            )}
+            <div className="text-xs opacity-80 max-w-sm leading-relaxed font-medium">
+              {settings.address}
+              <div className="pt-2 flex flex-wrap gap-x-4 gap-y-1 opacity-70">
+                <span>GSTIN: {settings.gstin}</span>
+                <span>State Code: {settings.stateCode}</span>
+              </div>
+            </div>
+          </div>
+          <div className="text-right space-y-2">
+            <div className={cn("text-5xl uppercase tracking-tight leading-none", style.heading)}>{invoice.type}</div>
+            <div className="text-lg font-mono opacity-80 font-bold">{invoice.invoiceNumber}</div>
+            <div className="pt-8 space-y-1">
+              <div className="text-[10px] uppercase tracking-widest font-bold opacity-60">Bill Date</div>
+              <div className="text-sm font-bold">{format(new Date(invoice.date), 'dd MMMM yyyy')}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="p-12 md:p-16 flex-1 flex flex-col gap-12">
+        <div className="grid grid-cols-2 gap-16">
+          <div className="space-y-3">
+            <div className="text-[10px] font-black uppercase tracking-widest text-[#94a3b8]">Bill To Customer</div>
+            <div className="text-xl font-bold text-[#0f172a]">{invoice.clientName}</div>
+            <div className="text-sm text-[#475569] leading-relaxed max-w-xs">
+              {invoice.clientAddress}
+              <div className="pt-2 font-mono text-[10px] uppercase font-bold text-[#94a3b8]">
+                GSTIN: {invoice.clientGstin} | State: {invoice.clientStateCode}
+              </div>
+            </div>
+          </div>
+          {invoice.paymentMethod && (
+            <div className="text-right">
+              <div className="text-[10px] font-black uppercase tracking-widest text-[#94a3b8]">Payment Channel</div>
+              <div className={cn("text-sm font-bold pt-2", style.accent)}>{invoice.paymentMethod}</div>
+            </div>
+          )}
+        </div>
+
+        <div className="flex-1">
+          <table className="w-full">
+            <thead>
+              <tr className={cn("text-[10px] font-black uppercase tracking-widest", style.tableHeader)}>
+                <th className="py-5 text-left pr-4">Line Items / Services</th>
+                <th className="py-5 text-center px-4">HSN/SAC</th>
+                <th className="py-5 text-center px-4">Qty</th>
+                <th className="py-5 text-right px-4">Unit Rate</th>
+                <th className="py-5 text-right pl-4">Total</th>
+              </tr>
+            </thead>
+            <tbody className={cn("divide-y", style.border)}>
+              {invoice.items.map((item, idx) => (
+                <tr key={idx}>
+                  <td className="py-6 pr-4">
+                    <div className="font-bold text-sm text-[#0f172a]">{item.name}</div>
+                  </td>
+                  <td className="py-6 text-center px-4 text-[10px] font-mono text-[#94a3b8] font-bold">{item.hsn}</td>
+                  <td className="py-6 text-center px-4 text-sm font-bold font-mono">{item.quantity}</td>
+                  <td className="py-6 text-right px-4 text-sm font-bold font-mono">{formatCurrency(item.price, invoice.currency)}</td>
+                  <td className="py-6 text-right pl-4 font-black text-sm font-mono text-[#0f172a]">{formatCurrency(item.total, invoice.currency)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="grid grid-cols-2 gap-16 mt-auto">
+          <div className="space-y-10">
+            <div className="space-y-2">
+              <div className="text-[10px] font-black uppercase tracking-widest text-[#94a3b8]">Total in Words</div>
+              <div className={cn("text-xs italic font-bold leading-relaxed p-4 rounded-lg border", style.border, currentStyle === 'Modern' ? "bg-[#f8fafc]" : "bg-white")}>
+                {amountToWords(invoice.totalAmount, invoice.currency)}
+              </div>
+            </div>
+            
+            {upiUrl && (
+              <div className={cn("flex gap-6 items-center p-5 rounded-2xl border w-fit", style.border, currentStyle === 'Modern' ? "bg-[#f8fafc]" : "bg-white")}>
+                <QRCodeCanvas value={upiUrl} size={80} level="H" />
+                <div className="space-y-2">
+                  <div className="text-[10px] font-black uppercase tracking-widest text-[#0f172a]">Instant UPI Payment</div>
+                  <div className="text-[10px] text-[#64748b] font-mono font-bold">{settings.upiId}</div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-6">
+            <div className={cn("p-8 rounded-2xl space-y-4 border", style.border, currentStyle === 'Modern' ? "bg-slate-950 text-white" : "bg-slate-50")}>
+              <div className="flex justify-between items-center text-xs">
+                <span className="opacity-60 font-black uppercase tracking-widest">Gross Subtotal</span>
+                <span className="font-mono font-bold">{formatCurrency(invoice.subtotal, invoice.currency)}</span>
+              </div>
+              <div className={cn("pt-6 border-t flex justify-between items-center", currentStyle === 'Modern' ? "border-white/10" : "border-[#e2e8f0]")}>
+                <span className="text-sm font-black uppercase tracking-widest">Final Total</span>
+                <span className={cn("text-3xl font-black font-mono", style.accent)}>{formatCurrency(invoice.totalAmount, invoice.currency)}</span>
+              </div>
+            </div>
+            <div className="pt-12 flex flex-col items-end gap-3 text-right">
+              {settings.signatureUrl && (
+                <img src={settings.signatureUrl} alt="Signature" className="h-16 w-auto mb-2 mix-blend-multiply brightness-75" />
+              )}
+              <div className="text-[10px] font-black uppercase tracking-widest text-[#94a3b8]">Authorized Signatory</div>
+              <div className="text-sm font-black text-[#0f172a]">{settings.companyName}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

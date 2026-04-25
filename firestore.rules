@@ -1,0 +1,107 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().role == 'admin';
+    }
+
+    function isBilling() {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (getUserData().role == 'admin' || getUserData().role == 'billing');
+    }
+
+    function isAnyUser() {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().role in ['admin', 'billing', 'view-only'];
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // --- Validation Helpers ---
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['email', 'role']) && 
+             data.email is string && data.email.size() <= 256 &&
+             data.role in ['admin', 'billing', 'view-only'] &&
+             data.keys().size() <= 10;
+    }
+
+    function isValidInvoice(data) {
+       return data.keys().hasAll(['invoiceNumber', 'clientId', 'totalAmount', 'status']) &&
+              data.invoiceNumber is string && data.invoiceNumber.size() <= 100 &&
+              data.clientId is string && data.totalAmount is number &&
+              data.status in ['Draft', 'Paid', 'Pending', 'Cancelled'] &&
+              data.keys().size() <= 50;
+    }
+
+    function isValidClient(data) {
+      return data.keys().hasAll(['name', 'email']) &&
+             data.name is string && data.name.size() <= 200 &&
+             data.email is string && data.email.size() <= 256 &&
+             data.keys().size() <= 20;
+    }
+
+    // --- Rules ---
+
+    match /users/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow create: if isSignedIn() && request.auth.uid == userId && isValidUser(incoming());
+      allow update: if isAdmin() && isValidUser(incoming());
+      allow delete: if isAdmin() && userId != request.auth.uid;
+    }
+
+    match /invoices/{invoiceId} {
+      allow read, list: if isAnyUser();
+      allow create: if isBilling() && isValidInvoice(incoming());
+      allow update: if isBilling() && isValidInvoice(incoming()) && (
+        incoming().invoiceNumber == existing().invoiceNumber
+      );
+      allow delete: if isAdmin();
+    }
+
+    match /clients/{clientId} {
+      allow read, list: if isAnyUser();
+      allow create, update: if isBilling() && isValidClient(incoming());
+      allow delete: if isAdmin();
+    }
+
+    match /items/{itemId} {
+      allow read, list: if isAnyUser();
+      allow create, update: if isBilling();
+      allow delete: if isAdmin();
+    }
+
+    match /expenses/{expenseId} {
+      allow read, list: if isAnyUser();
+      allow create, update: if isBilling();
+      allow delete: if isAdmin();
+    }
+
+    match /settings/{settingId} {
+      allow read: if isAnyUser();
+      allow write: if isAdmin();
+    }
+  }
+}

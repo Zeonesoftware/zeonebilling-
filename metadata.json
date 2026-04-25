@@ -1,0 +1,6 @@
+{
+  "name": "Zeone Billing Software",
+  "description": "A modern, offline-capable GST billing and business management system for Indian businesses.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["GST Billing", "Inventory Management", "Business Analytics", "PWA Support"]
+}
