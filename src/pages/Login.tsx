@@ -55,25 +55,44 @@ export default function LoginPage() {
     }
   };
 
+  useEffect(() => {
+    // Cleanup recaptcha on unmount
+    return () => {
+      if ((window as any).recaptchaVerifier) {
+        (window as any).recaptchaVerifier.clear();
+        (window as any).recaptchaVerifier = null;
+      }
+    };
+  }, []);
+
   const setupRecaptcha = () => {
-    if (!(window as any).recaptchaVerifier) {
-      (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        'size': 'normal', // Changed to normal for better mobile visibility if challenged
-        'callback': () => {},
-        'expired-callback': () => {
-          if ((window as any).recaptchaVerifier) {
-            (window as any).recaptchaVerifier.clear();
-            (window as any).recaptchaVerifier = null;
+    try {
+      if (!(window as any).recaptchaVerifier) {
+        (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+          'size': 'invisible',
+          'callback': (response: any) => {
+            // reCAPTCHA solved, allow signInWithPhoneNumber.
+          },
+          'expired-callback': () => {
+            if ((window as any).recaptchaVerifier) {
+              (window as any).recaptchaVerifier.clear();
+              (window as any).recaptchaVerifier = null;
+            }
           }
-        }
-      });
+        });
+      }
+    } catch (err) {
+      console.error('Recaptcha Setup Error:', err);
     }
   };
 
   const handlePhoneSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!phoneNumber) {
-      toast.error('Please enter your phone number');
+    
+    // Simple validation: should be digits, maybe starts with +
+    const cleanPhone = phoneNumber.trim().replace(/\s+/g, '');
+    if (!cleanPhone || cleanPhone.length < 10) {
+      toast.error('Please enter a valid phone number');
       return;
     }
 
@@ -81,20 +100,30 @@ export default function LoginPage() {
     try {
       setupRecaptcha();
       const appVerifier = (window as any).recaptchaVerifier;
-      // Ensure phone number has country code, default to +91 if not provided
-      let formattedPhone = phoneNumber.trim();
+      
+      // Force country code if missing
+      let formattedPhone = cleanPhone;
       if (!formattedPhone.startsWith('+')) {
+        // If it starts with 0, remove it (common in some regions, but for +91 we usually don't have leading 0)
         formattedPhone = `+91${formattedPhone.replace(/^0+/, '')}`;
       }
+      
+      console.log('Initiating phone sign in for:', formattedPhone);
       const result = await signInWithPhone(formattedPhone, appVerifier);
+      console.log('Phone sign in result received');
       setConfirmationResult(result);
       setIsOtpSent(true);
-      toast.success('OTP sent to your phone');
+      toast.success('OTP sent to ' + formattedPhone);
     } catch (error: any) {
-      console.error('Phone Auth Error:', error);
-      let msg = 'Failed to send OTP. Please check the number format.';
+      console.error('Phone Auth Error Details:', {
+        code: error.code,
+        message: error.message,
+        stack: error.stack
+      });
+      let msg = 'Failed to send OTP. Please check your network or number.';
       if (error.code === 'auth/invalid-phone-number') msg = 'Invalid phone number format.';
       if (error.code === 'auth/too-many-requests') msg = 'Too many attempts. Try again later.';
+      if (error.code === 'auth/network-request-failed') msg = 'Network error. Please check your connection.';
       toast.error(msg);
       
       if ((window as any).recaptchaVerifier) {
@@ -126,7 +155,8 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] p-4 font-sans">
+    <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] p-4 font-sans relative">
+      <div id="recaptcha-container"></div>
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -331,8 +361,6 @@ export default function LoginPage() {
                       </div>
                       <p className="text-[9px] text-slate-400 px-1">Include country code (e.g., +91 for India)</p>
                     </div>
-
-                    <div id="recaptcha-container" className="flex justify-center py-2"></div>
 
                     <Button 
                       type="submit" 
