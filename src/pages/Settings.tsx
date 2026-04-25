@@ -28,9 +28,11 @@ export default function Settings() {
   const [googleUser, setGoogleUser] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'business' | 'users'>('business');
   const [isUploading, setIsUploading] = useState(false);
+  const [isSigUploading, setIsSigUploading] = useState(false);
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const logoInputRef = React.useRef<HTMLInputElement>(null);
+  const sigInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (settings) setFormData(settings);
@@ -40,43 +42,53 @@ export default function Settings() {
     }
   }, [settings]);
 
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const handleFileUpload = async (file: File, type: 'logo' | 'signature') => {
     if (!file.type.startsWith('image/')) {
       toast.error('Please upload an image file');
       return;
     }
 
     if (file.size > 2 * 1024 * 1024) {
-      toast.error('Logo must be less than 2MB');
+      toast.error('Image must be less than 2MB');
       return;
     }
 
-    setIsUploading(true);
+    const setStatus = type === 'logo' ? setIsUploading : setIsSigUploading;
+    setStatus(true);
+
     try {
-      const storageRef = ref(storage, `business/logo_${Date.now()}`);
+      const storageRef = ref(storage, `business/${type}_${Date.now()}`);
       const snapshot = await uploadBytes(storageRef, file);
       const url = await getDownloadURL(snapshot.ref);
       
-      setFormData((prev: any) => ({ ...prev, logoUrl: url }));
-      toast.success('Logo uploaded successfully');
+      setFormData((prev: any) => ({ ...prev, [`${type}Url`]: url }));
+      toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} uploaded successfully`);
     } catch (err) {
       console.error(err);
-      toast.error('Failed to upload logo');
+      toast.error(`Failed to upload ${type}`);
     } finally {
-      setIsUploading(false);
+      setStatus(false);
     }
   };
 
-  const removeLogo = async () => {
-    if (!formData.logoUrl) return;
-    
-    // We don't strictly need to delete the file from storage if we are just updating the URL
-    // but it's cleaner. However, we'd need the path.
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleFileUpload(file, 'logo');
+  };
+
+  const handleSignatureUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleFileUpload(file, 'signature');
+  };
+
+  const removeLogo = () => {
     setFormData((prev: any) => ({ ...prev, logoUrl: '' }));
-    toast.info('Logo removed from settings. Remember to save.');
+    toast.info('Logo removed. Save to apply.');
+  };
+
+  const removeSignature = () => {
+    setFormData((prev: any) => ({ ...prev, signatureUrl: '' }));
+    toast.info('Signature removed. Save to apply.');
   };
 
   useEffect(() => {
@@ -224,53 +236,100 @@ export default function Settings() {
               <CardDescription>Basic information used for invoice headers</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="flex items-center gap-6 pb-6 border-b border-slate-100">
-                <div className="relative group">
-                  <div className={cn(
-                    "w-24 h-24 rounded-2xl border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden bg-slate-50 relative",
-                    formData.logoUrl && "border-solid border-[#237227]"
-                  )}>
-                    {formData.logoUrl ? (
-                      <img src={formData.logoUrl} alt="Logo" className="w-full h-full object-contain p-2" />
-                    ) : (
-                      <ImageIcon className="w-8 h-8 text-slate-300" />
-                    )}
-                    {isUploading && (
-                      <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
-                        <Loader2 className="w-5 h-5 animate-spin text-[#237227]" />
-                      </div>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 pb-6 border-b border-slate-100">
+                <div className="flex gap-4">
+                  <div className="relative group">
+                    <div className={cn(
+                      "w-24 h-24 rounded-2xl border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden bg-slate-50 relative",
+                      formData.logoUrl && "border-solid border-[#237227]"
+                    )}>
+                      {formData.logoUrl ? (
+                        <img src={formData.logoUrl} alt="Logo" className="w-full h-full object-contain p-2" />
+                      ) : (
+                        <ImageIcon className="w-8 h-8 text-slate-300" />
+                      )}
+                      {isUploading && (
+                        <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                          <Loader2 className="w-5 h-5 animate-spin text-[#237227]" />
+                        </div>
+                      )}
+                    </div>
+                    {formData.logoUrl && (
+                      <button 
+                        onClick={removeLogo}
+                        className="absolute -top-2 -right-2 p-1 bg-white border border-slate-200 rounded-full text-slate-400 hover:text-red-500 shadow-sm transition-colors"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
                     )}
                   </div>
-                  {formData.logoUrl && (
-                    <button 
-                      onClick={removeLogo}
-                      className="absolute -top-2 -right-2 p-1 bg-white border border-slate-200 rounded-full text-slate-400 hover:text-red-500 shadow-sm transition-colors"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  )}
+
+                  <div className="relative group">
+                    <div className={cn(
+                      "w-24 h-24 rounded-2xl border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden bg-slate-50 relative",
+                      formData.signatureUrl && "border-solid border-[#237227]"
+                    )}>
+                      {formData.signatureUrl ? (
+                        <img src={formData.signatureUrl} alt="Signature" className="w-full h-full object-contain p-2 mix-blend-multiply" />
+                      ) : (
+                        <Check className="w-8 h-8 text-slate-300" />
+                      )}
+                      {isSigUploading && (
+                        <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                          <Loader2 className="w-5 h-5 animate-spin text-[#237227]" />
+                        </div>
+                      )}
+                    </div>
+                    {formData.signatureUrl && (
+                      <button 
+                        onClick={removeSignature}
+                        className="absolute -top-2 -right-2 p-1 bg-white border border-slate-200 rounded-full text-slate-400 hover:text-red-500 shadow-sm transition-colors"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-xs uppercase font-black tracking-widest text-slate-400">Company Logo</Label>
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="h-8 text-[10px] font-bold uppercase tracking-wider gap-2"
-                      onClick={() => logoInputRef.current?.click()}
-                      disabled={isUploading}
-                    >
-                      <Upload className="w-3 h-3" /> Change Logo
-                    </Button>
-                    <input 
-                      type="file" 
-                      ref={logoInputRef} 
-                      className="hidden" 
-                      onChange={handleLogoUpload} 
-                      accept="image/*" 
-                    />
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase font-black tracking-widest text-slate-400">Identity & Branding</Label>
+                    <div className="flex flex-wrap gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-8 text-[10px] font-bold uppercase tracking-wider gap-2 rounded-xl"
+                        onClick={() => logoInputRef.current?.click()}
+                        disabled={isUploading}
+                      >
+                        <Upload className="w-3 h-3" /> Logo
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-8 text-[10px] font-bold uppercase tracking-wider gap-2 rounded-xl"
+                        onClick={() => sigInputRef.current?.click()}
+                        disabled={isSigUploading}
+                      >
+                        <Upload className="w-3 h-3" /> Signature
+                      </Button>
+                      <input 
+                        type="file" 
+                        ref={logoInputRef} 
+                        className="hidden" 
+                        onChange={handleLogoUpload} 
+                        accept="image/*" 
+                      />
+                      <input 
+                        type="file" 
+                        ref={sigInputRef} 
+                        className="hidden" 
+                        onChange={handleSignatureUpload} 
+                        accept="image/*" 
+                      />
+                    </div>
+                    <p className="text-[9px] text-slate-400 italic">Recommended: Images with white backgrounds or PNGs with transparency.</p>
                   </div>
-                  <p className="text-[10px] text-slate-400 italic">Recommended: 400x400px PNG or SVG. Max 2MB.</p>
                 </div>
               </div>
 

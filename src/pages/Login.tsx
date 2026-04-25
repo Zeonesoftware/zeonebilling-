@@ -3,18 +3,27 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { LogIn, ReceiptIndianRupee, Mail, Lock, User, ArrowRight, Loader2 } from 'lucide-react';
+import { LogIn, ReceiptIndianRupee, Mail, Lock, User, ArrowRight, Loader2, Phone, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
+import { RecaptchaVerifier, ConfirmationResult } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
 
 export default function LoginPage() {
-  const { signIn, signInWithEmail, signUpWithEmail, loading, profile } = useAuth();
+  const { signIn, signInWithEmail, signUpWithEmail, signInWithPhone, loading, profile } = useAuth();
   const navigate = useNavigate();
-  const [isEmailView, setIsEmailView] = useState(false);
+  const [authType, setAuthType] = useState<'choice' | 'email' | 'phone'>('choice');
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  
+  // Phone Auth States
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
+  const [isOtpSent, setIsOtpSent] = useState(false);
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+
   const [authLoading, setAuthLoading] = useState(false);
 
   useEffect(() => {
@@ -35,13 +44,82 @@ export default function LoginPage() {
       if (isSignUp) {
         await signUpWithEmail(email, password, name);
         toast.success('Account created successfully');
-        // The useEffect above will handle the navigation once profile is created
       } else {
         await signInWithEmail(email, password);
         toast.success('Signed in successfully');
       }
     } catch (error: any) {
       toast.error(error.message || 'Authentication failed');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const setupRecaptcha = () => {
+    if (!(window as any).recaptchaVerifier) {
+      (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        'size': 'normal', // Changed to normal for better mobile visibility if challenged
+        'callback': () => {},
+        'expired-callback': () => {
+          if ((window as any).recaptchaVerifier) {
+            (window as any).recaptchaVerifier.clear();
+            (window as any).recaptchaVerifier = null;
+          }
+        }
+      });
+    }
+  };
+
+  const handlePhoneSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!phoneNumber) {
+      toast.error('Please enter your phone number');
+      return;
+    }
+
+    setAuthLoading(true);
+    try {
+      setupRecaptcha();
+      const appVerifier = (window as any).recaptchaVerifier;
+      // Ensure phone number has country code, default to +91 if not provided
+      let formattedPhone = phoneNumber.trim();
+      if (!formattedPhone.startsWith('+')) {
+        formattedPhone = `+91${formattedPhone.replace(/^0+/, '')}`;
+      }
+      const result = await signInWithPhone(formattedPhone, appVerifier);
+      setConfirmationResult(result);
+      setIsOtpSent(true);
+      toast.success('OTP sent to your phone');
+    } catch (error: any) {
+      console.error('Phone Auth Error:', error);
+      let msg = 'Failed to send OTP. Please check the number format.';
+      if (error.code === 'auth/invalid-phone-number') msg = 'Invalid phone number format.';
+      if (error.code === 'auth/too-many-requests') msg = 'Too many attempts. Try again later.';
+      toast.error(msg);
+      
+      if ((window as any).recaptchaVerifier) {
+        (window as any).recaptchaVerifier.clear();
+        (window as any).recaptchaVerifier = null;
+      }
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!verificationCode || !confirmationResult) {
+      toast.error('Please enter the verification code');
+      return;
+    }
+
+    setAuthLoading(true);
+    try {
+      await confirmationResult.confirm(verificationCode);
+      toast.success('Phone verified successfully');
+      navigate('/');
+    } catch (error: any) {
+      toast.error('Invalid OTP code. Please try again.');
     } finally {
       setAuthLoading(false);
     }
@@ -70,7 +148,7 @@ export default function LoginPage() {
         
         <div className="p-8 md:p-10">
           <AnimatePresence mode="wait">
-            {!isEmailView ? (
+            {authType === 'choice' ? (
               <motion.div
                 key="choice"
                 initial={{ opacity: 0, x: -20 }}
@@ -91,6 +169,14 @@ export default function LoginPage() {
                     Continue with Google
                   </Button>
 
+                  <Button 
+                    onClick={() => setAuthType('phone')}
+                    className="w-full py-7 rounded-2xl bg-[#0f172a] text-white hover:bg-slate-800 transition-all gap-4 text-base font-bold shadow-lg"
+                  >
+                    <Phone className="w-5 h-5" />
+                    Continue with Phone
+                  </Button>
+
                   <div className="relative my-6">
                     <div className="absolute inset-0 flex items-center">
                       <div className="w-full border-t border-slate-100"></div>
@@ -101,7 +187,7 @@ export default function LoginPage() {
                   </div>
 
                   <Button 
-                    onClick={() => setIsEmailView(true)}
+                    onClick={() => setAuthType('email')}
                     variant="ghost"
                     className="w-full py-7 rounded-2xl border-2 border-dashed border-slate-100 text-slate-500 hover:text-slate-700 hover:border-slate-200 hover:bg-slate-50 font-bold gap-3"
                   >
@@ -110,7 +196,7 @@ export default function LoginPage() {
                   </Button>
                 </div>
               </motion.div>
-            ) : (
+            ) : authType === 'email' ? (
               <motion.div
                 key="email-form"
                 initial={{ opacity: 0, x: 20 }}
@@ -118,7 +204,7 @@ export default function LoginPage() {
                 exit={{ opacity: 0, x: -20 }}
               >
                 <button 
-                  onClick={() => setIsEmailView(false)}
+                  onClick={() => setAuthType('choice')}
                   className="mb-6 text-xs font-bold text-[#237227] hover:underline flex items-center gap-1"
                 >
                   ← Back to options
@@ -201,6 +287,111 @@ export default function LoginPage() {
                     </button>
                   </p>
                 </form>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="phone-form"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+              >
+                <button 
+                  onClick={() => {
+                    setAuthType('choice');
+                    setIsOtpSent(false);
+                    setConfirmationResult(null);
+                  }}
+                  className="mb-6 text-xs font-bold text-[#237227] hover:underline flex items-center gap-1"
+                >
+                  ← Back to options
+                </button>
+
+                <h2 className="text-xl font-bold text-slate-800 mb-2">
+                  {isOtpSent ? 'Verify OTP' : 'Phone Login'}
+                </h2>
+                <p className="text-slate-500 text-sm mb-6">
+                  {isOtpSent ? `Enter the 6-digit code sent to ${phoneNumber}.` : 'Securely access your account using your mobile number.'}
+                </p>
+
+                {!isOtpSent ? (
+                  <form onSubmit={handlePhoneSignIn} className="space-y-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] uppercase font-black tracking-widest text-slate-400 ml-1">Phone Number</label>
+                      <div className="relative">
+                        <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <Input 
+                          type="tel"
+                          inputMode="tel"
+                          autoComplete="tel"
+                          placeholder="+91 00000 00000"
+                          value={phoneNumber}
+                          onChange={(e) => setPhoneNumber(e.target.value)}
+                          className="pl-11 h-12 rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white transition-all text-base tracking-wide"
+                        />
+                      </div>
+                      <p className="text-[9px] text-slate-400 px-1">Include country code (e.g., +91 for India)</p>
+                    </div>
+
+                    <div id="recaptcha-container" className="flex justify-center py-2"></div>
+
+                    <Button 
+                      type="submit" 
+                      disabled={authLoading}
+                      className="w-full h-12 rounded-xl bg-[#237227] hover:bg-[#1b5a1e] text-white font-bold gap-2 shadow-lg shadow-[#237227]/20"
+                    >
+                      {authLoading ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <>
+                          Send OTP
+                          <ArrowRight className="w-4 h-4" />
+                        </>
+                      )}
+                    </Button>
+                  </form>
+                ) : (
+                  <form onSubmit={handleVerifyOtp} className="space-y-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] uppercase font-black tracking-widest text-slate-400 ml-1">Verification Code</label>
+                      <div className="relative">
+                        <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <Input 
+                          type="text"
+                          inputMode="numeric"
+                          autoComplete="one-time-code"
+                          maxLength={6}
+                          placeholder="000 000"
+                          value={verificationCode}
+                          onChange={(e) => setVerificationCode(e.target.value)}
+                          className="pl-11 h-12 rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white transition-all text-center text-xl font-black tracking-widest"
+                        />
+                      </div>
+                    </div>
+
+                    <Button 
+                      type="submit" 
+                      disabled={authLoading}
+                      className="w-full h-12 rounded-xl bg-[#237227] hover:bg-[#1b5a1e] text-white font-bold gap-2 shadow-lg shadow-[#237227]/20"
+                    >
+                      {authLoading ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <>
+                          Verify & Sign In
+                          <LogIn className="w-4 h-4" />
+                        </>
+                      )}
+                    </Button>
+
+                    <button 
+                      type="button"
+                      onClick={() => setIsOtpSent(false)}
+                      className="w-full text-center text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors"
+                    >
+                      Resend code?
+                    </button>
+                  </form>
+                )}
               </motion.div>
             )}
           </AnimatePresence>

@@ -318,6 +318,14 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
   };
 
   const styles = {
+    Standard: {
+      header: "bg-slate-100 p-12 border-b-2 border-slate-200",
+      accent: "text-slate-900",
+      border: "border-slate-200",
+      font: "font-sans",
+      tableHeader: "bg-slate-50 border-y border-slate-200 text-slate-600",
+      heading: "font-bold"
+    },
     Professional: {
       header: "bg-[#237227] text-white p-12",
       accent: "text-[#237227]",
@@ -330,7 +338,7 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
       header: "bg-[#0f172a] text-white p-16 rounded-t-2xl",
       accent: "text-[#0f172a]",
       border: "border-[#f1f5f9]",
-      font: "font-display",
+      font: "font-sans",
       tableHeader: "bg-[#f8fafc] border-y border-[#f1f5f9] text-[#64748b]",
       heading: "font-medium tracking-tighter"
     },
@@ -342,6 +350,30 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
       tableHeader: "border-y-2 border-black text-black",
       heading: "font-bold italic"
     },
+    Simple: {
+      header: "bg-white p-12",
+      accent: "text-slate-500",
+      border: "border-slate-100",
+      font: "font-sans",
+      tableHeader: "text-slate-400 font-normal uppercase tracking-widest text-[10px] pb-2",
+      heading: "font-light"
+    },
+    Creative: {
+      header: "bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-16",
+      accent: "text-blue-600",
+      border: "border-blue-100",
+      font: "font-sans",
+      tableHeader: "text-blue-600 border-b border-blue-100 uppercase text-[10px] tracking-widest",
+      heading: "tracking-widest uppercase font-black"
+    },
+    Detailed: {
+      header: "bg-slate-50 p-8 border border-slate-200",
+      accent: "text-red-700",
+      border: "border-slate-200",
+      font: "font-sans",
+      tableHeader: "bg-slate-100 border border-slate-300 text-slate-700 h-8",
+      heading: "font-black tracking-tighter uppercase"
+    },
     Thermal: {
       header: "",
       accent: "text-black",
@@ -352,7 +384,7 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
     }
   };
 
-  const style = styles[currentStyle || 'Professional'];
+  const style = styles[currentStyle || 'Standard'];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-auto">
@@ -365,10 +397,14 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Professional" className="font-sans">Professional</SelectItem>
-                <SelectItem value="Modern" className="font-display">Modern</SelectItem>
-                <SelectItem value="Classic" className="font-serif">Classic</SelectItem>
-                <SelectItem value="Thermal" className="font-mono">Thermal Receipt (58mm)</SelectItem>
+                <SelectItem value="Standard">Standard</SelectItem>
+                <SelectItem value="Professional">Professional</SelectItem>
+                <SelectItem value="Classic">Classic</SelectItem>
+                <SelectItem value="Modern">Modern</SelectItem>
+                <SelectItem value="Simple">Simple</SelectItem>
+                <SelectItem value="Creative">Creative</SelectItem>
+                <SelectItem value="Detailed">Detailed</SelectItem>
+                <SelectItem value="Thermal">Thermal Receipt (58mm)</SelectItem>
               </SelectContent>
             </Select>
           </div>

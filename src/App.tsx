@@ -17,6 +17,7 @@ import Reports from '@/pages/Reports';
 import PublicInvoiceView from '@/pages/PublicInvoiceView';
 import Reconciliation from '@/pages/Reconciliation';
 import Purchases from '@/pages/Purchases';
+import Payment from '@/pages/Payment';
 
 function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode, allowedRoles?: string[] }) {
   const { user, profile, loading } = useAuth();
@@ -56,6 +57,7 @@ export default function App() {
               <Route path="/clients" element={<Clients />} />
               <Route path="/expenses" element={<Expenses />} />
               <Route path="/pos" element={<POS />} />
+              <Route path="/payment/:id" element={<Payment />} />
               <Route path="/reconciliation" element={<Reconciliation />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/settings" element={

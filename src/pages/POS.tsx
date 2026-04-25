@@ -216,11 +216,12 @@ export default function POS() {
 
   // Auto-add on exact barcode match (simulating fast scanner)
   useEffect(() => {
-    if (searchTerm.length >= 3) {
-      const exactMatch = items.find(i => i.barcode === searchTerm);
-      if (exactMatch) {
-        addToCart(exactMatch);
+    if (searchTerm.length > 0) {
+      const exactBarcodeMatch = items.find(i => i.barcode === searchTerm);
+      if (exactBarcodeMatch) {
+        addToCart(exactBarcodeMatch);
         setSearchTerm('');
+        toast.success(`Barcode: ${exactBarcodeMatch.name} added`);
       }
     }
   }, [searchTerm, items, addToCart]);
@@ -237,7 +238,7 @@ export default function POS() {
   };
 
   return (
-    <div className="h-full flex flex-col lg:flex-row gap-4 sm:gap-6 overflow-hidden min-h-[600px]">
+    <div className="min-h-screen lg:h-full flex flex-col lg:flex-row gap-4 sm:gap-6 lg:overflow-hidden">
       {/* Product Selection Side */}
       <div className="flex-1 flex flex-col gap-4 min-w-0 h-full order-2 lg:order-1">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 shrink-0">

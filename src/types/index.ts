@@ -38,10 +38,10 @@ export interface Item {
   price: number;
   gstRate: number; // e.g., 18 for 18%
   stock: number;
+  barcode?: string;
   unit: string;
   category: string; 
   description?: string;
-  barcode?: string; // Add barcode
 }
 
 export interface InvoiceItem {
@@ -80,7 +80,7 @@ export interface Invoice {
   notes?: string;
   internalNotes?: string; // Private
   extraPages?: string; // Rich text extra content
-  pdfStyle?: 'Professional' | 'Classic' | 'Modern';
+  pdfStyle?: 'Standard' | 'Professional' | 'Classic' | 'Modern' | 'Simple' | 'Creative' | 'Detailed' | 'Thermal';
   paymentMethod?: string;
   irn?: string;
   irnDate?: string;

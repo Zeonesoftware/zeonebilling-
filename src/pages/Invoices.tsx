@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   Plus, 
   Search, 
@@ -51,6 +51,7 @@ import { formatCurrency, generateNextInvoiceNumber } from '@/lib/invoice-utils';
 
 export default function Invoices() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { profile } = useRBAC();
   const { canCreate, canEdit, canDelete } = useRBAC();
   const { data: invoices, loading, addItem, updateItem, deleteItem } = useData<Invoice>('invoices');
@@ -90,30 +91,8 @@ export default function Invoices() {
     }
   }, [location]);
 
-  const handlePayNow = async (invoice: Invoice) => {
-    try {
-      setIsPaying(invoice.id);
-      const response = await fetch('/api/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          invoiceId: invoice.id,
-          items: invoice.items,
-          customerEmail: invoice.clientEmail,
-          currency: invoice.currency
-        })
-      });
-
-      const { url, error } = await response.json();
-      if (error) throw new Error(error);
-      
-      window.location.href = url;
-    } catch (err) {
-      console.error('Payment Error:', err);
-      toast.error('Failed to initiate payment. Check if Stripe is configured.');
-    } finally {
-      setIsPaying(null);
-    }
+  const handlePayNow = (invoice: Invoice) => {
+    navigate(`/payment/${invoice.id}`);
   };
 
   const toggleSelectAll = () => {
@@ -431,7 +410,20 @@ export default function Invoices() {
                   {format(new Date(inv.date), 'dd MMM yyyy')}
                 </TableCell>
                 <TableCell className="text-right font-black text-xs sm:text-sm font-mono text-slate-900 whitespace-nowrap">
-                  {formatCurrency(inv.totalAmount, inv.currency)}
+                  <div className="flex flex-col items-end gap-1">
+                    {formatCurrency(inv.totalAmount, inv.currency)}
+                    {inv.status !== 'Paid' && (
+                      <Button 
+                        variant="link" 
+                        size="sm" 
+                        className="h-auto p-0 text-[#237227] font-black text-[10px] uppercase tracking-widest flex items-center gap-1 group"
+                        onClick={() => handlePayNow(inv)}
+                      >
+                        <CreditCard className="w-3 h-3 transition-transform group-hover:scale-110" />
+                        Pay Online
+                      </Button>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell>
                   <DropdownMenu>
@@ -446,7 +438,7 @@ export default function Invoices() {
                       </DropdownMenuItem>
                       {inv.status !== 'Paid' && (
                         <DropdownMenuItem className="gap-3 py-2.5 cursor-pointer font-bold text-xs uppercase tracking-wider text-emerald-600 focus:text-emerald-600" onClick={() => handlePayNow(inv)}>
-                          {isPaying === inv.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
+                          <CreditCard className="w-4 h-4" />
                           Pay Online
                         </DropdownMenuItem>
                       )}

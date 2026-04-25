@@ -4,7 +4,7 @@ import { useRBAC } from '@/hooks/useRBAC';
 import { Item } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Search, Package, MoreHorizontal, FileEdit, Trash2, Upload, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
+import { Plus, Search, Package, MoreHorizontal, FileEdit, Trash2, Upload, CheckCircle2, XCircle, AlertCircle, Barcode, Printer } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { ItemForm } from '@/components/products/ItemForm';
 import { cn } from '@/lib/utils';
@@ -23,9 +23,12 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import Papa from 'papaparse';
 import { motion, AnimatePresence } from 'motion/react';
+import { useMemo } from 'react';
 
 export default function Products() {
   const { canCreate, canEdit, canDelete } = useRBAC();
@@ -38,6 +41,7 @@ export default function Products() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkStockValue, setBulkStockValue] = useState('');
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+  const [groupByCategory, setGroupByCategory] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const threshold = settings?.lowStockThreshold || 10;
@@ -47,12 +51,30 @@ export default function Products() {
 
   const filteredItems = items.filter(i => {
     const matchesSearch = i.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      i.hsn.includes(searchTerm);
+      i.hsn.includes(searchTerm) ||
+      (i.barcode && i.barcode.includes(searchTerm));
     
     const matchesCategory = selectedCategory === 'All' || (i.category || 'General') === selectedCategory;
     
     return matchesSearch && matchesCategory;
   });
+
+  const groupedItems = useMemo(() => {
+    if (!groupByCategory) return { 'All Products': filteredItems };
+    
+    const groups = filteredItems.reduce((acc, item) => {
+      const cat = item.category || 'General';
+      if (!acc[cat]) acc[cat] = [];
+      acc[cat].push(item);
+      return acc;
+    }, {} as Record<string, Item[]>);
+
+    // Sort categories alphabetically
+    return Object.keys(groups).sort().reduce((acc, key) => {
+      acc[key] = groups[key];
+      return acc;
+    }, {} as Record<string, Item[]>);
+  }, [filteredItems, groupByCategory]);
 
   const handleCsvImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -72,6 +94,7 @@ export default function Products() {
             stock: Number(row.stock) || 0,
             unit: row.unit || 'Unit',
             category: row.category || 'General',
+            barcode: row.barcode || '',
             description: row.description || ''
           }));
 
@@ -181,6 +204,77 @@ export default function Products() {
     );
   };
 
+  const handlePrintBarcode = (item: Item) => {
+    if (!item.barcode) {
+      toast.error('No barcode available for this product');
+      return;
+    }
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Print Barcode - ${item.name}</title>
+          <style>
+            @media print {
+              body { margin: 0; padding: 10px; }
+            }
+            body { 
+              font-family: 'Inter', sans-serif; 
+              display: flex; 
+              flex-direction: column; 
+              align-items: center; 
+              justify-content: center;
+              height: 100vh;
+              text-align: center;
+            }
+            .label {
+              border: 1px solid #eee;
+              padding: 20px;
+              width: 250px;
+              border-radius: 8px;
+            }
+            .name { font-weight: 800; font-size: 14px; margin-bottom: 5px; text-transform: uppercase; }
+            .barcode-box { 
+              background: black; 
+              height: 60px; 
+              width: 100%; 
+              margin: 10px 0;
+              display: flex;
+              align-items: flex-end;
+              justify-content: space-around;
+              padding: 0 5px;
+            }
+            .bar { background: white; width: 2px; height: 100%; }
+            .bar.thin { width: 1px; }
+            .bar.thick { width: 4px; }
+            .barcode-val { font-family: monospace; font-size: 16px; font-weight: bold; letter-spacing: 4px; }
+            .price { font-size: 18px; font-weight: 900; margin-top: 5px; }
+          </style>
+        </head>
+        <body>
+          <div class="label">
+            <div class="name">${item.name}</div>
+            <div class="barcode-box">
+              ${Array.from({length: 30}).map((_, i) => `<div class="bar ${i % 3 === 0 ? 'thick' : i % 2 === 0 ? 'thin' : ''}"></div>`).join('')}
+            </div>
+            <div class="barcode-val">${item.barcode}</div>
+            <div class="price">₹${item.price}</div>
+          </div>
+          <script>
+            window.onload = () => {
+              window.print();
+              setTimeout(() => window.close(), 500);
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -234,6 +328,11 @@ export default function Products() {
             </SelectContent>
           </Select>
         </div>
+
+        <div className="flex items-center gap-2 ml-auto">
+          <Switch id="group-mode" checked={groupByCategory} onCheckedChange={setGroupByCategory} />
+          <Label htmlFor="group-mode" className="text-[10px] font-bold uppercase tracking-widest text-[#999999] cursor-pointer">Group by Category</Label>
+        </div>
       </div>
 
       <div className="bg-white border rounded-lg overflow-hidden relative">
@@ -261,6 +360,60 @@ export default function Products() {
                   disabled={isBulkUpdating}
                 >
                   <Trash2 className="w-3 h-3" /> Delete Selected
+                </Button>
+              )}
+
+              {canEdit && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8 pr-4 gap-2 text-blue-400 hover:text-blue-300 hover:bg-blue-950/20 font-bold text-[10px] uppercase tracking-widest border-r border-white/10 rounded-none"
+                  onClick={() => {
+                    const selectedItems = items.filter(i => selectedIds.includes(i.id) && i.barcode);
+                    if (selectedItems.length === 0) return toast.error('No items with barcodes selected');
+
+                    const printWindow = window.open('', '_blank');
+                    if (!printWindow) return;
+
+                    printWindow.document.write(`
+                      <html>
+                        <head>
+                          <title>Print Barcodes</title>
+                          <style>
+                            @media print { body { margin: 0; } }
+                            body { font-family: 'Inter', sans-serif; display: flex; flex-wrap: wrap; padding: 10px; gap: 10px; }
+                            .label { border: 1px solid #eee; padding: 15px; width: 220px; text-align: center; border-radius: 8px; page-break-inside: avoid; }
+                            .name { font-weight: 800; font-size: 12px; margin-bottom: 5px; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+                            .barcode-box { background: black; height: 40px; width: 100%; margin: 5px 0; display: flex; align-items: flex-end; justify-content: space-around; padding: 0 5px; }
+                            .bar { background: white; width: 1px; height: 100%; }
+                            .barcode-val { font-family: monospace; font-size: 14px; font-weight: bold; }
+                            .price { font-size: 16px; font-weight: 900; }
+                          </style>
+                        </head>
+                        <body>
+                          ${selectedItems.map(item => `
+                            <div class="label">
+                              <div class="name">${item.name}</div>
+                              <div class="barcode-box">
+                                ${Array.from({length: 25}).map(() => `<div class="bar"></div>`).join('')}
+                              </div>
+                              <div class="barcode-val">${item.barcode}</div>
+                              <div class="price">₹${item.price}</div>
+                            </div>
+                          `).join('')}
+                          <script>
+                            window.onload = () => {
+                              window.print();
+                              setTimeout(() => window.close(), 500);
+                            };
+                          </script>
+                        </body>
+                      </html>
+                    `);
+                    printWindow.document.close();
+                  }}
+                >
+                  <Printer className="w-3 h-3" /> Print Labels
                 </Button>
               )}
               
@@ -309,8 +462,9 @@ export default function Products() {
                 />
               </TableHead>
               <TableHead className="font-mono text-[10px] uppercase tracking-widest text-[#666666]">Product Name</TableHead>
-              <TableHead className="hidden md:table-cell font-mono text-[10px] uppercase tracking-widest text-[#666666]">Category</TableHead>
+              {!groupByCategory && <TableHead className="hidden md:table-cell font-mono text-[10px] uppercase tracking-widest text-[#666666]">Category</TableHead>}
               <TableHead className="hidden lg:table-cell font-mono text-[10px] uppercase tracking-widest text-center text-[#666666]">HSN</TableHead>
+              <TableHead className="hidden md:table-cell font-mono text-[10px] uppercase tracking-widest text-center text-[#666666]">Barcode</TableHead>
               <TableHead className="font-mono text-[10px] uppercase tracking-widest text-right text-[#666666]">Price (₹)</TableHead>
               <TableHead className="font-mono text-[10px] uppercase tracking-widest text-center text-[#666666]">GST (%)</TableHead>
               <TableHead className="font-mono text-[10px] uppercase tracking-widest text-right text-[#666666]">Stock</TableHead>
@@ -322,62 +476,104 @@ export default function Products() {
               <TableRow><TableCell colSpan={7} className="text-center py-12">Loading products...</TableCell></TableRow>
             ) : filteredItems.length === 0 ? (
               <TableRow><TableCell colSpan={7} className="text-center py-12">No products found</TableCell></TableRow>
-            ) : filteredItems.map((item) => (
-              <TableRow key={item.id} className={cn(selectedIds.includes(item.id) && "bg-slate-50")}>
-                <TableCell>
-                  <Checkbox 
-                    checked={selectedIds.includes(item.id)}
-                    onCheckedChange={() => toggleSelectOne(item.id)}
-                  />
-                </TableCell>
-                <TableCell>
-                  <div className="font-medium text-xs sm:text-sm truncate max-w-[120px] sm:max-w-none">{item.name}</div>
-                  {item.stock < threshold && (
-                    <Badge className="mt-1 bg-amber-100 text-amber-700 hover:bg-amber-100 border-none text-[9px] uppercase tracking-tighter h-4">
-                      Low
-                    </Badge>
-                  )}
-                </TableCell>
-                <TableCell className="hidden md:table-cell">
-                  <Badge variant="outline" className="text-[10px] uppercase tracking-widest font-bold border-slate-200">
-                    {item.category || 'General'}
-                  </Badge>
-                </TableCell>
-                <TableCell className="hidden lg:table-cell text-center font-mono text-xs">{item.hsn}</TableCell>
-                <TableCell className="text-right font-mono text-xs sm:text-sm">₹{item.price.toLocaleString()}</TableCell>
-                <TableCell className="text-center text-sm font-medium">{item.gstRate}%</TableCell>
-                <TableCell className={cn("text-right font-mono text-xs sm:text-sm", item.stock < threshold ? "text-amber-600 font-bold" : "")}>
-                  {item.stock} <span className="hidden xs:inline">{item.unit}</span>
-                </TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      render={
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-[#999999]"
-                        />
-                      }
-                    >
-                      <MoreHorizontal className="w-4 h-4" />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {canEdit && (
-                        <DropdownMenuItem className="gap-2" onClick={() => { setEditingItem(item); setIsFormOpen(true); }}>
-                          <FileEdit className="w-4 h-4" /> Edit
-                        </DropdownMenuItem>
-                      )}
-                      {canDelete && (
-                        <DropdownMenuItem className="gap-2 text-red-600" onClick={() => deleteItem(item.id)}>
-                          <Trash2 className="w-4 h-4" /> Delete
-                        </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
+            ) : (
+              (Object.entries(groupedItems) as [string, Item[]][]).map(([category, itemsInGroup]) => {
+                const totalStock = itemsInGroup.reduce((sum, item) => sum + item.stock, 0);
+                const totalValue = itemsInGroup.reduce((sum, item) => sum + (item.price * item.stock), 0);
+
+                return (
+                  <React.Fragment key={category}>
+                    {groupByCategory && (
+                      <TableRow className="bg-slate-50/80 hover:bg-slate-50/80 border-y border-slate-100">
+                        <TableCell colSpan={2} className="py-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-black uppercase tracking-widest text-slate-900">{category}</span>
+                            <Badge variant="outline" className="bg-white text-[9px] h-4 px-1.5 border-slate-200 text-slate-500">
+                              {itemsInGroup.length} Items
+                            </Badge>
+                          </div>
+                        </TableCell>
+                        <TableCell colSpan={groupByCategory ? 4 : 5} className="py-2">
+                          <div className="flex items-center justify-end gap-6">
+                            <div className="flex flex-col items-end">
+                              <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Total Stock</span>
+                              <span className="text-[10px] font-bold text-slate-700">{totalStock}</span>
+                            </div>
+                            <div className="flex flex-col items-end">
+                              <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Total Value</span>
+                              <span className="text-[10px] font-bold text-[#237227]">₹{totalValue.toLocaleString()}</span>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell />
+                      </TableRow>
+                    )}
+                    {itemsInGroup.map((item) => (
+                      <TableRow key={item.id} className={cn(selectedIds.includes(item.id) && "bg-slate-50")}>
+                        <TableCell>
+                          <Checkbox 
+                            checked={selectedIds.includes(item.id)}
+                            onCheckedChange={() => toggleSelectOne(item.id)}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-medium text-xs sm:text-sm truncate max-w-[120px] sm:max-w-none">{item.name}</div>
+                          {item.stock < threshold && (
+                            <Badge className="mt-1 bg-amber-100 text-amber-700 hover:bg-amber-100 border-none text-[9px] uppercase tracking-tighter h-4">
+                              Low
+                            </Badge>
+                          )}
+                        </TableCell>
+                        {!groupByCategory && (
+                          <TableCell className="hidden md:table-cell">
+                            <Badge variant="outline" className="text-[10px] uppercase tracking-widest font-bold border-slate-200">
+                              {item.category || 'General'}
+                            </Badge>
+                          </TableCell>
+                        )}
+                        <TableCell className="hidden lg:table-cell text-center font-mono text-xs">{item.hsn}</TableCell>
+                        <TableCell className="hidden md:table-cell text-center font-mono text-xs">{item.barcode || '-'}</TableCell>
+                        <TableCell className="font-mono text-right text-xs sm:text-sm">₹{item.price.toLocaleString()}</TableCell>
+                        <TableCell className="text-center text-sm font-medium">{item.gstRate}%</TableCell>
+                        <TableCell className={cn("text-right font-mono text-xs sm:text-sm", item.stock < threshold ? "text-amber-600 font-bold" : "")}>
+                          {item.stock} <span className="hidden xs:inline">{item.unit}</span>
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-[#999999]"
+                              >
+                                <MoreHorizontal className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              {canEdit && (
+                                <DropdownMenuItem className="gap-2" onClick={() => handlePrintBarcode(item)}>
+                                  <Barcode className="w-4 h-4" /> Print Barcode
+                                </DropdownMenuItem>
+                              )}
+                              {canEdit && (
+                                <DropdownMenuItem className="gap-2" onClick={() => { setEditingItem(item); setIsFormOpen(true); }}>
+                                  <FileEdit className="w-4 h-4" /> Edit
+                                </DropdownMenuItem>
+                              )}
+                              {canDelete && (
+                                <DropdownMenuItem className="gap-2 text-red-600" onClick={() => deleteItem(item.id)}>
+                                  <Trash2 className="w-4 h-4" /> Delete
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </React.Fragment>
+                );
+              })
+            )}
           </TableBody>
         </Table>
       </div>

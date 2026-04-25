@@ -72,8 +72,19 @@ export function ItemForm({ item, isOpen, onClose, onSave }: ItemFormProps) {
                 <Input id="hsn" value={formData.hsn} onChange={e => setFormData({ ...formData, hsn: e.target.value })} />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="barcode" className="text-xs uppercase font-bold text-[#666666]">Barcode</Label>
-                <Input id="barcode" value={formData.barcode} onChange={e => setFormData({ ...formData, barcode: e.target.value })} />
+              <Label htmlFor="barcode" className="text-xs uppercase font-bold text-[#666666]">Barcode</Label>
+              <div className="flex gap-2">
+                <Input id="barcode" value={formData.barcode} onChange={e => setFormData({ ...formData, barcode: e.target.value })} placeholder="Scan or enter barcode" />
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-10 text-[10px] uppercase font-bold px-3"
+                  onClick={() => setFormData({ ...formData, barcode: Math.floor(Math.random() * 8999999999999 + 1000000000000).toString() })}
+                >
+                  Gen
+                </Button>
+              </div>
               </div>
             </div>
             <div className="grid grid-cols-3 gap-4">

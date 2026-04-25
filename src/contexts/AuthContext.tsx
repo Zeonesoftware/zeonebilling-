@@ -6,7 +6,10 @@ import {
   signOut, 
   User as FirebaseUser,
   signInWithEmailAndPassword,
-  createUserWithEmailAndPassword
+  createUserWithEmailAndPassword,
+  signInWithPhoneNumber,
+  RecaptchaVerifier,
+  ConfirmationResult
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
@@ -20,6 +23,7 @@ interface AuthUserProfile {
   photoURL: string;
   role: UserRole;
   permissions?: string[];
+  phoneNumber?: string;
 }
 
 interface AuthContextType {
@@ -29,6 +33,7 @@ interface AuthContextType {
   signIn: () => Promise<void>;
   signInWithEmail: (email: string, pass: string) => Promise<void>;
   signUpWithEmail: (email: string, pass: string, name: string) => Promise<void>;
+  signInWithPhone: (phoneNumber: string, recaptchaVerifier: RecaptchaVerifier) => Promise<ConfirmationResult>;
   logout: () => Promise<void>;
 }
 
@@ -60,26 +65,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             setProfile({
               uid: firebaseUser.uid,
-              email: firebaseUser.email || '',
+              email: firebaseUser.email || docSnap.data().email || '',
               displayName: firebaseUser.displayName || docSnap.data().name || 'User',
               photoURL: firebaseUser.photoURL || '',
               role: role,
-              permissions: docSnap.data().permissions || []
+              permissions: docSnap.data().permissions || [],
+              phoneNumber: firebaseUser.phoneNumber || ''
             });
           } else {
             // Check if we already created it in signUpWithEmail or if this is a first-time login
-            // We use a small timeout to let signUpWithEmail's setDoc finish if it's currently running
-            // or we just try to create it if it really doesn't exist after a moment.
-            // Actually, a safer way is to just create it if we are sure we are not already in signUpWithEmail.
-            
-            // For now, let's just make sure it creates it if missing
             const newProfile: AuthUserProfile = {
               uid: firebaseUser.uid,
               email: firebaseUser.email || '',
               displayName: firebaseUser.displayName || 'User',
               photoURL: firebaseUser.photoURL || '',
               role: 'billing',
-              permissions: []
+              permissions: [],
+              phoneNumber: firebaseUser.phoneNumber || ''
             };
             
             await setDoc(docRef, {
@@ -87,8 +89,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               name: newProfile.displayName,
               role: newProfile.role,
               permissions: newProfile.permissions,
+              phoneNumber: newProfile.phoneNumber,
               createdAt: new Date().toISOString()
-            }, { merge: true }); // Use merge to avoid overwriting signUpWithEmail's data if it just landed
+            }, { merge: true });
             
             setProfile(newProfile);
           }
@@ -140,12 +143,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(newProfile);
   };
 
+  const signInWithPhone = async (phoneNumber: string, recaptchaVerifier: RecaptchaVerifier) => {
+    return await signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier);
+  };
+
   const logout = async () => {
     await signOut(auth);
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signIn, signInWithEmail, signUpWithEmail, logout }}>
+    <AuthContext.Provider value={{ user, profile, loading, signIn, signInWithEmail, signUpWithEmail, signInWithPhone, logout }}>
       {children}
     </AuthContext.Provider>
   );

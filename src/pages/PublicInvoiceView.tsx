@@ -214,16 +214,22 @@ export default function PublicInvoiceView() {
             </div>
 
             <div className="flex flex-col md:flex-row justify-between pt-8 gap-8 md:gap-12">
-              <div className="flex-1 space-y-6 md:space-y-8 order-2 md:order-1">
-                <div>
-                  <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Amount in Words</h3>
-                  <div className="text-[13px] font-bold italic text-slate-600 bg-slate-50 p-4 rounded-xl border border-slate-100">{amountToWords(invoice.totalAmount, invoice.currency)}</div>
+                <div className="flex-1 space-y-6 md:space-y-8 order-2 md:order-1">
+                  <div>
+                    <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Amount in Words</h3>
+                    <div className="text-[13px] font-bold italic text-slate-600 bg-slate-50 p-4 rounded-xl border border-slate-100">{amountToWords(invoice.totalAmount, invoice.currency)}</div>
+                  </div>
+                  <div>
+                    <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Terms & Conditions</h3>
+                    <div className="text-[10px] text-slate-400 whitespace-pre-wrap leading-relaxed font-medium">{settings.terms}</div>
+                  </div>
+                  {settings.signatureUrl && (
+                    <div className="pt-4">
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Authorized Signatory</div>
+                      <img src={settings.signatureUrl} alt="Signature" className="h-12 w-auto mix-blend-multiply brightness-75" />
+                    </div>
+                  )}
                 </div>
-                <div>
-                  <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Terms & Conditions</h3>
-                  <div className="text-[10px] text-slate-400 whitespace-pre-wrap leading-relaxed font-medium">{settings.terms}</div>
-                </div>
-              </div>
               <div className="w-full md:w-80 space-y-4 md:space-y-6 order-1 md:order-2">
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs py-1">

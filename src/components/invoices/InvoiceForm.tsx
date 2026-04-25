@@ -56,6 +56,7 @@ export function InvoiceForm({ onSave, onCancel, settings, invoices, initialData 
   const [status, setStatus] = useState<Invoice['status']>('Pending');
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [pdfStyle, setPdfStyle] = useState<Invoice['pdfStyle']>('Standard');
 
   // E-Way Bill State
   const [ewayBillNo, setEwayBillNo] = useState('');
@@ -83,6 +84,7 @@ export function InvoiceForm({ onSave, onCancel, settings, invoices, initialData 
       if (initialData.extraPages) setExtraPages(initialData.extraPages);
       if (initialData.currency) setCurrency(initialData.currency);
       if (initialData.status) setStatus(initialData.status);
+      if (initialData.pdfStyle) setPdfStyle(initialData.pdfStyle);
       
       // E-Way Bill initialization
       if (initialData.ewayBillNo) setEwayBillNo(initialData.ewayBillNo);
@@ -243,7 +245,7 @@ export function InvoiceForm({ onSave, onCancel, settings, invoices, initialData 
     notes,
     internalNotes,
     extraPages,
-    pdfStyle: (initialData as Invoice)?.pdfStyle || 'Professional',
+    pdfStyle,
     ewayBillNo,
     ewayBillStatus,
     transporterName,
@@ -283,6 +285,7 @@ export function InvoiceForm({ onSave, onCancel, settings, invoices, initialData 
       notes: notes || '',
       internalNotes: internalNotes || '',
       extraPages: extraPages || '',
+      pdfStyle: pdfStyle || 'Standard',
       ewayBillNo: ewayBillNo || '',
       ewayBillStatus: ewayBillStatus || 'Pending',
       transporterName: transporterName || '',
@@ -401,6 +404,24 @@ export function InvoiceForm({ onSave, onCancel, settings, invoices, initialData 
                       <SelectItem value="Credit Note">Credit Note</SelectItem>
                       <SelectItem value="Delivery Challan">Delivery Challan</SelectItem>
                       <SelectItem value="E-invoice">E-invoice</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold text-slate-500 uppercase">PDF Style</Label>
+                  <Select value={pdfStyle || ""} onValueChange={(val: any) => setPdfStyle(val)}>
+                    <SelectTrigger className="h-9 border-slate-200">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Standard">Standard</SelectItem>
+                      <SelectItem value="Professional">Professional</SelectItem>
+                      <SelectItem value="Classic">Classic</SelectItem>
+                      <SelectItem value="Modern">Modern</SelectItem>
+                      <SelectItem value="Simple">Simple</SelectItem>
+                      <SelectItem value="Creative">Creative</SelectItem>
+                      <SelectItem value="Detailed">Detailed</SelectItem>
+                      <SelectItem value="Thermal">Thermal</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
