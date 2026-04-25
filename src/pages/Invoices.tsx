@@ -377,11 +377,11 @@ export default function Invoices() {
                   )}
                 </Button>
               </TableHead>
-              <TableHead className="w-[140px] font-black text-[10px] uppercase tracking-widest text-slate-400">Doc Number</TableHead>
+              <TableHead className="w-[120px] sm:w-[140px] font-black text-[10px] uppercase tracking-widest text-slate-400">Doc Number</TableHead>
               <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-400">Client / Customer</TableHead>
-              <TableHead className="font-black text-[10px] uppercase tracking-widest text-center text-slate-400">Type</TableHead>
+              <TableHead className="hidden sm:table-cell font-black text-[10px] uppercase tracking-widest text-center text-slate-400">Type</TableHead>
               <TableHead className="font-black text-[10px] uppercase tracking-widest text-center text-slate-400">Status</TableHead>
-              <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-400">Issue Date</TableHead>
+              <TableHead className="hidden lg:table-cell font-black text-[10px] uppercase tracking-widest text-slate-400">Issue Date</TableHead>
               <TableHead className="font-black text-[10px] uppercase tracking-widest text-right text-slate-400">Amount</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
@@ -416,21 +416,21 @@ export default function Invoices() {
                     )}
                   </Button>
                 </TableCell>
-                <TableCell className="font-mono font-bold text-slate-900 border-l-4 border-transparent group-hover:border-[#237227] transition-all">{inv.invoiceNumber}</TableCell>
+                <TableCell className="font-mono font-bold text-slate-900 border-l-4 border-transparent group-hover:border-[#237227] transition-all text-xs sm:text-sm">{inv.invoiceNumber}</TableCell>
                 <TableCell>
-                  <div className="font-black text-slate-900 text-sm">{inv.clientName}</div>
-                  <div className="text-[10px] font-mono text-slate-400 font-bold uppercase truncate max-w-[150px]">{inv.clientGstin || 'NO GSTIN'}</div>
+                  <div className="font-black text-slate-900 text-xs sm:text-sm truncate max-w-[100px] sm:max-w-none">{inv.clientName}</div>
+                  <div className="hidden sm:block text-[10px] font-mono text-slate-400 font-bold uppercase truncate max-w-[150px]">{inv.clientGstin || 'NO GSTIN'}</div>
                 </TableCell>
-                <TableCell className="text-center">
+                <TableCell className="hidden sm:table-cell text-center">
                   <Badge variant="outline" className="text-[9px] font-black uppercase tracking-tighter rounded-full border-slate-200 text-slate-500">{inv.type}</Badge>
                 </TableCell>
                 <TableCell className="text-center">
                   {getStatusBadge(inv)}
                 </TableCell>
-                <TableCell className="text-slate-500 text-xs font-bold tabular-nums">
+                <TableCell className="hidden lg:table-cell text-slate-500 text-xs font-bold tabular-nums">
                   {format(new Date(inv.date), 'dd MMM yyyy')}
                 </TableCell>
-                <TableCell className="text-right font-black text-sm font-mono text-slate-900">
+                <TableCell className="text-right font-black text-xs sm:text-sm font-mono text-slate-900 whitespace-nowrap">
                   {formatCurrency(inv.totalAmount, inv.currency)}
                 </TableCell>
                 <TableCell>

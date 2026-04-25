@@ -96,9 +96,9 @@ export default function Clients() {
           <TableHeader className="bg-[#FAFAFA]">
             <TableRow>
               <TableHead className="font-mono text-[10px] uppercase">Client Name</TableHead>
-              <TableHead className="font-mono text-[10px] uppercase">GSTIN</TableHead>
+              <TableHead className="hidden sm:table-cell font-mono text-[10px] uppercase">GSTIN</TableHead>
               <TableHead className="font-mono text-[10px] uppercase">Phone</TableHead>
-              <TableHead className="font-mono text-[10px] uppercase">Address</TableHead>
+              <TableHead className="hidden lg:table-cell font-mono text-[10px] uppercase">Address</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
@@ -109,10 +109,13 @@ export default function Clients() {
               <TableRow><TableCell colSpan={5} className="text-center py-12">No clients found</TableCell></TableRow>
             ) : clients.map((client) => (
               <TableRow key={client.id}>
-                <TableCell className="font-medium">{client.name}</TableCell>
-                <TableCell className="font-mono text-xs">{client.gstin}</TableCell>
-                <TableCell>{client.phone}</TableCell>
-                <TableCell className="text-sm text-[#666666] truncate max-w-xs">{client.address}</TableCell>
+                <TableCell>
+                  <div className="font-medium text-xs sm:text-sm">{client.name}</div>
+                  <div className="sm:hidden text-[10px] font-mono text-slate-400">{client.gstin}</div>
+                </TableCell>
+                <TableCell className="hidden sm:table-cell font-mono text-xs">{client.gstin}</TableCell>
+                <TableCell className="text-xs sm:text-sm">{client.phone}</TableCell>
+                <TableCell className="hidden lg:table-cell text-sm text-[#666666] truncate max-w-xs">{client.address}</TableCell>
                 <TableCell>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>

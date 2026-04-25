@@ -309,10 +309,10 @@ export default function Products() {
                 />
               </TableHead>
               <TableHead className="font-mono text-[10px] uppercase tracking-widest text-[#666666]">Product Name</TableHead>
-              <TableHead className="font-mono text-[10px] uppercase tracking-widest text-[#666666]">Category</TableHead>
-              <TableHead className="font-mono text-[10px] uppercase tracking-widest text-center text-[#666666]">HSN</TableHead>
+              <TableHead className="hidden md:table-cell font-mono text-[10px] uppercase tracking-widest text-[#666666]">Category</TableHead>
+              <TableHead className="hidden lg:table-cell font-mono text-[10px] uppercase tracking-widest text-center text-[#666666]">HSN</TableHead>
               <TableHead className="font-mono text-[10px] uppercase tracking-widest text-right text-[#666666]">Price (₹)</TableHead>
-              <TableHead className="font-mono text-[10px] uppercase tracking-widest text-right text-[#666666]">GST %</TableHead>
+              <TableHead className="hidden sm:table-cell font-mono text-[10px] uppercase tracking-widest text-right text-[#666666]">GST %</TableHead>
               <TableHead className="font-mono text-[10px] uppercase tracking-widest text-right text-[#666666]">Stock</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
@@ -331,23 +331,23 @@ export default function Products() {
                   />
                 </TableCell>
                 <TableCell>
-                  <div className="font-medium text-sm">{item.name}</div>
+                  <div className="font-medium text-xs sm:text-sm truncate max-w-[120px] sm:max-w-none">{item.name}</div>
                   {item.stock < threshold && (
                     <Badge className="mt-1 bg-amber-100 text-amber-700 hover:bg-amber-100 border-none text-[9px] uppercase tracking-tighter h-4">
-                      Low Stock
+                      Low
                     </Badge>
                   )}
                 </TableCell>
-                <TableCell>
+                <TableCell className="hidden md:table-cell">
                   <Badge variant="outline" className="text-[10px] uppercase tracking-widest font-bold border-slate-200">
                     {item.category || 'General'}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-center font-mono text-xs">{item.hsn}</TableCell>
-                <TableCell className="text-right font-mono text-sm">₹{item.price.toLocaleString()}</TableCell>
-                <TableCell className="text-right text-sm">{item.gstRate}%</TableCell>
-                <TableCell className={cn("text-right font-mono text-sm", item.stock < threshold ? "text-amber-600 font-bold" : "")}>
-                  {item.stock} {item.unit}
+                <TableCell className="hidden lg:table-cell text-center font-mono text-xs">{item.hsn}</TableCell>
+                <TableCell className="text-right font-mono text-xs sm:text-sm">₹{item.price.toLocaleString()}</TableCell>
+                <TableCell className="hidden sm:table-cell text-right text-sm">{item.gstRate}%</TableCell>
+                <TableCell className={cn("text-right font-mono text-xs sm:text-sm", item.stock < threshold ? "text-amber-600 font-bold" : "")}>
+                  {item.stock} <span className="hidden xs:inline">{item.unit}</span>
                 </TableCell>
                 <TableCell>
                   <DropdownMenu>

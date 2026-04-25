@@ -128,18 +128,18 @@ export function Shell() {
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0">
-        <header className="h-16 bg-white border-b border-[#e2e8f0] flex items-center justify-between px-8 shrink-0">
-          <div className="flex items-center gap-4">
+        <header className="h-16 bg-white border-b border-[#e2e8f0] flex items-center justify-between px-4 sm:px-8 shrink-0">
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
             <Button 
               variant="ghost" 
               size="icon" 
-              className="md:hidden text-[#64748b]" 
+              className="md:hidden text-[#64748b] shrink-0" 
               onClick={() => setIsMobileMenuOpen(true)}
             >
               <Menu className="w-5 h-5" />
             </Button>
-            <div className="flex items-center gap-4">
-              <h2 className="text-lg font-semibold tracking-tight">Zeone Billing Software</h2>
+            <div className="flex items-center gap-2 sm:gap-4 truncate">
+              <h2 className="text-sm sm:text-lg font-semibold tracking-tight truncate">Zeone Billing</h2>
               <div className="hidden sm:flex items-center gap-2 text-[12px] text-[#10b981] font-medium">
                 <div className="w-2 h-2 rounded-full bg-[#10b981]" />
                 Cloud Real-time
@@ -147,11 +147,11 @@ export function Shell() {
             </div>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <DropdownMenu>
-              <DropdownMenuTrigger className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "gap-2 px-3 text-slate-600 hover:text-slate-900 outline-none")}>
+              <DropdownMenuTrigger className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "gap-2 px-2 sm:px-3 text-slate-600 hover:text-slate-900 outline-none")}>
                 <Globe className="w-4 h-4" />
-                <span className="uppercase text-[10px] font-bold">{language}</span>
+                <span className="uppercase text-[10px] font-bold hidden xs:inline">{language}</span>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-32">
                 {languages.map((lang) => (
@@ -168,9 +168,9 @@ export function Shell() {
 
             {quickActions.length > 0 && (
               <DropdownMenu>
-                <DropdownMenuTrigger className={cn(buttonVariants({ size: "sm" }), "bg-[#FFAA00] text-white px-4 rounded-lg text-sm font-medium hover:bg-[#FFAA00]/90 shadow-sm border-b-2 border-orange-700 gap-2 outline-none")}>
+                <DropdownMenuTrigger className={cn(buttonVariants({ size: "sm" }), "bg-[#FFAA00] text-white px-3 sm:px-4 rounded-lg text-sm font-medium hover:bg-[#FFAA00]/90 shadow-sm border-b-2 border-orange-700 gap-2 outline-none")}>
                   <Plus className="w-4 h-4" />
-                  Quick Action
+                  <span className="hidden xs:inline">Action</span>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56 p-2 rounded-xl shadow-2xl border-slate-100">
                   <div className="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400">Creation Tools</div>
@@ -189,16 +189,16 @@ export function Shell() {
             )}
 
             <DropdownMenu>
-              <DropdownMenuTrigger className="flex items-center gap-3 pl-4 border-l border-slate-100 outline-none">
+              <DropdownMenuTrigger className="flex items-center gap-2 sm:gap-3 pl-2 sm:pl-4 border-l border-slate-100 outline-none">
                 <div className="text-right hidden sm:block">
                   <div className="text-xs font-black text-slate-800 leading-none mb-1">{profile?.displayName || 'User'}</div>
                   {getRoleBadge(profile?.role)}
                 </div>
-                <div className="w-10 h-10 rounded-xl overflow-hidden bg-[#FFD786] border-2 border-white shadow-md ring-1 ring-slate-100 flex items-center justify-center">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl overflow-hidden bg-[#FFD786] border-2 border-white shadow-md ring-1 ring-slate-100 flex items-center justify-center">
                   {profile?.photoURL ? (
                     <img src={profile.photoURL} alt="Avatar" className="w-full h-full object-cover" />
                   ) : (
-                    <span className="text-xs font-black text-[#237227]">{profile?.displayName?.charAt(0) || 'U'}</span>
+                    <span className="text-[10px] sm:text-xs font-black text-[#237227]">{profile?.displayName?.charAt(0) || 'U'}</span>
                   )}
                 </div>
               </DropdownMenuTrigger>
@@ -206,6 +206,7 @@ export function Shell() {
                 <div className="px-4 py-2 border-b border-slate-50 mb-1">
                   <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Account</div>
                   <div className="text-xs font-bold text-slate-600 truncate">{profile?.email}</div>
+                  <div className="sm:hidden mt-2">{getRoleBadge(profile?.role)}</div>
                 </div>
                 <DropdownMenuItem className="gap-3 py-3 cursor-pointer font-bold text-xs uppercase tracking-wider" onClick={() => navigate('/settings')}>
                   <SettingsIcon className="w-4 h-4 text-slate-400" /> Settings
@@ -219,7 +220,7 @@ export function Shell() {
           </div>
         </header>
 
-        <div className="flex-1 overflow-auto p-8 bg-[#fdfdfd]">
+        <div className="flex-1 overflow-auto p-4 sm:p-8 bg-[#fdfdfd]">
           <Outlet />
         </div>
       </main>
