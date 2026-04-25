@@ -438,7 +438,6 @@ export default function Settings() {
                   <Switch 
                     checked={formData.autoUploadToDrive} 
                     onCheckedChange={(checked) => setFormData({ ...formData, autoUploadToDrive: checked })} 
-                    disabled={profile?.role === 'view-only'}
                   />
                 </div>
               )}
@@ -461,7 +460,7 @@ export default function Settings() {
           </Card>
 
           <div className="flex justify-end">
-            <Button onClick={handleSave} className="bg-black text-white gap-2" disabled={profile?.role === 'view-only'}>
+            <Button onClick={handleSave} className="bg-black text-white gap-2">
               <Save className="w-4 h-4" /> Save Configuration
             </Button>
           </div>

@@ -24,7 +24,7 @@ service cloud.firestore {
     }
 
     function isAnyUser() {
-      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().role in ['admin', 'billing', 'view-only'];
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().role in ['admin', 'billing'];
     }
 
     function incoming() {
@@ -44,7 +44,7 @@ service cloud.firestore {
     function isValidUser(data) {
       return data.keys().hasAll(['email', 'role']) && 
              data.email is string && data.email.size() <= 256 &&
-             data.role in ['admin', 'billing', 'view-only'] &&
+             data.role in ['admin', 'billing'] &&
              data.keys().size() <= 10;
     }
 
@@ -101,7 +101,7 @@ service cloud.firestore {
 
     match /settings/{settingId} {
       allow read: if isAnyUser();
-      allow write: if isAdmin();
+      allow write: if isBilling();
     }
   }
 }

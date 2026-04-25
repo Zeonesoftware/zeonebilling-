@@ -11,7 +11,7 @@ import {
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 
-export type UserRole = 'admin' | 'billing' | 'view-only';
+export type UserRole = 'admin' | 'billing';
 
 interface AuthUserProfile {
   uid: string;
@@ -47,21 +47,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const docSnap = await getDoc(docRef);
         
         if (docSnap.exists()) {
+          let role = docSnap.data().role as UserRole;
+          // Legacy support: auto-migrate view-only to billing
+          if ((docSnap.data().role as string) === 'view-only') {
+            role = 'billing';
+            // We can't use updateDoc directly here easily without importing it, 
+            // but it's already in firestore imports at the top.
+            // Let's just update the local profile for now or use the db import.
+            import('firebase/firestore').then(({ doc, updateDoc }) => {
+              updateDoc(doc(db, 'users', firebaseUser.uid), { role: 'billing' });
+            }).catch(console.error);
+          }
+
           setProfile({
             uid: firebaseUser.uid,
             email: firebaseUser.email || '',
             displayName: firebaseUser.displayName || docSnap.data().name || 'User',
             photoURL: firebaseUser.photoURL || '',
-            role: docSnap.data().role as UserRole
+            role: role
           });
         } else {
-          // If no profile exists, create a default 'view-only' profile
+          // If no profile exists, create a default 'billing' profile
           const newProfile: AuthUserProfile = {
             uid: firebaseUser.uid,
             email: firebaseUser.email || '',
             displayName: firebaseUser.displayName || 'User',
             photoURL: firebaseUser.photoURL || '',
-            role: 'view-only'
+            role: 'billing'
           };
           
           await setDoc(docRef, {
@@ -101,7 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email: cred.user.email || '',
       displayName: name,
       photoURL: '',
-      role: 'view-only'
+      role: 'billing'
     };
     
     await setDoc(doc(db, 'users', cred.user.uid), {

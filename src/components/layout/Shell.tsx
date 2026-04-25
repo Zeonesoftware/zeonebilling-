@@ -61,7 +61,7 @@ export function Shell() {
       case 'billing':
         return <div className="flex items-center gap-1 text-[8px] font-black uppercase tracking-tighter text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded-full"><Shield className="w-2.5 h-2.5" /> Billing</div>;
       default:
-        return <div className="flex items-center gap-1 text-[8px] font-black uppercase tracking-tighter text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-full"><Eye className="w-2.5 h-2.5" /> Viewer</div>;
+        return <div className="flex items-center gap-1 text-[8px] font-black uppercase tracking-tighter text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded-full"><Shield className="w-2.5 h-2.5" /> Billing</div>;
     }
   };
 

@@ -74,7 +74,7 @@ export function UserManagement() {
       case 'billing':
         return <Badge className="bg-blue-50 text-blue-700 border-blue-100 flex gap-1 items-center px-3 py-1"><Shield className="w-3 h-3" /> Billing</Badge>;
       default:
-        return <Badge variant="outline" className="text-slate-500 flex gap-1 items-center px-3 py-1"><Eye className="w-3 h-3" /> View Only</Badge>;
+        return <Badge className="bg-blue-50 text-blue-700 border-blue-100 flex gap-1 items-center px-3 py-1"><Shield className="w-3 h-3" /> Billing</Badge>;
     }
   };
 
@@ -137,9 +137,6 @@ export function UserManagement() {
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => handleUpdateRole(user.id, 'billing')} className="gap-3 py-2.5 font-bold text-xs uppercase tracking-wider">
                         <Shield className="w-4 h-4 text-blue-600" /> Make Billing
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleUpdateRole(user.id, 'view-only')} className="gap-3 py-2.5 font-bold text-xs uppercase tracking-wider">
-                        <Eye className="w-4 h-4 text-slate-400" /> Make Viewer
                       </DropdownMenuItem>
                       <div className="my-1 border-t border-slate-100" />
                       <DropdownMenuItem onClick={() => handleDeleteUser(user.id)} className="gap-3 py-2.5 font-bold text-xs uppercase tracking-wider text-red-600 focus:text-red-600">

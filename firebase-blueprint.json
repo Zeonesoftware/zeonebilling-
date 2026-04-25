@@ -9,8 +9,8 @@
         "name": { "type": "string" },
         "role": { 
           "type": "string", 
-          "enum": ["admin", "billing", "view-only"],
-          "description": "admin: total control, billing: create/edit invoices, view-only: read documents"
+          "enum": ["admin", "billing"],
+          "description": "admin: total control, billing: create/edit invoices and settings"
         },
         "createdAt": { "type": "string", "format": "date-time" }
       },

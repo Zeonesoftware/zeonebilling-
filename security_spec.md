@@ -1,10 +1,10 @@
 # Security Specification - Multi-User Billing App
 
 ## Data Invariants
-1. A user MUST have a profile in the `users` collection with a valid role (`admin`, `billing`, `view-only`).
-2. Only `admin` can promote/demote users or change business settings.
-3. `billing` users can create and edit transactional data (invoices, clients, items, expenses).
-4. `view-only` users can only perform read operations.
+1. A user MUST have a profile in the `users` collection with a valid role (`admin`, `billing`).
+2. Only `admin` can promote/demote users.
+3. `billing` users can manage business settings and transactional data (invoices, clients, items, expenses).
+
 5. Critical fields like `invoiceNumber` must be strings with controlled size.
 
 ## The Dirty Dozen Payloads (Targeting Invoices/Users)
@@ -17,7 +17,7 @@
 6. **Resource Exhaustion**: Sending `invoiceNumber` with 1MB of text.
 7. **Orphaned Record**: Creating an invoice for a non-existent client (Relational Guard).
 8. **Temporal Flux**: Setting `createdAt` to a future date instead of server timestamp.
-9. **Status Shortcut**: A `view-only` user attempting to set an invoice to `Paid`.
+9. **Status Shortcut**: A user with incorrect permissions attempting to modify locked invoice fields.
 10. **Admin Lockout**: Attempting to delete the last admin (Logic check, though hard in rules).
 11. **PII Leak**: A signed-in user without a role attempting to list all `users`.
 12. **Query Scraping**: Attempting to list all invoices without a filter that matches user's project/permission (General List query safety).

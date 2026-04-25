@@ -4,8 +4,7 @@ export function useRBAC() {
   const { profile } = useAuth();
   
   const isAdmin = profile?.role === 'admin';
-  const isBilling = profile?.role === 'billing';
-  const isViewer = profile?.role === 'view-only';
+  const isBilling = profile?.role === 'billing' || (profile?.role as any) === 'view-only';
   
   const canCreate = isAdmin || isBilling;
   const canEdit = isAdmin || isBilling;
@@ -15,7 +14,6 @@ export function useRBAC() {
   return { 
     isAdmin, 
     isBilling, 
-    isViewer, 
     canCreate, 
     canEdit, 
     canDelete, 
