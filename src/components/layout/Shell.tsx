@@ -51,7 +51,7 @@ export function Shell() {
     { icon: Package, label: t('products'), path: '/products', permission: 'inventory' },
     { icon: Users, label: t('clients'), path: '/clients', permission: 'clients' },
     { icon: ReceiptIndianRupee, label: t('expenses'), path: '/expenses', permission: 'expenses' },
-    { icon: Dna, label: 'Reconciliation', path: '/reconciliation' },
+    { icon: Dna, label: 'Reconciliation', path: '/reconciliation', permission: 'reconciliation' },
     { icon: TrendingUp, label: t('reports'), path: '/reports', permission: 'reports' },
     { icon: SettingsIcon, label: t('settings'), path: '/settings' },
   ].filter(item => {
@@ -83,7 +83,17 @@ export function Shell() {
     { icon: Users, label: 'New Client', path: '/clients', roles: ['admin', 'billing'] },
     { icon: Package, label: 'New Product', path: '/products', roles: ['admin', 'billing'] },
     { icon: ReceiptIndianRupee, label: 'Record Expense', path: '/expenses', roles: ['admin', 'billing'] },
-  ].filter(action => !action.roles || (profile && action.roles.includes(profile.role)));
+  ].filter(action => {
+    if (!profile) return false;
+    if (profile.role === 'admin') return true;
+    
+    // Check role first
+    const hasRole = !action.roles || action.roles.includes(profile.role);
+    if (!hasRole) return false;
+
+    // Check global quick_actions permission
+    return profile.permissions?.includes('quick_actions');
+  });
 
   return (
     <div className="flex h-screen bg-[#f8fafc] text-[#1e293b] font-sans antialiased overflow-hidden">

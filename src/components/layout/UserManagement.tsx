@@ -33,7 +33,9 @@ export function UserManagement() {
     { id: 'purchases', name: 'Purchases' },
     { id: 'clients', name: 'Clients' },
     { id: 'expenses', name: 'Expenses' },
+    { id: 'reconciliation', name: 'Reconciliation' },
     { id: 'reports', name: 'Reports' },
+    { id: 'quick_actions', name: 'Quick Actions' },
   ];
 
   useEffect(() => {

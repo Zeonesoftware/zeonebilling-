@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { useData } from '@/hooks/useData';
+import { useAuth } from '@/contexts/AuthContext';
 import { Invoice, Expense, Purchase, Item } from '@/types';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -22,6 +23,7 @@ import { format, parseISO, startOfMonth, subMonths, eachMonthOfInterval } from '
 import { TrendingUp, ArrowUpRight, ArrowDownRight, IndianRupee, PieChart as PieChartIcon, Zap } from 'lucide-react';
 
 export default function Reports() {
+  const { profile } = useAuth();
   const { data: invoices } = useData<Invoice>('invoices');
   const { data: expenses } = useData<Expense>('expenses');
   const { data: purchases } = useData<Purchase>('purchases');
@@ -304,29 +306,31 @@ export default function Reports() {
                 </div>
               </div>
 
-              <div className="space-y-4">
-                 <div className="text-xs font-bold uppercase tracking-widest text-slate-500">Quick Actions</div>
-                 <div className="grid gap-3">
-                   <button className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors border border-white/5 text-left group">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-                          <Zap className="w-4 h-4 text-emerald-400" />
+              {(profile?.role === 'admin' || profile?.permissions?.includes('quick_actions')) && (
+                <div className="space-y-4">
+                  <div className="text-xs font-bold uppercase tracking-widest text-slate-500">Quick Actions</div>
+                  <div className="grid gap-3">
+                    <button className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors border border-white/5 text-left group">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+                            <Zap className="w-4 h-4 text-emerald-400" />
+                          </div>
+                          <span className="text-xs font-bold">Generate GSTR-1</span>
                         </div>
-                        <span className="text-xs font-bold">Generate GSTR-1</span>
-                      </div>
-                      <ArrowUpRight className="w-4 h-4 text-slate-600 group-hover:text-white transition-colors" />
-                   </button>
-                   <button className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors border border-white/5 text-left group">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center">
-                          <Zap className="w-4 h-4 text-orange-400" />
+                        <ArrowUpRight className="w-4 h-4 text-slate-600 group-hover:text-white transition-colors" />
+                    </button>
+                    <button className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors border border-white/5 text-left group">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center">
+                            <Zap className="w-4 h-4 text-orange-400" />
+                          </div>
+                          <span className="text-xs font-bold">Claim Input Tax Credit</span>
                         </div>
-                        <span className="text-xs font-bold">Claim Input Tax Credit</span>
-                      </div>
-                      <ArrowUpRight className="w-4 h-4 text-slate-600 group-hover:text-white transition-colors" />
-                   </button>
-                 </div>
-              </div>
+                        <ArrowUpRight className="w-4 h-4 text-slate-600 group-hover:text-white transition-colors" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
