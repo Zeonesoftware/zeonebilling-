@@ -312,7 +312,7 @@ export default function Products() {
               <TableHead className="hidden md:table-cell font-mono text-[10px] uppercase tracking-widest text-[#666666]">Category</TableHead>
               <TableHead className="hidden lg:table-cell font-mono text-[10px] uppercase tracking-widest text-center text-[#666666]">HSN</TableHead>
               <TableHead className="font-mono text-[10px] uppercase tracking-widest text-right text-[#666666]">Price (₹)</TableHead>
-              <TableHead className="hidden sm:table-cell font-mono text-[10px] uppercase tracking-widest text-right text-[#666666]">GST %</TableHead>
+              <TableHead className="font-mono text-[10px] uppercase tracking-widest text-center text-[#666666]">GST (%)</TableHead>
               <TableHead className="font-mono text-[10px] uppercase tracking-widest text-right text-[#666666]">Stock</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
@@ -345,7 +345,7 @@ export default function Products() {
                 </TableCell>
                 <TableCell className="hidden lg:table-cell text-center font-mono text-xs">{item.hsn}</TableCell>
                 <TableCell className="text-right font-mono text-xs sm:text-sm">₹{item.price.toLocaleString()}</TableCell>
-                <TableCell className="hidden sm:table-cell text-right text-sm">{item.gstRate}%</TableCell>
+                <TableCell className="text-center text-sm font-medium">{item.gstRate}%</TableCell>
                 <TableCell className={cn("text-right font-mono text-xs sm:text-sm", item.stock < threshold ? "text-amber-600 font-bold" : "")}>
                   {item.stock} <span className="hidden xs:inline">{item.unit}</span>
                 </TableCell>

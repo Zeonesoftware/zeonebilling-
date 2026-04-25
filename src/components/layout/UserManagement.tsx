@@ -18,12 +18,23 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { MoreHorizontal, Shield, ShieldCheck, Eye, Trash2, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function UserManagement() {
   const [users, setUsers] = useState<any[]>([]);
   const { profile } = useAuth();
+
+  const FEATURES = [
+    { id: 'pos', name: 'POS' },
+    { id: 'invoices', name: 'Invoices' },
+    { id: 'inventory', name: 'Stock' },
+    { id: 'purchases', name: 'Purchases' },
+    { id: 'clients', name: 'Clients' },
+    { id: 'expenses', name: 'Expenses' },
+    { id: 'reports', name: 'Reports' },
+  ];
 
   useEffect(() => {
     if (profile?.role !== 'admin') return;
@@ -48,6 +59,28 @@ export function UserManagement() {
       toast.success(`Role updated to ${newRole}`);
     } catch (err) {
       toast.error('Failed to update role');
+    }
+  };
+
+  const handleTogglePermission = async (userId: string, permission: string, checked: boolean) => {
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+    
+    const currentPermissions = user.permissions || [];
+    let newPermissions;
+    if (checked) {
+      // Prevent duplicates
+      if (currentPermissions.includes(permission)) return;
+      newPermissions = [...currentPermissions, permission];
+    } else {
+      newPermissions = currentPermissions.filter((p: string) => p !== permission);
+    }
+    
+    try {
+      await updateDoc(doc(db, 'users', userId), { permissions: newPermissions });
+      // No toast for every toggle to avoid spam, but we could add one if it's slow
+    } catch (err) {
+      toast.error('Failed to update permissions');
     }
   };
 
@@ -102,7 +135,8 @@ export function UserManagement() {
           <TableHeader className="bg-slate-50/50">
             <TableRow>
               <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400">User</TableHead>
-              <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400">Status</TableHead>
+              <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400">Role</TableHead>
+              <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400">Features Access</TableHead>
               <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -122,6 +156,26 @@ export function UserManagement() {
                 </TableCell>
                 <TableCell>
                   {getRoleBadge(user.role)}
+                </TableCell>
+                <TableCell>
+                  <div className="flex flex-wrap gap-x-4 gap-y-2">
+                    {FEATURES.map(feature => (
+                      <div key={feature.id} className="flex items-center gap-1.5">
+                        <Checkbox 
+                          id={`${user.id}-${feature.id}`}
+                          checked={user.permissions?.includes(feature.id)}
+                          onCheckedChange={(checked) => handleTogglePermission(user.id, feature.id, !!checked)}
+                          className="w-3.5 h-3.5 border-slate-300 data-[state=checked]:bg-slate-900 data-[state=checked]:border-slate-900"
+                        />
+                        <label 
+                          htmlFor={`${user.id}-${feature.id}`} 
+                          className="text-[10px] font-bold text-slate-500 uppercase cursor-pointer select-none"
+                        >
+                          {feature.name}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
                 </TableCell>
                 <TableCell className="text-right">
                   <DropdownMenu>

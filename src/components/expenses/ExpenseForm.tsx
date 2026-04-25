@@ -108,7 +108,7 @@ export function ExpenseForm({ isOpen, onClose, onSave }: ExpenseFormProps) {
             </div>
             <div className="grid gap-2">
               <Label className="text-xs uppercase font-bold text-[#666666]">Amount (₹)</Label>
-              <Input type="number" value={formData.amount} onChange={e => setFormData({ ...formData, amount: Number(e.target.value) })} />
+              <Input type="number" value={formData.amount === 0 ? '' : formData.amount} onChange={e => setFormData({ ...formData, amount: Number(e.target.value) })} />
             </div>
           </div>
           <div className="flex items-center space-x-2 pt-2">

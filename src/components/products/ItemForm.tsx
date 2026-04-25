@@ -12,6 +12,14 @@ import {
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
+
 interface ItemFormProps {
   item?: Item | null;
   isOpen: boolean;
@@ -71,15 +79,29 @@ export function ItemForm({ item, isOpen, onClose, onSave }: ItemFormProps) {
             <div className="grid grid-cols-3 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="price" className="text-xs uppercase font-bold text-[#666666]">Price (₹)</Label>
-                <Input id="price" type="number" value={formData.price} onChange={e => setFormData({ ...formData, price: Number(e.target.value) })} />
+                <Input id="price" type="number" value={formData.price === 0 ? '' : formData.price} onChange={e => setFormData({ ...formData, price: Number(e.target.value) })} />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="gstRate" className="text-xs uppercase font-bold text-[#666666]">GST (%)</Label>
-                <Input id="gstRate" type="number" value={formData.gstRate} onChange={e => setFormData({ ...formData, gstRate: Number(e.target.value) })} />
+                <Select 
+                  value={formData.gstRate?.toString()} 
+                  onValueChange={(v) => setFormData({ ...formData, gstRate: Number(v) })}
+                >
+                  <SelectTrigger id="gstRate">
+                    <SelectValue placeholder="Rate" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">0%</SelectItem>
+                    <SelectItem value="5">5%</SelectItem>
+                    <SelectItem value="12">12%</SelectItem>
+                    <SelectItem value="18">18%</SelectItem>
+                    <SelectItem value="28">28%</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="stock" className="text-xs uppercase font-bold text-[#666666]">Stock</Label>
-                <Input id="stock" type="number" value={formData.stock} onChange={e => setFormData({ ...formData, stock: Number(e.target.value) })} />
+                <Input id="stock" type="number" value={formData.stock === 0 ? '' : formData.stock} onChange={e => setFormData({ ...formData, stock: Number(e.target.value) })} />
               </div>
             </div>
             <div className="grid gap-2">

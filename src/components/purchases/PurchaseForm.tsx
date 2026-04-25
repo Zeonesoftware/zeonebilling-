@@ -28,6 +28,7 @@ import {
 import { Purchase, Item, InvoiceItem } from '@/types';
 import { useData } from '@/hooks/useData';
 import { format } from 'date-fns';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface PurchaseFormProps {
   isOpen: boolean;
@@ -160,219 +161,195 @@ export function PurchaseForm({ isOpen, onClose, onSave, initialData }: PurchaseF
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl p-0 border-none bg-white rounded-[24px] shadow-2xl overflow-hidden">
-        <DialogHeader className="px-8 py-6 flex-row items-center justify-between space-y-0 border-b border-slate-50">
-          <DialogTitle className="text-xl font-bold text-slate-800">
-            {initialData ? 'Edit Purchase Bill' : 'Add Purchase Bill'}
-          </DialogTitle>
-          <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full h-8 w-8 text-slate-400 hover:bg-slate-50 transition-colors">
-            <X className="h-4 w-4" />
-          </Button>
+      <DialogContent className="sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle>{initialData ? 'Edit Purchase Bill' : 'Add Purchase Bill'}</DialogTitle>
         </DialogHeader>
-
-        <form onSubmit={handleSubmit} className="p-0">
-          <div className="px-8 py-6 space-y-6 max-h-[75vh] overflow-y-auto">
+        <ScrollArea className="max-h-[80vh] px-1">
+          <form onSubmit={handleSubmit} className="space-y-6 py-4 pr-3">
             {/* Header Fields Section */}
-            <div className="grid grid-cols-2 gap-x-8 gap-y-6">
-              <div className="space-y-2">
-                <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Date *</Label>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label className="text-xs uppercase font-bold text-[#666666]">Date *</Label>
                 <Input 
                   type="date"
                   value={formData.date}
                   onChange={e => setFormData({ ...formData, date: e.target.value })}
-                  className="h-11 border-slate-200 bg-white focus:ring-1 focus:ring-slate-400 rounded-xl transition-shadow"
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Payment Status</Label>
+              <div className="grid gap-2">
+                <Label className="text-xs uppercase font-bold text-[#666666]">Status</Label>
                 <Select 
                   value={formData.status === 'Paid' ? 'Paid' : 'Unpaid'} 
                   onValueChange={(v: any) => setFormData({ ...formData, status: v === 'Paid' ? 'Paid' : 'Pending' })}
                 >
-                  <SelectTrigger className="h-11 border-slate-200 bg-white focus:ring-1 focus:ring-slate-400 rounded-xl">
-                    <SelectValue placeholder="Select status" />
+                  <SelectTrigger>
+                    <SelectValue placeholder="Status" />
                   </SelectTrigger>
-                  <SelectContent className="rounded-xl">
+                  <SelectContent>
                     <SelectItem value="Unpaid">Unpaid</SelectItem>
                     <SelectItem value="Paid">Paid</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+            </div>
 
-              <div className="space-y-2 col-span-2">
-                <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Supplier Name *</Label>
-                <Input 
-                  value={formData.supplierName}
-                  onChange={e => setFormData({ ...formData, supplierName: e.target.value })}
-                  className="h-11 border-slate-200 bg-white focus:ring-1 focus:ring-slate-400 rounded-xl transition-shadow"
-                  placeholder="Vendor / Supplier name"
-                  required
-                />
-              </div>
+            <div className="grid gap-2">
+              <Label className="text-xs uppercase font-bold text-[#666666]">Supplier Name *</Label>
+              <Input 
+                value={formData.supplierName}
+                onChange={e => setFormData({ ...formData, supplierName: e.target.value })}
+                placeholder="Vendor / Supplier name"
+                required
+              />
+            </div>
 
-              <div className="space-y-2">
-                <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Supplier GSTIN</Label>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label className="text-xs uppercase font-bold text-[#666666]">Supplier GSTIN</Label>
                 <Input 
                   value={formData.supplierGstin}
                   onChange={e => setFormData({ ...formData, supplierGstin: e.target.value })}
-                  className="h-11 border-slate-200 bg-white focus:ring-1 focus:ring-slate-400 rounded-xl transition-shadow"
                   placeholder="15-digit GSTIN"
                 />
               </div>
-              <div className="space-y-2">
-                <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Invoice Number *</Label>
+              <div className="grid gap-2">
+                <Label className="text-xs uppercase font-bold text-[#666666]">Invoice Number *</Label>
                 <Input 
                   value={formData.purchaseNumber}
                   onChange={e => setFormData({ ...formData, purchaseNumber: e.target.value })}
-                  className="h-11 border-slate-200 bg-white focus:ring-1 focus:ring-slate-400 rounded-xl transition-shadow"
                   placeholder="Supplier invoice no."
                   required
                 />
               </div>
+            </div>
 
-              <div className="space-y-2 col-span-2">
-                <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Note (Optional)</Label>
-                <Input 
-                  value={formData.notes}
-                  onChange={e => setFormData({ ...formData, notes: e.target.value })}
-                  className="h-11 border-slate-200 bg-white focus:ring-1 focus:ring-slate-400 rounded-xl transition-shadow"
-                  placeholder="Any note..."
-                />
-              </div>
+            <div className="grid gap-2">
+              <Label className="text-xs uppercase font-bold text-[#666666]">Note (Optional)</Label>
+              <Input 
+                value={formData.notes}
+                onChange={e => setFormData({ ...formData, notes: e.target.value })}
+                placeholder="Any note..."
+              />
             </div>
 
             {/* Items Section */}
-            <div className="space-y-4 pt-6 border-t border-slate-50">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <span className="w-1 h-4 bg-slate-900 rounded-full"></span>
-                Items
-              </h3>
-              
-              <div className="grid grid-cols-12 gap-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">
-                <div className="col-span-4">Name</div>
-                <div className="col-span-2">HSN</div>
-                <div className="col-span-1 text-center">Qty</div>
-                <div className="col-span-2">Rate</div>
-                <div className="col-span-2">Tax %</div>
-                <div className="col-span-1"></div>
+            <div className="space-y-4 pt-4 border-t border-[#F0F0F0]">
+              <div className="flex justify-between items-center">
+                <h3 className="text-xs font-bold uppercase tracking-widest text-[#666666]">Bill Items</h3>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={addItem}
+                  className="h-8 text-[10px] uppercase font-bold tracking-widest"
+                >
+                  <Plus className="h-3 w-3 mr-1" /> Add
+                </Button>
               </div>
-
+              
               <div className="space-y-4">
                 {(formData.items || []).map((item, index) => (
-                  <div key={index} className="grid grid-cols-12 gap-3 items-start animate-in fade-in slide-in-from-top-1 duration-200">
-                    <div className="col-span-4">
+                  <div key={index} className="p-3 rounded-lg border border-slate-100 space-y-3 relative">
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => handleRemoveItem(index)}
+                      className="absolute top-2 right-2 h-6 w-6 text-slate-300 hover:text-red-500"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+
+                    <div className="grid gap-2">
+                      <Label className="text-[10px] uppercase font-bold text-slate-400">Item Name</Label>
                       <Input 
                         value={item.name}
                         onChange={e => handleUpdateItem(index, { name: e.target.value })}
-                        className="h-10 border-slate-200 rounded-xl text-xs focus:ring-1 focus:ring-slate-400"
+                        className="h-8 text-xs"
                         placeholder="Item name"
                       />
                     </div>
-                    <div className="col-span-2">
-                      <Input 
-                        value={item.hsn}
-                        onChange={e => handleUpdateItem(index, { hsn: e.target.value })}
-                        className="h-10 border-slate-200 rounded-xl text-xs focus:ring-1 focus:ring-slate-400"
-                        placeholder="HSN"
-                      />
-                    </div>
-                    <div className="col-span-1">
-                      <Input 
-                        type="number"
-                        value={item.quantity}
-                        onChange={e => handleUpdateItem(index, { quantity: Number(e.target.value) })}
-                        className="h-10 border-slate-200 rounded-xl text-xs text-center focus:ring-1 focus:ring-slate-400"
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <Input 
-                        type="number"
-                        value={item.price}
-                        onChange={e => handleUpdateItem(index, { price: Number(e.target.value) })}
-                        className="h-10 border-slate-200 rounded-xl text-xs focus:ring-1 focus:ring-slate-400"
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <Select 
-                        value={item.gstRate.toString()} 
-                        onValueChange={(v) => handleUpdateItem(index, { gstRate: Number(v) })}
-                      >
-                        <SelectTrigger className="h-10 border-slate-200 rounded-xl text-xs focus:ring-1 focus:ring-slate-400">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-xl">
-                          <SelectItem value="0">0%</SelectItem>
-                          <SelectItem value="5">5%</SelectItem>
-                          <SelectItem value="12">12%</SelectItem>
-                          <SelectItem value="18">18%</SelectItem>
-                          <SelectItem value="28">28%</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="col-span-1 flex justify-center">
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => handleRemoveItem(index)}
-                        className="h-10 w-10 text-slate-200 hover:text-red-500 hover:bg-red-50 rounded-full transition-all"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+
+                    <div className="grid grid-cols-4 gap-3">
+                      <div className="grid gap-1">
+                        <Label className="text-[10px] uppercase font-bold text-slate-400">HSN</Label>
+                        <Input 
+                          value={item.hsn}
+                          onChange={e => handleUpdateItem(index, { hsn: e.target.value })}
+                          className="h-8 text-xs"
+                        />
+                      </div>
+                      <div className="grid gap-1">
+                        <Label className="text-[10px] uppercase font-bold text-slate-400">Qty</Label>
+                        <Input 
+                          type="number"
+                          value={item.quantity === 0 ? '' : item.quantity}
+                          onChange={e => handleUpdateItem(index, { quantity: Number(e.target.value) })}
+                          className="h-8 text-center text-xs"
+                        />
+                      </div>
+                      <div className="grid gap-1">
+                        <Label className="text-[10px] uppercase font-bold text-slate-400">Rate</Label>
+                        <Input 
+                          type="number"
+                          value={item.price === 0 ? '' : item.price}
+                          onChange={e => handleUpdateItem(index, { price: Number(e.target.value) })}
+                          className="h-8 text-xs text-right"
+                        />
+                      </div>
+                      <div className="grid gap-1">
+                        <Label className="text-[10px] uppercase font-bold text-slate-400">GST %</Label>
+                        <Select 
+                          value={item.gstRate.toString()} 
+                          onValueChange={(v) => handleUpdateItem(index, { gstRate: Number(v) })}
+                        >
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="0">0%</SelectItem>
+                            <SelectItem value="5">5%</SelectItem>
+                            <SelectItem value="12">12%</SelectItem>
+                            <SelectItem value="18">18%</SelectItem>
+                            <SelectItem value="28">28%</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                   </div>
                 ))}
               </div>
-
-              <Button 
-                type="button" 
-                variant="outline" 
-                size="sm" 
-                onClick={addItem}
-                className="h-9 px-4 gap-2 border-slate-200 text-slate-600 font-bold rounded-xl text-xs bg-white hover:bg-slate-50 transition-all shadow-sm"
-              >
-                <Plus className="h-3.5 w-3.5" /> Add Item
-              </Button>
             </div>
 
-            {/* Sumary Totals Row */}
-            <div className="flex items-center justify-between pt-6 border-t border-slate-50">
-              <div className="flex gap-8">
-                <div className="flex flex-col">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Taxable</span>
-                  <span className="text-sm font-bold text-slate-900 font-mono">₹{formData.subtotal?.toFixed(2)}</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Tax</span>
-                  <span className="text-sm font-bold text-slate-900 font-mono">₹{(formData.totalAmount! - formData.subtotal!).toFixed(2)}</span>
-                </div>
+            {/* Summary Totals */}
+            <div className="p-4 rounded-lg bg-slate-50 space-y-2">
+              <div className="flex justify-between text-[10px] uppercase font-bold text-slate-500">
+                <span>Taxable Amount</span>
+                <span>₹{formData.subtotal?.toFixed(2)}</span>
               </div>
-              <div className="flex flex-col items-end">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Grand Total</span>
-                <span className="text-2xl font-black text-slate-900 font-mono tracking-tight">₹{formData.totalAmount?.toLocaleString()}</span>
+              <div className="flex justify-between text-[10px] uppercase font-bold text-slate-500">
+                <span>GST Amount</span>
+                <span>₹{(formData.totalAmount! - formData.subtotal!).toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-base font-black text-slate-900 border-t border-slate-200 pt-2">
+                <span>Total Bill</span>
+                <span>₹{formData.totalAmount?.toLocaleString()}</span>
               </div>
             </div>
-          </div>
-
-          <DialogFooter className="bg-slate-50 px-8 py-6 flex items-center justify-end gap-3">
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={onClose}
-              className="h-12 px-10 rounded-2xl font-bold border-slate-200 text-slate-600 bg-white hover:bg-slate-50 hover:text-slate-900 transition-all text-sm"
-            >
-              Cancel
-            </Button>
-            <Button 
-              type="submit" 
-              disabled={saving || !formData.supplierName || !formData.items?.length}
-              className="h-12 px-10 rounded-2xl font-bold bg-black hover:bg-slate-900 text-white shadow-xl shadow-slate-200 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 text-sm"
-            >
-              {saving ? 'Saving...' : 'Save Purchase'}
-            </Button>
-          </DialogFooter>
-        </form>
+          </form>
+        </ScrollArea>
+        <DialogFooter className="pt-4 border-t border-[#F0F0F0]">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button 
+            onClick={handleSubmit} 
+            disabled={saving || !formData.supplierName || !formData.items?.length}
+            className="bg-black text-white hover:bg-black/90"
+          >
+            {saving ? 'Saving...' : 'Save Purchase'}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

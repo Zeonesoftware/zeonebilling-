@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { ThermalReceipt } from './ThermalReceipt';
+import { EWayBillForm } from './EWayBillForm';
 
 interface InvoiceViewProps {
   invoice: Invoice;
@@ -30,11 +31,13 @@ interface InvoiceViewProps {
   initialStyle?: Invoice['pdfStyle'] | 'Thermal';
 }
 
-export function InvoiceView({ invoice, settings, onClose, initialStyle }: InvoiceViewProps) {
+export function InvoiceView({ invoice: initialInvoice, settings, onClose, initialStyle }: InvoiceViewProps) {
   const printRef = useRef<HTMLDivElement>(null);
   const thermalRef = useRef<HTMLDivElement>(null);
+  const [invoice, setInvoice] = useState(initialInvoice);
   const [isExporting, setIsExporting] = useState(false);
   const [isEmailing, setIsEmailing] = useState(false);
+  const [isEWayBillModalOpen, setIsEWayBillModalOpen] = useState(false);
   const [currentStyle, setCurrentStyle] = useState<Invoice['pdfStyle'] | 'Thermal'>(initialStyle || invoice.pdfStyle || 'Professional');
 
   const handlePrint = () => {
@@ -354,11 +357,11 @@ export function InvoiceView({ invoice, settings, onClose, initialStyle }: Invoic
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-auto">
       <div className="bg-white w-full max-w-5xl h-[95vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in duration-300">
-        <div className={cn("flex items-center justify-between px-6 py-4 border-b bg-white sticky top-0 z-20", style.font)}>
-          <div className="flex items-center gap-4">
-            <h3 className="font-bold">Preview Invoice</h3>
+        <div className={cn("flex flex-col md:flex-row items-start md:items-center justify-between px-6 py-4 border-b bg-white sticky top-0 z-20 gap-4", style.font)}>
+          <div className="flex items-center gap-4 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
+            <h3 className="font-bold flex-shrink-0">Preview</h3>
             <Select value={currentStyle || ""} onValueChange={(v: any) => setCurrentStyle(v)}>
-              <SelectTrigger className="w-40 h-9 font-bold">
+              <SelectTrigger className="w-40 h-9 font-bold flex-shrink-0">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -369,30 +372,40 @@ export function InvoiceView({ invoice, settings, onClose, initialStyle }: Invoic
               </SelectContent>
             </Select>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleCopyLink} className="gap-2 rounded-full">
-              <LinkIcon className="w-4 h-4" /> Copy Link
+          <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
+            <Button variant="outline" size="sm" onClick={handleCopyLink} className="gap-2 rounded-full flex-shrink-0">
+              <LinkIcon className="w-4 h-4" /> Copy
             </Button>
-            <Button variant="outline" size="sm" onClick={handleEmailInvoice} disabled={isEmailing} className="gap-2 rounded-full border-blue-200 text-blue-600 hover:bg-blue-50">
+            <Button variant="outline" size="sm" onClick={handleEmailInvoice} disabled={isEmailing} className="gap-2 rounded-full border-blue-200 text-blue-600 hover:bg-blue-50 flex-shrink-0">
               {isEmailing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
               Email
             </Button>
-            <Button variant="outline" size="sm" onClick={handlePrint} className="gap-2 rounded-full">
+            <Button variant="outline" size="sm" onClick={handlePrint} className="gap-2 rounded-full flex-shrink-0">
               <Printer className="w-4 h-4" /> Print
             </Button>
-            <Button size="sm" onClick={handleDownloadPDF} disabled={isExporting} className="bg-black text-white gap-2 rounded-full px-6">
+            
+            {invoice.status !== 'Draft' && !invoice.ewayBillNo && (
+              <Button 
+                onClick={() => setIsEWayBillModalOpen(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white gap-2 rounded-full px-6 flex-shrink-0 shadow-lg shadow-blue-100"
+              >
+                <Truck className="w-4 h-4" /> Generate E-Way Bill
+              </Button>
+            )}
+
+            <Button size="sm" onClick={handleDownloadPDF} disabled={isExporting} className="bg-black text-white gap-2 rounded-full px-6 flex-shrink-0">
               {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-              Save PDF
+              PDF
             </Button>
-            <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full">
+            <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full flex-shrink-0 ml-auto">
               <X className="w-4 h-4" />
             </Button>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-12 bg-slate-100/50 flex justify-center">
+        <div className="flex-1 overflow-x-auto md:overflow-y-auto p-4 md:p-12 bg-slate-100/50 flex justify-center items-start">
           {currentStyle === 'Thermal' ? (
-            <div className="bg-white p-8 shadow-2xl h-fit">
+            <div className="bg-white p-4 md:p-8 shadow-2xl h-fit w-full max-w-[58mm]">
               <ThermalReceipt ref={thermalRef} invoice={invoice} settings={settings} />
             </div>
           ) : (
@@ -400,7 +413,7 @@ export function InvoiceView({ invoice, settings, onClose, initialStyle }: Invoic
               ref={printRef} 
               id="invoice-print-area"
               className={cn(
-                "bg-white shadow-2xl w-[210mm] min-h-[297mm] flex flex-col transition-all duration-500",
+                "bg-white shadow-2xl w-full min-w-[794px] md:min-w-0 md:w-[210mm] min-h-[297mm] flex flex-col transition-all duration-500",
                 style.font,
                 currentStyle === 'Modern' ? 'rounded-2xl' : ''
               )}
@@ -440,9 +453,9 @@ export function InvoiceView({ invoice, settings, onClose, initialStyle }: Invoic
               </div>
             </div>
 
-            <div className="p-12 md:p-16 flex-1 flex flex-col gap-12">
+            <div className="p-8 md:p-16 flex-1 flex flex-col gap-8 md:gap-12">
               {/* Billing Info */}
-              <div className="grid grid-cols-2 gap-16">
+              <div className="grid grid-cols-2 gap-8 md:gap-16">
                 <div className="space-y-3">
                   <div className="text-[10px] font-black uppercase tracking-widest text-[#94a3b8]">Bill To Customer</div>
                   <div className="text-xl font-bold text-[#0f172a]">{invoice.clientName}</div>
@@ -490,8 +503,8 @@ export function InvoiceView({ invoice, settings, onClose, initialStyle }: Invoic
               </div>
 
               {/* Bottom Section */}
-              <div className="grid grid-cols-2 gap-16 mt-auto">
-                <div className="space-y-10">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16 mt-auto">
+                <div className="space-y-6 md:space-y-10">
                   <div className="space-y-2">
                     <div className="text-[10px] font-black uppercase tracking-widest text-[#94a3b8]">Total in Words</div>
                     <div className={cn("text-xs italic font-bold leading-relaxed p-4 rounded-lg border", style.border, currentStyle === 'Modern' ? "bg-[#f8fafc]" : "bg-white")}>
@@ -500,9 +513,9 @@ export function InvoiceView({ invoice, settings, onClose, initialStyle }: Invoic
                   </div>
                   
                   {upiUrl && (
-                    <div className={cn("flex gap-6 items-center p-5 rounded-2xl border w-fit", style.border, currentStyle === 'Modern' ? "bg-[#f8fafc]" : "bg-white")}>
+                    <div className={cn("flex gap-4 md:gap-6 items-center p-4 md:p-5 rounded-2xl border w-fit", style.border, currentStyle === 'Modern' ? "bg-[#f8fafc]" : "bg-white")}>
                       <QRCodeCanvas value={upiUrl} size={80} level="H" />
-                      <div className="space-y-2">
+                      <div className="space-y-1 md:space-y-2">
                         <div className="text-[10px] font-black uppercase tracking-widest text-[#0f172a]">Instant UPI Payment</div>
                         <div className="text-[10px] text-[#64748b] font-mono font-bold">{settings.upiId}</div>
                       </div>
@@ -510,7 +523,7 @@ export function InvoiceView({ invoice, settings, onClose, initialStyle }: Invoic
                   )}
 
                   {invoice.ewayBillNo && (
-                    <div className={cn("p-5 rounded-2xl border w-full space-y-3", style.border, currentStyle === 'Modern' ? "bg-blue-50/50" : "bg-white")}>
+                    <div className={cn("p-4 md:p-5 rounded-2xl border w-full space-y-3", style.border, currentStyle === 'Modern' ? "bg-blue-50/50" : "bg-white")}>
                        <div className="flex items-center justify-between">
                          <div className="text-[10px] font-black uppercase tracking-widest text-[#0f172a] flex items-center gap-2">
                            <Truck className="w-3 h-3" /> E-Way Bill Details
@@ -547,7 +560,7 @@ export function InvoiceView({ invoice, settings, onClose, initialStyle }: Invoic
                 </div>
 
                 <div className="space-y-6">
-                  <div className={cn("p-8 rounded-2xl space-y-4 border", style.border, currentStyle === 'Modern' ? "bg-slate-950 text-white" : "bg-slate-50")}>
+                  <div className={cn("p-6 md:p-8 rounded-2xl space-y-4 border", style.border, currentStyle === 'Modern' ? "bg-slate-950 text-white" : "bg-slate-50")}>
                     <div className="flex justify-between items-center text-xs">
                       <span className="opacity-60 font-black uppercase tracking-widest">Gross Subtotal</span>
                       <span className="font-mono font-bold">{formatCurrency(invoice.subtotal, invoice.currency)}</span>
@@ -560,13 +573,13 @@ export function InvoiceView({ invoice, settings, onClose, initialStyle }: Invoic
                     )}
                     <div className={cn("pt-6 border-t flex justify-between items-center", currentStyle === 'Modern' ? "border-white/10" : "border-[#e2e8f0]")}>
                       <span className="text-sm font-black uppercase tracking-widest">Final Total</span>
-                      <span className={cn("text-3xl font-black font-mono", style.accent)}>{formatCurrency(invoice.totalAmount, invoice.currency)}</span>
+                      <span className={cn("text-2xl md:text-3xl font-black font-mono", style.accent)}>{formatCurrency(invoice.totalAmount, invoice.currency)}</span>
                     </div>
                   </div>
 
-                  <div className="pt-12 flex flex-col items-end gap-3 text-right">
+                  <div className="pt-6 md:pt-12 flex flex-col items-end gap-3 text-right">
                     {settings.signatureUrl && (
-                      <img src={settings.signatureUrl} alt="Signature" className="h-16 w-auto mb-2 mix-blend-multiply brightness-75" />
+                      <img src={settings.signatureUrl} alt="Signature" className="h-12 md:h-16 w-auto mb-2 mix-blend-multiply brightness-75" />
                     )}
                     <div className="text-[10px] font-black uppercase tracking-widest text-[#94a3b8]">Authorized Signatory</div>
                     <div className="text-sm font-black text-[#0f172a]">{settings.companyName}</div>
@@ -614,6 +627,14 @@ export function InvoiceView({ invoice, settings, onClose, initialStyle }: Invoic
           --color-slate-950: #020617;
         }
       ` }} />
+      <EWayBillForm 
+        isOpen={isEWayBillModalOpen}
+        onClose={() => setIsEWayBillModalOpen(false)}
+        invoice={invoice}
+        onSuccess={(updatedInvoice) => {
+          setInvoice(updatedInvoice);
+        }}
+      />
     </div>
   </div>
   );

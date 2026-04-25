@@ -45,16 +45,20 @@ export function Shell() {
 
   const navItems = [
     { icon: LayoutDashboard, label: t('dashboard'), path: '/' },
-    { icon: Monitor, label: 'POS Terminal', path: '/pos' },
-    { icon: FileText, label: t('invoices'), path: '/invoices' },
-    { icon: ShoppingCart, label: t('purchases'), path: '/purchases' },
-    { icon: Package, label: t('products'), path: '/products' },
-    { icon: Users, label: t('clients'), path: '/clients' },
-    { icon: ReceiptIndianRupee, label: t('expenses'), path: '/expenses' },
+    { icon: Monitor, label: 'POS Terminal', path: '/pos', permission: 'pos' },
+    { icon: FileText, label: t('invoices'), path: '/invoices', permission: 'invoices' },
+    { icon: ShoppingCart, label: t('purchases'), path: '/purchases', permission: 'purchases' },
+    { icon: Package, label: t('products'), path: '/products', permission: 'inventory' },
+    { icon: Users, label: t('clients'), path: '/clients', permission: 'clients' },
+    { icon: ReceiptIndianRupee, label: t('expenses'), path: '/expenses', permission: 'expenses' },
     { icon: Dna, label: 'Reconciliation', path: '/reconciliation' },
-    { icon: TrendingUp, label: t('reports'), path: '/reports' },
+    { icon: TrendingUp, label: t('reports'), path: '/reports', permission: 'reports' },
     { icon: SettingsIcon, label: t('settings'), path: '/settings' },
-  ];
+  ].filter(item => {
+    if (profile?.role === 'admin') return true;
+    if (!item.permission) return true;
+    return profile?.permissions?.includes(item.permission);
+  });
 
   const getRoleBadge = (role?: string) => {
     switch (role) {

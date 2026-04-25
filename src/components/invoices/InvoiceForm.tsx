@@ -477,7 +477,7 @@ export function InvoiceForm({ onSave, onCancel, settings, invoices, initialData 
                     <TableCell>
                       <Input 
                         type="number" 
-                        value={item.quantity} 
+                        value={item.quantity === 0 ? '' : item.quantity} 
                         onChange={e => updateQuantity(idx, Number(e.target.value))}
                         className="h-8 text-center font-bold font-mono border-slate-100"
                       />
@@ -485,7 +485,7 @@ export function InvoiceForm({ onSave, onCancel, settings, invoices, initialData 
                     <TableCell>
                        <Input 
                         type="number" 
-                        value={item.price} 
+                        value={item.price === 0 ? '' : item.price} 
                         onChange={e => updatePrice(idx, Number(e.target.value))}
                         className="h-8 text-right font-bold font-mono border-slate-100"
                       />
@@ -641,7 +641,7 @@ export function InvoiceForm({ onSave, onCancel, settings, invoices, initialData 
                       <Label className="text-[10px] font-bold text-slate-500 uppercase">Approx Distance (km)</Label>
                       <Input 
                         type="number"
-                        value={distance} 
+                        value={distance === 0 ? '' : distance} 
                         onChange={e => setDistance(Number(e.target.value))}
                         className="h-9 border-slate-200 text-xs"
                       />

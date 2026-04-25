@@ -4,7 +4,7 @@ import { Invoice, BusinessSettings } from '@/types';
 import { QRCodeSVG } from 'qrcode.react';
 import { amountToWords, generateUPIUrl } from '@/lib/invoice-utils';
 import { Button } from '@/components/ui/button';
-import { Download, Printer, CreditCard } from 'lucide-react';
+import { Download, Printer, CreditCard, Loader2 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { toast } from 'sonner';
@@ -113,122 +113,131 @@ export default function PublicInvoiceView() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f1f5f9] p-4 md:p-8 flex flex-col items-center">
-      <div className="w-full max-w-4xl flex justify-between items-center mb-6">
+    <div className="min-h-screen bg-[#f1f5f9] p-2 md:p-8 flex flex-col items-center">
+      <div className="w-full max-w-4xl flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 px-2">
         <div>
-          <h1 className="text-xl font-bold text-slate-800">Invoice Review</h1>
-          <p className="text-sm text-slate-500 font-mono">#{invoice.invoiceNumber}</p>
+          <h1 className="text-xl font-bold text-slate-800 tracking-tight">Invoice Review</h1>
+          <p className="text-xs text-slate-500 font-mono">Reference: #{invoice.invoiceNumber}</p>
         </div>
-        <div className="flex gap-2">
-           <Button variant="outline" size="sm" className="gap-2" onClick={() => window.print()}>
+        <div className="flex gap-2 w-full md:w-auto">
+           <Button variant="outline" size="sm" className="gap-2 flex-1 md:flex-none rounded-lg" onClick={() => window.print()}>
              <Printer className="w-4 h-4" /> Print
            </Button>
-           <Button size="sm" className="bg-black text-white gap-2" onClick={handleDownloadPDF} disabled={isExporting}>
-             <Download className="w-4 h-4" /> Download PDF
+           <Button size="sm" className="bg-black text-white gap-2 flex-1 md:flex-none rounded-lg shadow-lg" onClick={handleDownloadPDF} disabled={isExporting}>
+             {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+             Download PDF
            </Button>
         </div>
       </div>
 
-      <div className="bg-white w-full max-w-4xl shadow-xl rounded-xl overflow-hidden mb-12">
-         {/* Reusing existing Invoice Layout Logic... (Simplified for Portability) */}
-         <div id="invoice-print-area" className="p-12 md:p-16 space-y-12">
-              <div className="flex flex-col md:flex-row justify-between gap-8 border-b-2 border-slate-900 pb-12">
+      <div className="bg-white w-full max-w-4xl shadow-2xl md:rounded-2xl overflow-hidden mb-12">
+         {/* Invoice Layout */}
+         <div id="invoice-print-area" className="p-6 md:p-16 space-y-8 md:space-y-12">
+              <div className="flex flex-col md:flex-row justify-between gap-8 border-b-2 border-slate-900 pb-8 md:pb-12">
                 <div className="space-y-6">
                   {settings.logoUrl ? (
-                    <img src={settings.logoUrl} alt="Logo" className="h-16 w-auto object-contain" />
+                    <img src={settings.logoUrl} alt="Logo" className="h-12 md:h-16 w-auto object-contain" />
                   ) : (
-                    <h2 className="text-4xl font-extrabold tracking-tighter uppercase">{settings.companyName}</h2>
+                    <h2 className="text-3xl md:text-4xl font-extrabold tracking-tighter uppercase leading-none">{settings.companyName}</h2>
                   )}
                   <div className="space-y-1">
-                    <p className="text-sm text-slate-600 leading-relaxed max-w-md whitespace-pre-wrap">{settings.address}</p>
-                    <div className="mt-4 space-y-1 text-xs">
-                      <p><span className="font-bold">GSTIN:</span> {settings.gstin}</p>
-                      <p><span className="font-bold">Email:</span> {settings.email}</p>
-                      <p><span className="font-bold">Phone:</span> {settings.phone}</p>
+                    <p className="text-xs md:text-sm text-slate-600 leading-relaxed max-w-md whitespace-pre-wrap font-medium">{settings.address}</p>
+                    <div className="mt-4 space-y-1 text-[10px] md:text-xs">
+                      <p><span className="font-bold opacity-50 uppercase tracking-widest">GSTIN:</span> {settings.gstin}</p>
+                      <p><span className="font-bold opacity-50 uppercase tracking-widest">Email:</span> {settings.email}</p>
+                      <p><span className="font-bold opacity-50 uppercase tracking-widest">Phone:</span> {settings.phone}</p>
                     </div>
                   </div>
                 </div>
-              <div className="text-right flex flex-col justify-between">
+              <div className="text-left md:text-right flex flex-col justify-between items-start md:items-end">
                 <div className="space-y-1">
                   <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Invoice Date</div>
-                  <div className="text-xl font-bold">{invoice.date}</div>
+                  <div className="text-lg md:text-xl font-bold">{invoice.date}</div>
                 </div>
                 <div className="mt-8">
                   <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Amount</div>
-                  <div className="text-4xl font-black text-slate-900">₹{invoice.totalAmount.toLocaleString('en-IN')}</div>
+                  <div className="text-3xl md:text-4xl font-black text-slate-900 leading-none">₹{invoice.totalAmount.toLocaleString('en-IN')}</div>
                 </div>
               </div>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-12">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
               <div>
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mb-4">Client Information</h3>
+                <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-4">Client Information</h3>
                 <div className="space-y-1">
-                  <p className="text-xl font-bold text-slate-900">{invoice.clientName}</p>
-                  <p className="text-sm text-slate-600 whitespace-pre-wrap">{invoice.clientAddress}</p>
-                  {invoice.clientGstin && <p className="text-sm font-bold mt-2">GSTIN: {invoice.clientGstin}</p>}
+                  <p className="text-lg md:text-xl font-bold text-slate-900">{invoice.clientName}</p>
+                  <p className="text-xs md:text-sm text-slate-600 whitespace-pre-wrap leading-relaxed">{invoice.clientAddress}</p>
+                  {invoice.clientGstin && (
+                    <p className="text-[10px] md:text-xs font-bold mt-4 uppercase tracking-widest text-slate-400">
+                      GSTIN: <span className="text-slate-900">{invoice.clientGstin}</span>
+                    </p>
+                  )}
                 </div>
               </div>
-              <div className="bg-slate-50 p-6 rounded-lg border border-slate-100 flex flex-col items-center md:items-end justify-center">
-                 <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Scan & Pay via UPI</h3>
+              <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 flex flex-col items-center md:items-end justify-center gap-4">
+                 <div className="text-center md:text-right">
+                    <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Scan & Pay via UPI</h3>
+                    <div className="text-[10px] font-mono text-slate-500">{settings.upiId}</div>
+                 </div>
                  {upiUrl && (
-                   <div className="bg-white p-2 rounded-lg shadow-sm border border-slate-200">
-                     <QRCodeSVG value={upiUrl} size={120} />
+                   <div className="bg-white p-3 rounded-xl shadow-sm border border-slate-200">
+                     <QRCodeSVG value={upiUrl} size={100} />
                    </div>
                  )}
-                 <div className="mt-2 text-[10px] font-mono text-slate-500">{settings.upiId}</div>
               </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+            <div className="overflow-x-auto -mx-6 md:mx-0 px-6 md:px-0">
+              <table className="w-full text-[13px] md:text-sm">
                 <thead>
-                  <tr className="border-b-2 border-slate-900 text-left">
-                    <th className="py-4 font-black uppercase tracking-wider">Item Details</th>
-                    <th className="py-4 font-black uppercase tracking-wider text-right">Qty</th>
-                    <th className="py-4 font-black uppercase tracking-wider text-right">Price</th>
-                    <th className="py-4 font-black uppercase tracking-wider text-right">Amount</th>
+                  <tr className="border-b border-slate-900 text-left">
+                    <th className="py-4 md:py-6 font-black uppercase tracking-wider pr-4">Item Details</th>
+                    <th className="py-4 md:py-6 font-black uppercase tracking-wider text-right px-4">Qty</th>
+                    <th className="py-4 md:py-6 font-black uppercase tracking-wider text-right px-4">Price</th>
+                    <th className="py-4 md:py-6 font-black uppercase tracking-wider text-right pl-4">Amount</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {invoice.items.map((item, idx) => (
                     <tr key={idx} className="group">
-                      <td className="py-4">
+                      <td className="py-4 md:py-6 pr-4">
                         <div className="font-bold text-slate-900">{item.name}</div>
-                        <div className="text-xs text-slate-500">HSN: {item.hsn} • GST: {item.gstRate}%</div>
+                        <div className="text-[10px] text-slate-400 font-medium mt-1">HSN: {item.hsn} • GST: {item.gstRate}%</div>
                       </td>
-                      <td className="py-4 text-right tabular-nums">{item.quantity}</td>
-                      <td className="py-4 text-right tabular-nums">₹{item.price.toLocaleString('en-IN')}</td>
-                      <td className="py-4 text-right tabular-nums font-bold">₹{((item.price * item.quantity) + (item.price * item.quantity * item.gstRate / 100)).toLocaleString('en-IN')}</td>
+                      <td className="py-4 md:py-6 text-right tabular-nums px-4 font-medium">{item.quantity}</td>
+                      <td className="py-4 md:py-6 text-right tabular-nums px-4 font-medium">₹{item.price.toLocaleString('en-IN')}</td>
+                      <td className="py-4 md:py-6 text-right tabular-nums font-bold pl-4">₹{((item.price * item.quantity) + (item.price * item.quantity * item.gstRate / 100)).toLocaleString('en-IN')}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
 
-            <div className="flex flex-col md:flex-row justify-between pt-8 gap-12">
-              <div className="flex-1 space-y-4">
+            <div className="flex flex-col md:flex-row justify-between pt-8 gap-8 md:gap-12">
+              <div className="flex-1 space-y-6 md:space-y-8 order-2 md:order-1">
                 <div>
-                  <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Amount in Words</h3>
-                  <div className="text-sm font-medium italic text-slate-600 serif">Rupees {amountToWords(invoice.totalAmount)} only</div>
+                  <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Amount in Words</h3>
+                  <div className="text-[13px] font-bold italic text-slate-600 bg-slate-50 p-4 rounded-xl border border-slate-100">{amountToWords(invoice.totalAmount, invoice.currency)}</div>
                 </div>
                 <div>
-                  <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Terms & Conditions</h3>
-                  <div className="text-[10px] text-slate-500 whitespace-pre-wrap leading-relaxed">{settings.terms}</div>
+                  <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Terms & Conditions</h3>
+                  <div className="text-[10px] text-slate-400 whitespace-pre-wrap leading-relaxed font-medium">{settings.terms}</div>
                 </div>
               </div>
-              <div className="w-full md:w-64 space-y-3">
-                <div className="flex justify-between text-sm py-2 border-b border-dashed border-slate-200">
-                  <span className="text-slate-500 uppercase tracking-tight">Taxable Amount</span>
-                  <span className="font-bold">₹{invoice.taxableAmount.toLocaleString('en-IN')}</span>
+              <div className="w-full md:w-80 space-y-4 md:space-y-6 order-1 md:order-2">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs py-1">
+                    <span className="text-slate-400 font-bold uppercase tracking-widest">Taxable Amount</span>
+                    <span className="font-bold text-slate-900">₹{invoice.taxableAmount.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="flex justify-between text-xs py-1">
+                    <span className="text-slate-400 font-bold uppercase tracking-widest">Total GST</span>
+                    <span className="font-bold text-slate-900">₹{invoice.totalGst.toLocaleString('en-IN')}</span>
+                  </div>
                 </div>
-                <div className="flex justify-between text-sm py-2 border-b border-dashed border-slate-200">
-                  <span className="text-slate-500 uppercase tracking-tight">Total GST</span>
-                  <span className="font-bold">₹{invoice.totalGst.toLocaleString('en-IN')}</span>
-                </div>
-                <div className="flex justify-between items-center py-4 bg-slate-900 text-white rounded-lg px-4 mt-4">
+                <div className="flex justify-between items-center py-6 bg-slate-900 text-white rounded-2xl px-6 shadow-xl shadow-slate-200">
                   <span className="text-[10px] font-black uppercase tracking-widest">Grand Total</span>
-                  <span className="text-xl font-black">₹{invoice.totalAmount.toLocaleString('en-IN')}</span>
+                  <span className="text-2xl font-black">₹{invoice.totalAmount.toLocaleString('en-IN')}</span>
                 </div>
               </div>
             </div>

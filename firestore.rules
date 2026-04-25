@@ -45,22 +45,24 @@ service cloud.firestore {
       return data.keys().hasAll(['email', 'role']) && 
              data.email is string && data.email.size() <= 256 &&
              data.role in ['admin', 'billing'] &&
-             data.keys().size() <= 10;
+             (!('permissions' in data) || data.permissions is list) &&
+             data.keys().size() <= 15;
     }
 
     function isValidInvoice(data) {
        return data.keys().hasAll(['invoiceNumber', 'clientId', 'totalAmount', 'status']) &&
               data.invoiceNumber is string && data.invoiceNumber.size() <= 100 &&
-              data.clientId is string && data.totalAmount is number &&
+              data.clientId is string &&
+              data.totalAmount is number &&
               data.status in ['Draft', 'Paid', 'Pending', 'Cancelled'] &&
-              data.keys().size() <= 50;
+              data.keys().size() <= 60;
     }
 
     function isValidClient(data) {
       return data.keys().hasAll(['name', 'email']) &&
              data.name is string && data.name.size() <= 200 &&
              data.email is string && data.email.size() <= 256 &&
-             data.keys().size() <= 20;
+             data.keys().size() <= 30;
     }
 
     function isValidPurchase(data) {
@@ -81,18 +83,17 @@ service cloud.firestore {
     }
 
     // --- Rules ---
-
     match /users/{userId} {
       allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
       allow create: if isSignedIn() && request.auth.uid == userId && isValidUser(incoming());
-      allow update: if isAdmin() && isValidUser(incoming());
+      allow update: if (isAdmin() || (isSignedIn() && request.auth.uid == userId)) && isValidUser(incoming());
       allow delete: if isAdmin() && userId != request.auth.uid;
     }
 
     match /invoices/{invoiceId} {
       allow read, list: if isAnyUser();
-      allow create: if isBilling() && isValidInvoice(incoming());
-      allow update: if isBilling() && isValidInvoice(incoming()) && (
+      allow create: if isBilling() && isValidId(invoiceId) && isValidInvoice(incoming());
+      allow update: if isBilling() && isValidId(invoiceId) && isValidInvoice(incoming()) && (
         incoming().invoiceNumber == existing().invoiceNumber
       );
       allow delete: if isAdmin();

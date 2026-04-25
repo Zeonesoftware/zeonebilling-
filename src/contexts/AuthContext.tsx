@@ -19,6 +19,7 @@ interface AuthUserProfile {
   displayName: string;
   photoURL: string;
   role: UserRole;
+  permissions?: string[];
 }
 
 interface AuthContextType {
@@ -62,7 +63,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               email: firebaseUser.email || '',
               displayName: firebaseUser.displayName || docSnap.data().name || 'User',
               photoURL: firebaseUser.photoURL || '',
-              role: role
+              role: role,
+              permissions: docSnap.data().permissions || []
             });
           } else {
             // Check if we already created it in signUpWithEmail or if this is a first-time login
@@ -76,13 +78,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               email: firebaseUser.email || '',
               displayName: firebaseUser.displayName || 'User',
               photoURL: firebaseUser.photoURL || '',
-              role: 'billing'
+              role: 'billing',
+              permissions: []
             };
             
             await setDoc(docRef, {
               email: newProfile.email,
               name: newProfile.displayName,
               role: newProfile.role,
+              permissions: newProfile.permissions,
               createdAt: new Date().toISOString()
             }, { merge: true }); // Use merge to avoid overwriting signUpWithEmail's data if it just landed
             
@@ -121,13 +125,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email: cred.user.email || '',
       displayName: name,
       photoURL: '',
-      role: 'billing'
+      role: 'billing',
+      permissions: []
     };
     
     await setDoc(doc(db, 'users', cred.user.uid), {
       email: newProfile.email,
       name: newProfile.displayName,
       role: newProfile.role,
+      permissions: newProfile.permissions,
       createdAt: new Date().toISOString()
     });
     
