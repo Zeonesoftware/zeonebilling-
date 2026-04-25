@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LogIn, ReceiptIndianRupee, Mail, Lock, User, ArrowRight, Loader2 } from 'lucide-react';
@@ -7,13 +8,20 @@ import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 
 export default function LoginPage() {
-  const { signIn, signInWithEmail, signUpWithEmail, loading } = useAuth();
+  const { signIn, signInWithEmail, signUpWithEmail, loading, profile } = useAuth();
+  const navigate = useNavigate();
   const [isEmailView, setIsEmailView] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
+
+  useEffect(() => {
+    if (profile) {
+      navigate('/');
+    }
+  }, [profile, navigate]);
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,6 +35,7 @@ export default function LoginPage() {
       if (isSignUp) {
         await signUpWithEmail(email, password, name);
         toast.success('Account created successfully');
+        // The useEffect above will handle the navigation once profile is created
       } else {
         await signInWithEmail(email, password);
         toast.success('Signed in successfully');

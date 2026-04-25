@@ -43,47 +43,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(firebaseUser);
       
       if (firebaseUser) {
-        const docRef = doc(db, 'users', firebaseUser.uid);
-        const docSnap = await getDoc(docRef);
-        
-        if (docSnap.exists()) {
-          let role = docSnap.data().role as UserRole;
-          // Legacy support: auto-migrate view-only to billing
-          if ((docSnap.data().role as string) === 'view-only') {
-            role = 'billing';
-            // We can't use updateDoc directly here easily without importing it, 
-            // but it's already in firestore imports at the top.
-            // Let's just update the local profile for now or use the db import.
-            import('firebase/firestore').then(({ doc, updateDoc }) => {
-              updateDoc(doc(db, 'users', firebaseUser.uid), { role: 'billing' });
-            }).catch(console.error);
-          }
+        try {
+          const docRef = doc(db, 'users', firebaseUser.uid);
+          const docSnap = await getDoc(docRef);
+          
+          if (docSnap.exists()) {
+            let role = docSnap.data().role as UserRole;
+            // Legacy support: auto-migrate view-only to billing
+            if ((docSnap.data().role as string) === 'view-only') {
+              role = 'billing';
+              import('firebase/firestore').then(({ doc, updateDoc }) => {
+                updateDoc(doc(db, 'users', firebaseUser.uid), { role: 'billing' });
+              }).catch(console.error);
+            }
 
-          setProfile({
-            uid: firebaseUser.uid,
-            email: firebaseUser.email || '',
-            displayName: firebaseUser.displayName || docSnap.data().name || 'User',
-            photoURL: firebaseUser.photoURL || '',
-            role: role
-          });
-        } else {
-          // If no profile exists, create a default 'billing' profile
-          const newProfile: AuthUserProfile = {
-            uid: firebaseUser.uid,
-            email: firebaseUser.email || '',
-            displayName: firebaseUser.displayName || 'User',
-            photoURL: firebaseUser.photoURL || '',
-            role: 'billing'
-          };
-          
-          await setDoc(docRef, {
-            email: newProfile.email,
-            name: newProfile.displayName,
-            role: newProfile.role,
-            createdAt: new Date().toISOString()
-          });
-          
-          setProfile(newProfile);
+            setProfile({
+              uid: firebaseUser.uid,
+              email: firebaseUser.email || '',
+              displayName: firebaseUser.displayName || docSnap.data().name || 'User',
+              photoURL: firebaseUser.photoURL || '',
+              role: role
+            });
+          } else {
+            // Check if we already created it in signUpWithEmail or if this is a first-time login
+            // We use a small timeout to let signUpWithEmail's setDoc finish if it's currently running
+            // or we just try to create it if it really doesn't exist after a moment.
+            // Actually, a safer way is to just create it if we are sure we are not already in signUpWithEmail.
+            
+            // For now, let's just make sure it creates it if missing
+            const newProfile: AuthUserProfile = {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email || '',
+              displayName: firebaseUser.displayName || 'User',
+              photoURL: firebaseUser.photoURL || '',
+              role: 'billing'
+            };
+            
+            await setDoc(docRef, {
+              email: newProfile.email,
+              name: newProfile.displayName,
+              role: newProfile.role,
+              createdAt: new Date().toISOString()
+            }, { merge: true }); // Use merge to avoid overwriting signUpWithEmail's data if it just landed
+            
+            setProfile(newProfile);
+          }
+        } catch (error) {
+          console.error("Error fetching/creating profile:", error);
+          setLoading(false);
+          return;
         }
       } else {
         setProfile(null);
