@@ -18,10 +18,12 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useData } from '@/hooks/useData';
+import { useTranslation } from '@/contexts/LanguageContext';
 import { Invoice, Client, Item } from '@/types';
 import { cn } from '@/lib/utils';
 
 export default function Dashboard() {
+  const { t } = useTranslation();
   const { data: invoices } = useData<Invoice>('invoices');
   const { data: clients } = useData<Client>('clients');
   const { data: items } = useData<Item>('items');
@@ -55,17 +57,17 @@ export default function Dashboard() {
   ];
 
   const stats = [
-    { label: 'Total Revenue', value: `₹${totalSales.toLocaleString()}`, icon: TrendingUp, delta: '+12.5%', isPos: true, color: 'text-[#237227]' },
-    { label: 'Outstanding', value: `₹${outstanding.toLocaleString()}`, icon: ReceiptIndianRupee, delta: '-2.4%', isPos: false, color: 'text-[#FFAA00]' },
-    { label: 'Total Clients', value: clients.length.toString(), icon: Users, delta: '+3', isPos: true, color: 'text-[#519A66]' },
-    { label: 'Products', value: items.length.toString(), icon: Package, delta: '+5', isPos: true, color: 'text-[#FFD786] bg-[#237227]' },
+    { label: t('total_sales'), value: `₹${totalSales.toLocaleString()}`, icon: TrendingUp, delta: '+12.5%', isPos: true, color: 'text-[#237227]' },
+    { label: t('outstanding'), value: `₹${outstanding.toLocaleString()}`, icon: ReceiptIndianRupee, delta: '-2.4%', isPos: false, color: 'text-[#FFAA00]' },
+    { label: t('clients'), value: clients.length.toString(), icon: Users, delta: '+3', isPos: true, color: 'text-[#519A66]' },
+    { label: t('products'), value: items.length.toString(), icon: Package, delta: '+5', isPos: true, color: 'text-[#FFD786] bg-[#237227]' },
   ];
 
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">Financial Overview</h2>
-        <p className="text-[#666666] text-sm italic serif">Real-time business performance metrics</p>
+        <h2 className="text-2xl font-bold tracking-tight">{t('dashboard')}</h2>
+        <p className="text-[#666666] text-sm italic serif">{t('welcome')}</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

@@ -28,7 +28,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Toaster } from '@/components/ui/sonner';
-import { useTranslation } from '@/hooks/useTranslation';
+import { useTranslation } from '@/contexts/LanguageContext';
 import {
   DropdownMenu,
   DropdownMenuContent,

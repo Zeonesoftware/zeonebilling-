@@ -44,7 +44,7 @@ service cloud.firestore {
     function isValidUser(data) {
       return data.keys().hasAll(['email', 'role']) && 
              data.email is string && data.email.size() <= 256 &&
-             data.role in ['admin', 'billing'] &&
+             data.role in ['admin', 'billing', 'removed'] &&
              (!('permissions' in data) || data.permissions is list) &&
              data.keys().size() <= 15;
     }

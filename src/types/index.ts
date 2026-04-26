@@ -45,6 +45,7 @@ export interface Item {
   unit: string;
   category: string; 
   description?: string;
+  imageUrl?: string;
 }
 
 export interface InvoiceItem {

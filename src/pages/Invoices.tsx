@@ -20,7 +20,10 @@ import {
   Square,
   X,
   Zap,
-  CreditCard
+  CreditCard,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,7 +64,11 @@ export default function Invoices() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
   const [isCreating, setIsCreating] = useState(false);
+  const [sortKey, setSortKey] = useState<keyof Invoice>('date');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   // Handle quick action from navigation state
   useEffect(() => {
@@ -113,16 +120,54 @@ export default function Invoices() {
     );
   };
 
-  const filteredInvoices = invoices.filter(inv => {
-    const matchesSearch = 
-      inv.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      inv.clientName.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === 'all' || inv.status === statusFilter;
-    const matchesType = typeFilter === 'all' || inv.type === typeFilter;
-    
-    return matchesSearch && matchesStatus && matchesType;
-  });
+  const handleSort = (key: keyof Invoice) => {
+    if (sortKey === key) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortOrder('asc');
+    }
+  };
+
+  const filteredInvoices = [...invoices]
+    .filter(inv => {
+      const matchesSearch = 
+        inv.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        inv.clientName.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesStatus = statusFilter === 'all' || inv.status === statusFilter;
+      const matchesType = typeFilter === 'all' || inv.type === typeFilter;
+      
+      const invoiceDate = new Date(inv.date).setHours(0, 0, 0, 0);
+      const matchesStartDate = !startDate || invoiceDate >= new Date(startDate).setHours(0, 0, 0, 0);
+      const matchesEndDate = !endDate || invoiceDate <= new Date(endDate).setHours(23, 59, 59, 999);
+      
+      return matchesSearch && matchesStatus && matchesType && matchesStartDate && matchesEndDate;
+    })
+    .sort((a, b) => {
+      const aValue = a[sortKey];
+      const bValue = b[sortKey];
+
+      if (aValue === undefined || bValue === undefined) return 0;
+
+      let comparison = 0;
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        comparison = aValue.localeCompare(bValue);
+      } else if (typeof aValue === 'number' && typeof bValue === 'number') {
+        comparison = aValue - bValue;
+      } else if (sortKey === 'date' || sortKey === 'dueDate') {
+        comparison = new Date(aValue as string).getTime() - new Date(bValue as string).getTime();
+      }
+
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+
+  const getSortIcon = (key: keyof Invoice) => {
+    if (sortKey !== key) return <ArrowUpDown className="w-3 h-3 ml-1 text-slate-300" />;
+    return sortOrder === 'asc' ? 
+      <ArrowUp className="w-3 h-3 ml-1 text-[#237227]" /> : 
+      <ArrowDown className="w-3 h-3 ml-1 text-[#237227]" />;
+  };
 
   const handleCreate = async (invoiceData: Partial<Invoice>) => {
     try {
@@ -327,14 +372,42 @@ export default function Invoices() {
           />
         </div>
         
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className={cn("gap-2 text-slate-500 font-bold text-[10px] uppercase tracking-widest", (statusFilter !== 'all' || typeFilter !== 'all') && "text-[#237227] bg-emerald-50")}>
-              <Filter className="w-4 h-4" />
-              {statusFilter !== 'all' || typeFilter !== 'all' ? 'Filters Active' : 'Advanced Filters'}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56 p-2 rounded-xl shadow-2xl border-slate-100">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 bg-slate-50 p-1 px-2 rounded-lg border border-slate-200">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Date Range</span>
+            <Input 
+              type="date" 
+              className="h-8 w-[130px] border-none bg-transparent text-xs font-bold focus-visible:ring-0 p-0"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+            <span className="text-slate-300 mx-1">/</span>
+            <Input 
+              type="date" 
+              className="h-8 w-[130px] border-none bg-transparent text-xs font-bold focus-visible:ring-0 p-0 text-right"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+            {(startDate || endDate) && (
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-6 w-6 text-slate-400 hover:text-red-600 ml-1"
+                onClick={() => { setStartDate(''); setEndDate(''); }}
+              >
+                <X className="w-3 h-3" />
+              </Button>
+            )}
+          </div>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className={cn("gap-2 text-slate-500 font-bold text-[10px] uppercase tracking-widest h-10", (statusFilter !== 'all' || typeFilter !== 'all' || startDate !== '' || endDate !== '') && "text-[#237227] bg-emerald-50 border border-emerald-100")}>
+                <Filter className="w-4 h-4" />
+                {statusFilter !== 'all' || typeFilter !== 'all' || startDate !== '' || endDate !== '' ? 'Filters Active' : 'Advanced Filters'}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 p-2 rounded-xl shadow-2xl border-slate-100">
             <div className="px-2 py-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b mb-1">Filter by Status</div>
             <DropdownMenuItem onClick={() => setStatusFilter('all')} className={cn("font-bold text-xs uppercase tracking-wider", statusFilter === 'all' && "text-[#237227]")}>All Statuses</DropdownMenuItem>
             <DropdownMenuItem onClick={() => setStatusFilter('Paid')} className={cn("font-bold text-xs uppercase tracking-wider", statusFilter === 'Paid' && "text-emerald-600")}>Paid</DropdownMenuItem>
@@ -348,16 +421,17 @@ export default function Invoices() {
             <DropdownMenuItem onClick={() => setTypeFilter('Proforma')} className={cn("font-bold text-xs uppercase tracking-wider", typeFilter === 'Proforma' && "text-[#237227]")}>Proforma</DropdownMenuItem>
             <DropdownMenuItem onClick={() => setTypeFilter('Delivery Challan')} className={cn("font-bold text-xs uppercase tracking-wider", typeFilter === 'Delivery Challan' && "text-[#237227]")}>Challan</DropdownMenuItem>
             
-            {(statusFilter !== 'all' || typeFilter !== 'all') && (
+            {(statusFilter !== 'all' || typeFilter !== 'all' || startDate !== '' || endDate !== '') && (
               <>
                 <div className="border-t my-1" />
-                <DropdownMenuItem onClick={() => { setStatusFilter('all'); setTypeFilter('all'); }} className="font-bold text-xs uppercase tracking-wider text-red-600">
-                  <X className="w-3 h-3 mr-2" /> Clear All
+                <DropdownMenuItem onClick={() => { setStatusFilter('all'); setTypeFilter('all'); setStartDate(''); setEndDate(''); }} className="font-bold text-xs uppercase tracking-wider text-red-600">
+                  <X className="w-3 h-3 mr-2" /> Clear All Filters
                 </DropdownMenuItem>
               </>
             )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
@@ -378,12 +452,69 @@ export default function Invoices() {
                   )}
                 </Button>
               </TableHead>
-              <TableHead className="w-[120px] sm:w-[140px] font-black text-[10px] uppercase tracking-widest text-slate-400">Doc Number</TableHead>
-              <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-400">Client / Customer</TableHead>
-              <TableHead className="hidden sm:table-cell font-black text-[10px] uppercase tracking-widest text-center text-slate-400">Type</TableHead>
-              <TableHead className="font-black text-[10px] uppercase tracking-widest text-center text-slate-400">Status</TableHead>
-              <TableHead className="hidden lg:table-cell font-black text-[10px] uppercase tracking-widest text-slate-400">Issue Date</TableHead>
-              <TableHead className="font-black text-[10px] uppercase tracking-widest text-right text-slate-400">Amount</TableHead>
+              <TableHead className="w-[120px] sm:w-[140px]">
+                <Button 
+                  variant="ghost" 
+                  className="font-black text-[10px] uppercase tracking-widest text-slate-400 p-0 hover:bg-transparent hover:text-slate-900 h-auto"
+                  onClick={() => handleSort('invoiceNumber')}
+                >
+                  Doc Number {getSortIcon('invoiceNumber')}
+                </Button>
+              </TableHead>
+              <TableHead>
+                <Button 
+                  variant="ghost" 
+                  className="font-black text-[10px] uppercase tracking-widest text-slate-400 p-0 hover:bg-transparent hover:text-slate-900 h-auto"
+                  onClick={() => handleSort('clientName')}
+                >
+                  Client / Customer {getSortIcon('clientName')}
+                </Button>
+              </TableHead>
+              <TableHead className="hidden sm:table-cell text-center">
+                <Button 
+                  variant="ghost" 
+                  className="font-black text-[10px] uppercase tracking-widest text-slate-400 p-0 hover:bg-transparent hover:text-slate-900 h-auto mx-auto"
+                  onClick={() => handleSort('type')}
+                >
+                  Type {getSortIcon('type')}
+                </Button>
+              </TableHead>
+              <TableHead className="text-center">
+                <Button 
+                  variant="ghost" 
+                  className="font-black text-[10px] uppercase tracking-widest text-slate-400 p-0 hover:bg-transparent hover:text-slate-900 h-auto mx-auto"
+                  onClick={() => handleSort('status')}
+                >
+                  Status {getSortIcon('status')}
+                </Button>
+              </TableHead>
+              <TableHead className="hidden lg:table-cell">
+                <Button 
+                  variant="ghost" 
+                  className="font-black text-[10px] uppercase tracking-widest text-slate-400 p-0 hover:bg-transparent hover:text-slate-900 h-auto"
+                  onClick={() => handleSort('date')}
+                >
+                  Issue Date {getSortIcon('date')}
+                </Button>
+              </TableHead>
+              <TableHead className="hidden xl:table-cell">
+                <Button 
+                  variant="ghost" 
+                  className="font-black text-[10px] uppercase tracking-widest text-slate-400 p-0 hover:bg-transparent hover:text-slate-900 h-auto"
+                  onClick={() => handleSort('dueDate')}
+                >
+                  Due Date {getSortIcon('dueDate')}
+                </Button>
+              </TableHead>
+              <TableHead className="text-right">
+                <Button 
+                  variant="ghost" 
+                  className="font-black text-[10px] uppercase tracking-widest text-slate-400 p-0 hover:bg-transparent hover:text-slate-900 h-auto ml-auto"
+                  onClick={() => handleSort('totalAmount')}
+                >
+                  Amount {getSortIcon('totalAmount')}
+                </Button>
+              </TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
@@ -430,6 +561,9 @@ export default function Invoices() {
                 </TableCell>
                 <TableCell className="hidden lg:table-cell text-slate-500 text-xs font-bold tabular-nums">
                   {format(new Date(inv.date), 'dd MMM yyyy')}
+                </TableCell>
+                <TableCell className="hidden xl:table-cell text-slate-500 text-xs font-bold tabular-nums">
+                  {inv.dueDate ? format(new Date(inv.dueDate), 'dd MMM yyyy') : '-'}
                 </TableCell>
                 <TableCell className="text-right font-black text-xs sm:text-sm font-mono text-slate-900 whitespace-nowrap">
                   <div className="flex flex-col items-end gap-1">

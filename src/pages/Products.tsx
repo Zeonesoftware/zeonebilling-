@@ -8,6 +8,13 @@ import { Plus, Search, Package, MoreHorizontal, FileEdit, Trash2, Upload, CheckC
 import { Input } from '@/components/ui/input';
 import { ItemForm } from '@/components/products/ItemForm';
 import { cn } from '@/lib/utils';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogFooter 
+} from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { 
@@ -42,6 +49,7 @@ export default function Products() {
   const [bulkStockValue, setBulkStockValue] = useState('');
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
   const [groupByCategory, setGroupByCategory] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const threshold = settings?.lowStockThreshold || 10;
@@ -461,6 +469,7 @@ export default function Products() {
                   onCheckedChange={toggleSelectAll}
                 />
               </TableHead>
+              <TableHead className="w-[60px] font-mono text-[10px] uppercase tracking-widest text-[#666666]">Img</TableHead>
               <TableHead className="font-mono text-[10px] uppercase tracking-widest text-[#666666]">Product Name</TableHead>
               {!groupByCategory && <TableHead className="hidden md:table-cell font-mono text-[10px] uppercase tracking-widest text-[#666666]">Category</TableHead>}
               <TableHead className="hidden lg:table-cell font-mono text-[10px] uppercase tracking-widest text-center text-[#666666]">HSN</TableHead>
@@ -515,6 +524,20 @@ export default function Products() {
                             checked={selectedIds.includes(item.id)}
                             onCheckedChange={() => toggleSelectOne(item.id)}
                           />
+                        </TableCell>
+                        <TableCell>
+                          {item.imageUrl ? (
+                            <div 
+                              className="w-10 h-10 rounded border border-slate-200 overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
+                              onClick={() => setSelectedImage(item.imageUrl!)}
+                            >
+                              <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                            </div>
+                          ) : (
+                            <div className="w-10 h-10 rounded border border-slate-100 bg-slate-50 flex items-center justify-center text-slate-300">
+                              <Package className="w-5 h-5" />
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell>
                           <div className="font-medium text-xs sm:text-sm truncate max-w-[120px] sm:max-w-none">{item.name}</div>
@@ -584,6 +607,20 @@ export default function Products() {
         onSave={handleSave}
         item={editingItem}
       />
+
+      <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
+        <DialogContent className="sm:max-w-[600px] p-1 bg-black border-none">
+          <div className="flex justify-center items-center bg-black rounded-lg overflow-hidden min-h-[300px]">
+            {selectedImage && (
+              <img 
+                src={selectedImage} 
+                alt="Product Preview" 
+                className="max-w-full max-h-[80vh] object-contain"
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

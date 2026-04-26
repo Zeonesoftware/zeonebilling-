@@ -54,7 +54,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const docSnap = await getDoc(docRef);
           
           if (docSnap.exists()) {
-            let role = docSnap.data().role as UserRole;
+            const data = docSnap.data();
+            if (data.role === 'removed') {
+              await signOut(auth);
+              setProfile(null);
+              setLoading(false);
+              return;
+            }
+
+            let role = data.role as UserRole;
             // Legacy support: auto-migrate view-only to billing
             if ((docSnap.data().role as string) === 'view-only') {
               role = 'billing';
@@ -74,13 +82,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             });
           } else {
             // Check if we already created it in signUpWithEmail or if this is a first-time login
+            const isOwner = firebaseUser.email === 'zeonesoftware@gmail.com';
             const newProfile: AuthUserProfile = {
               uid: firebaseUser.uid,
               email: firebaseUser.email || '',
               displayName: firebaseUser.displayName || 'User',
               photoURL: firebaseUser.photoURL || '',
-              role: 'billing',
-              permissions: [],
+              role: isOwner ? 'admin' : 'billing',
+              permissions: isOwner ? ['pos', 'invoices', 'inventory', 'purchases', 'clients', 'expenses', 'reconciliation', 'reports', 'quick_actions'] : [],
               phoneNumber: firebaseUser.phoneNumber || ''
             };
             

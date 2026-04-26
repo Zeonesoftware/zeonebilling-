@@ -37,7 +37,8 @@ export function ItemForm({ item, isOpen, onClose, onSave }: ItemFormProps) {
     stock: 0,
     unit: 'Unit',
     barcode: '',
-    description: ''
+    description: '',
+    imageUrl: ''
   });
 
   const handleSave = () => {
@@ -52,9 +53,28 @@ export function ItemForm({ item, isOpen, onClose, onSave }: ItemFormProps) {
         </DialogHeader>
         <ScrollArea className="max-h-[80vh] px-1">
           <div className="grid gap-4 py-4 pr-3">
+            {formData.imageUrl && (
+              <div className="flex justify-center mb-2">
+                <img 
+                  src={formData.imageUrl} 
+                  alt="Preview" 
+                  className="h-24 w-24 object-cover rounded-lg border border-slate-200"
+                  onError={(e) => (e.currentTarget.style.display = 'none')}
+                />
+              </div>
+            )}
             <div className="grid gap-2">
               <Label htmlFor="name" className="text-xs uppercase font-bold text-[#666666]">Product Name</Label>
               <Input id="name" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="imageUrl" className="text-xs uppercase font-bold text-[#666666]">Product Image URL</Label>
+              <Input 
+                id="imageUrl" 
+                value={formData.imageUrl} 
+                onChange={e => setFormData({ ...formData, imageUrl: e.target.value })} 
+                placeholder="https://example.com/image.jpg"
+              />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">

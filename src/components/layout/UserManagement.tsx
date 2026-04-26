@@ -1,7 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { collection, query, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db, handleFirestoreError, OperationType } from '@/lib/firebase';
 import { useAuth, UserRole } from '@/contexts/AuthContext';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogFooter, 
+  DialogHeader, 
+  DialogTitle 
+} from '@/components/ui/dialog';
 import { 
   Table, 
   TableBody, 
@@ -24,6 +32,8 @@ import { toast } from 'sonner';
 
 export function UserManagement() {
   const [users, setUsers] = useState<any[]>([]);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<any>(null);
   const { profile } = useAuth();
 
   const FEATURES = [
@@ -43,13 +53,15 @@ export function UserManagement() {
 
     const q = query(collection(db, 'users'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const usersData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      const usersData = snapshot.docs
+        .map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }))
+        .filter((u: any) => u.role !== 'removed');
       setUsers(usersData);
     }, (error) => {
-      console.error("Error fetching users:", error);
+      handleFirestoreError(error, OperationType.LIST, 'users');
     });
 
     return () => unsubscribe();
@@ -60,7 +72,7 @@ export function UserManagement() {
       await updateDoc(doc(db, 'users', userId), { role: newRole });
       toast.success(`Role updated to ${newRole}`);
     } catch (err) {
-      toast.error('Failed to update role');
+      handleFirestoreError(err, OperationType.UPDATE, `users/${userId}`);
     }
   };
 
@@ -82,23 +94,36 @@ export function UserManagement() {
       await updateDoc(doc(db, 'users', userId), { permissions: newPermissions });
       // No toast for every toggle to avoid spam, but we could add one if it's slow
     } catch (err) {
-      toast.error('Failed to update permissions');
+      handleFirestoreError(err, OperationType.UPDATE, `users/${userId}`);
     }
   };
 
-  const handleDeleteUser = async (userId: string) => {
-    if (userId === profile?.uid) {
+  const handleDeleteUser = async (user: any) => {
+    if (user.id === profile?.uid) {
       toast.error('You cannot delete your own admin account');
       return;
     }
     
-    if (!confirm('Are you sure you want to remove this user?')) return;
-    
+    setUserToDelete(user);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!userToDelete) return;
+
     try {
-      await deleteDoc(doc(db, 'users', userId));
+      // Instead of deleting (which causes recreation by AuthContext), we set role to 'removed'
+      await updateDoc(doc(db, 'users', userToDelete.id), { 
+        role: 'removed',
+        permissions: [],
+        removedAt: new Date().toISOString() 
+      });
       toast.success('User removed');
     } catch (err) {
-      toast.error('Failed to remove user');
+      handleFirestoreError(err, OperationType.UPDATE, `users/${userToDelete.id}`);
+    } finally {
+      setIsDeleteDialogOpen(false);
+      setUserToDelete(null);
     }
   };
 
@@ -195,7 +220,7 @@ export function UserManagement() {
                         <Shield className="w-4 h-4 text-blue-600" /> Make Billing
                       </DropdownMenuItem>
                       <div className="my-1 border-t border-slate-100" />
-                      <DropdownMenuItem onClick={() => handleDeleteUser(user.id)} className="gap-3 py-2.5 font-bold text-xs uppercase tracking-wider text-red-600 focus:text-red-600">
+                      <DropdownMenuItem onClick={() => handleDeleteUser(user)} className="gap-3 py-2.5 font-bold text-xs uppercase tracking-wider text-red-600 focus:text-red-600">
                         <Trash2 className="w-4 h-4" /> Remove User
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -206,6 +231,29 @@ export function UserManagement() {
           </TableBody>
         </Table>
       </div>
+
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <Trash2 className="w-5 h-5" />
+              Remove Team Member
+            </DialogTitle>
+            <DialogDescription className="pt-2">
+              Are you sure you want to remove <strong>{userToDelete?.name || userToDelete?.email}</strong>? 
+              They will lose access to all features immediately.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-6 flex gap-2">
+            <Button variant="ghost" onClick={() => setIsDeleteDialogOpen(false)} className="flex-1 rounded-xl font-bold uppercase tracking-widest text-[10px]">
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDelete} className="flex-1 rounded-xl font-bold uppercase tracking-widest text-[10px]">
+              Confirm Remove
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
