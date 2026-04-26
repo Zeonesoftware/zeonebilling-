@@ -29,7 +29,9 @@ import {
   DropdownMenu, 
   DropdownMenuContent, 
   DropdownMenuItem, 
-  DropdownMenuTrigger 
+  DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSeparator
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { useData } from '@/hooks/useData';
@@ -45,13 +47,21 @@ export default function Purchases() {
   const { canCreate, canEdit, canDelete } = useRBAC();
   const { data: purchases, loading, addItem, updateItem, deleteItem } = useData<Purchase>('purchases');
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingPurchase, setEditingPurchase] = useState<Purchase | null>(null);
   
-  const filteredPurchases = purchases.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).filter(p => 
-    p.purchaseNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.supplierName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredPurchases = purchases
+    .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .filter(p => {
+      const matchesSearch = 
+        p.purchaseNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.supplierName.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesStatus = statusFilter === 'all' || p.status === statusFilter;
+      
+      return matchesSearch && matchesStatus;
+    });
 
   const handleSave = async (data: Partial<Purchase>) => {
     try {
@@ -132,10 +142,22 @@ export default function Purchases() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <Button variant="ghost" size="sm" className="gap-2 text-slate-500 font-bold text-[10px] uppercase tracking-widest">
-          <Filter className="w-4 h-4" />
-          More Filters
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className={cn("gap-2 text-slate-500 font-bold text-[10px] uppercase tracking-widest", statusFilter !== 'all' && "text-blue-600 bg-blue-50")}>
+              <Filter className="w-4 h-4" />
+              {statusFilter !== 'all' ? 'Filters Active' : 'More Filters'}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48 p-2 rounded-xl border-slate-100 shadow-2xl">
+            <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-slate-400 font-black">Filter Status</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => setStatusFilter('all')} className={cn("font-bold text-xs uppercase tracking-wider", statusFilter === 'all' && "text-blue-600")}>All Statuses</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setStatusFilter('Paid')} className={cn("font-bold text-xs uppercase tracking-wider", statusFilter === 'Paid' && "text-emerald-600")}>Paid</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setStatusFilter('Pending')} className={cn("font-bold text-xs uppercase tracking-wider", statusFilter === 'Pending' && "text-amber-600")}>Unpaid / Pending</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setStatusFilter('Cancelled')} className={cn("font-bold text-xs uppercase tracking-wider", statusFilter === 'Cancelled' && "text-rose-600")}>Cancelled</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">

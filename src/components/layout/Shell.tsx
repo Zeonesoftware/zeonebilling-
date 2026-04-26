@@ -37,6 +37,8 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 
+import { Logo } from '@/components/Logo';
+
 export function Shell() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const { t, language, setLanguage } = useTranslation();
@@ -98,11 +100,14 @@ export function Shell() {
   return (
     <div className="flex h-screen bg-[#f8fafc] text-[#1e293b] font-sans antialiased overflow-hidden">
       {/* Sidebar - Desktop */}
-      <aside className="hidden md:flex flex-col w-60 bg-[#237227] text-white/70 flex-shrink-0 transition-all border-r border-[#1B561E]">
+      <aside className="hidden md:flex flex-col w-60 bg-sidebar text-sidebar-foreground flex-shrink-0 transition-all border-r border-sidebar-border">
         <div className="p-8 pb-4">
-          <div className="flex flex-col">
-            <h1 className="text-2xl font-bold text-white tracking-tight">ZEONE</h1>
-            <p className="text-[10px] text-white/40 font-mono uppercase tracking-tighter mt-1">v1.4.0 • CLOUD ACTIVE</p>
+          <div className="flex items-center gap-3">
+            <Logo className="w-10 h-10" />
+            <div className="flex flex-col">
+              <h1 className="text-xl font-black text-white tracking-tighter leading-none">ZEONE</h1>
+              <p className="text-[9px] text-white/40 font-mono uppercase tracking-widest mt-1">v1.4.0 • ACTIVE</p>
+            </div>
           </div>
         </div>
         
@@ -115,8 +120,8 @@ export function Shell() {
                 className={({ isActive }) => cn(
                   "flex items-center gap-3 px-8 py-3 text-sm font-medium transition-all relative",
                   isActive 
-                    ? "bg-[#1B561E] text-[#FFAA00]" 
-                    : "hover:bg-[#1B561E] hover:text-white"
+                    ? "bg-sidebar-accent text-[#FFAA00]" 
+                    : "hover:bg-sidebar-accent hover:text-white"
                 )}
               >
                 {({ isActive }) => (
@@ -155,6 +160,7 @@ export function Shell() {
               <Menu className="w-5 h-5" />
             </Button>
             <div className="flex items-center gap-2 sm:gap-4 truncate">
+              <Logo className="w-6 h-6 hidden sm:block" />
               <h2 className="text-sm sm:text-lg font-semibold tracking-tight truncate">Zeone Billing</h2>
               <div className="hidden sm:flex items-center gap-2 text-[12px] text-[#10b981] font-medium">
                 <div className="w-2 h-2 rounded-full bg-[#10b981]" />
@@ -245,12 +251,15 @@ export function Shell() {
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 md:hidden backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)}>
           <aside 
-            className="w-64 h-full bg-[#237227] shadow-2xl flex flex-col text-white/70"
+            className="w-64 h-full bg-sidebar shadow-2xl flex flex-col text-sidebar-foreground"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-8 pb-4 flex items-center justify-between">
-              <div className="font-bold text-xl text-white tracking-tight">ZEONE</div>
-              <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(false)} className="text-white/60 hover:bg-[#1B561E]">
+              <div className="flex items-center gap-3">
+                <Logo className="w-8 h-8" />
+                <div className="font-bold text-xl text-white tracking-tight">ZEONE</div>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(false)} className="text-white/60 hover:bg-sidebar-accent">
                 <X className="w-5 h-5" />
               </Button>
             </div>
@@ -263,8 +272,8 @@ export function Shell() {
                   className={({ isActive }) => cn(
                     "flex items-center gap-3 px-8 py-3 text-sm font-medium transition-all relative",
                     isActive 
-                      ? "bg-[#1B561E] text-[#FFAA00]" 
-                      : "hover:bg-[#1B561E] hover:text-white"
+                      ? "bg-sidebar-accent text-[#FFAA00]" 
+                      : "hover:bg-sidebar-accent hover:text-white"
                   )}
                 >
                   {({ isActive }) => (

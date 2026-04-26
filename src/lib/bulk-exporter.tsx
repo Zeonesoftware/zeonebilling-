@@ -74,12 +74,16 @@ export async function exportInvoices(
           clonedDoc.documentElement.classList.remove('dark');
           clonedDoc.body.classList.remove('dark');
 
+          // Neutralize modern CSS functions and font properties that crash html2canvas
           const styleSheets = clonedDoc.querySelectorAll('style');
           styleSheets.forEach(sheet => {
-            if (sheet.innerHTML.includes('okl')) {
-              // Replace oklch/oklab with hex to prevent parsing errors in html2canvas
-              sheet.innerHTML = sheet.innerHTML.replace(/oklch\([^)]+\)/g, '#000000');
-              sheet.innerHTML = sheet.innerHTML.replace(/oklab\([^)]+\)/g, '#000000');
+            if (sheet.innerHTML.includes('okl') || sheet.innerHTML.includes('font-') || sheet.innerHTML.includes('var(')) {
+              // Replace oklch/oklab with hex
+              sheet.innerHTML = sheet.innerHTML.replace(/okl[a-z]{2,3}\s*\([^)]+\)/gi, '#334155');
+              // Remove modern font properties that can cause issues
+              sheet.innerHTML = sheet.innerHTML.replace(/font-variant-[a-z-]+\s*:[^;]+;/gi, '');
+              sheet.innerHTML = sheet.innerHTML.replace(/font-feature-settings\s*:[^;]+;/gi, '');
+              sheet.innerHTML = sheet.innerHTML.replace(/font-variation-settings\s*:[^;]+;/gi, '');
             }
           });
 
@@ -87,9 +91,20 @@ export async function exportInvoices(
           for (let i = 0; i < elements.length; i++) {
             const el = elements[i] as HTMLElement;
             try {
-              if (el.style.color?.includes('okl')) el.style.color = '#000000';
-              if (el.style.backgroundColor?.includes('okl')) el.style.backgroundColor = 'transparent';
-              if (el.style.borderColor?.includes('okl')) el.style.borderColor = '#000000';
+              const style = el.style;
+              if (style) {
+                // Reset any styles that might use modern color functions
+                if (style.color?.match(/okl/i)) style.color = '#334155';
+                if (style.backgroundColor?.match(/okl/i)) style.backgroundColor = 'transparent';
+                if (style.borderColor?.match(/okl/i)) style.borderColor = '#334155';
+                
+                // Defensively clear font-variant which often causes PDF crashes
+                style.fontVariantNumeric = 'normal';
+                style.fontFeatureSettings = 'normal';
+                style.fontVariantCaps = 'normal';
+                style.fontVariantLigatures = 'none';
+                style.fontVariantAlternates = 'normal';
+              }
             } catch (e) {}
           }
           const style = clonedDoc.createElement('style');
@@ -99,7 +114,15 @@ export async function exportInvoices(
               --background: 255 255 255 !important;
               --foreground: 30 41 59 !important;
             }
-            * { color-scheme: light !important; }
+            * { 
+              color-scheme: light !important; 
+              font-variant-numeric: normal !important;
+              font-feature-settings: normal !important;
+              font-variant-caps: normal !important;
+              font-variant-ligatures: none !important;
+              font-variant-alternates: normal !important;
+              font-variation-settings: normal !important;
+            }
             #invoice-print-area { background-color: white !important; color: #1e293b !important; }
             .bg-background { background-color: #ffffff !important; }
             .text-foreground { color: #1e293b !important; }
@@ -114,6 +137,10 @@ export async function exportInvoices(
           clonedDoc.head.appendChild(style);
         }
       });
+
+      if (!canvas || canvas.width === 0) {
+        continue;
+      }
 
       const imgData = canvas.toDataURL('image/jpeg', 0.95);
       

@@ -8,7 +8,8 @@ import {
   Mail,
   Link as LinkIcon,
   Globe,
-  Truck
+  Truck,
+  FileText
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -23,6 +24,8 @@ import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { ThermalReceipt } from './ThermalReceipt';
 import { EWayBillForm } from './EWayBillForm';
+import { EInvoiceManager } from './EInvoiceManager';
+import { Logo } from '../Logo';
 
 interface InvoiceViewProps {
   invoice: Invoice;
@@ -38,6 +41,7 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
   const [isExporting, setIsExporting] = useState(false);
   const [isEmailing, setIsEmailing] = useState(false);
   const [isEWayBillModalOpen, setIsEWayBillModalOpen] = useState(false);
+  const [isEInvoiceModalOpen, setIsEInvoiceModalOpen] = useState(false);
   const [currentStyle, setCurrentStyle] = useState<Invoice['pdfStyle'] | 'Thermal'>(initialStyle || invoice.pdfStyle || 'Professional');
 
   const handlePrint = () => {
@@ -132,13 +136,16 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
         clonedDoc.documentElement.classList.remove('dark');
         clonedDoc.body.classList.remove('dark');
 
-        // Identify and and neutralize modern color functions in all style tags
+        // Neutralize modern CSS functions and font properties that crash html2canvas
         const styleSheets = clonedDoc.querySelectorAll('style');
         styleSheets.forEach(sheet => {
-          if (sheet.innerHTML.includes('okl')) {
-            // Replace oklch/oklab with hex or inherit to prevent parsing errors
-            sheet.innerHTML = sheet.innerHTML.replace(/oklch\([^)]+\)/g, '#000000');
-            sheet.innerHTML = sheet.innerHTML.replace(/oklab\([^)]+\)/g, '#000000');
+          if (sheet.innerHTML.includes('okl') || sheet.innerHTML.includes('font-') || sheet.innerHTML.includes('var(')) {
+            // Replace oklch/oklab with hex
+            sheet.innerHTML = sheet.innerHTML.replace(/okl[a-z]{2,3}\s*\([^)]+\)/gi, '#334155');
+            // Remove modern font properties that can cause issues
+            sheet.innerHTML = sheet.innerHTML.replace(/font-variant-[a-z-]+\s*:[^;]+;/gi, '');
+            sheet.innerHTML = sheet.innerHTML.replace(/font-feature-settings\s*:[^;]+;/gi, '');
+            sheet.innerHTML = sheet.innerHTML.replace(/font-variation-settings\s*:[^;]+;/gi, '');
           }
         });
 
@@ -146,10 +153,20 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
         for (let i = 0; i < elements.length; i++) {
           const el = elements[i] as HTMLElement;
           try {
-            // Reset any inline styles that might use modern color functions
-            if (el.style.color?.includes('okl')) el.style.color = '#000000';
-            if (el.style.backgroundColor?.includes('okl')) el.style.backgroundColor = 'transparent';
-            if (el.style.borderColor?.includes('okl')) el.style.borderColor = '#000000';
+            const style = el.style;
+            if (style) {
+              // Reset any styles that might use modern color functions
+              if (style.color?.match(/okl/i)) style.color = '#334155';
+              if (style.backgroundColor?.match(/okl/i)) style.backgroundColor = 'transparent';
+              if (style.borderColor?.match(/okl/i)) style.borderColor = '#334155';
+              
+              // Defensively clear font-variant which often causes PDF crashes
+              style.fontVariantNumeric = 'normal';
+              style.fontFeatureSettings = 'normal';
+              style.fontVariantCaps = 'normal';
+              style.fontVariantLigatures = 'none';
+              style.fontVariantAlternates = 'normal';
+            }
           } catch (e) {}
         }
 
@@ -162,6 +179,12 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
           }
           * {
             color-scheme: light !important;
+            font-variant-numeric: normal !important;
+            font-feature-settings: normal !important;
+            font-variant-caps: normal !important;
+            font-variant-ligatures: none !important;
+            font-variant-alternates: normal !important;
+            font-variation-settings: normal !important;
           }
           #invoice-print-area { background-color: white !important; }
         `;
@@ -169,6 +192,10 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
       }
     });
     
+    if (!canvas || canvas.width === 0) {
+      throw new Error('Failed to generate image from invoice area');
+    }
+
     const imgData = canvas.toDataURL('image/jpeg', 0.95);
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -249,8 +276,7 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
           styleSheets.forEach(sheet => {
             if (sheet.innerHTML.includes('okl')) {
               // Replace oklch/oklab with hex or inherit to prevent parsing errors
-              sheet.innerHTML = sheet.innerHTML.replace(/oklch\([^)]+\)/g, '#000000');
-              sheet.innerHTML = sheet.innerHTML.replace(/oklab\([^)]+\)/g, '#000000');
+              sheet.innerHTML = sheet.innerHTML.replace(/okl[a-z]{2,3}\s*\([^)]+\)/gi, '#000000');
             }
           });
 
@@ -259,9 +285,9 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
             const el = elements[i] as HTMLElement;
             try {
               // Reset any inline styles that might use modern color functions
-              if (el.style.color?.includes('okl')) el.style.color = '#000000';
-              if (el.style.backgroundColor?.includes('okl')) el.style.backgroundColor = 'transparent';
-              if (el.style.borderColor?.includes('okl')) el.style.borderColor = '#000000';
+              if (el.style.color?.match(/okl/i)) el.style.color = '#000000';
+              if (el.style.backgroundColor?.match(/okl/i)) el.style.backgroundColor = 'transparent';
+              if (el.style.borderColor?.match(/okl/i)) el.style.borderColor = '#000000';
             } catch (e) {}
           }
           
@@ -429,6 +455,15 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
               </Button>
             )}
 
+            {invoice.status !== 'Draft' && !invoice.irn && (
+              <Button 
+                onClick={() => setIsEInvoiceModalOpen(true)}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2 rounded-full px-6 flex-shrink-0 shadow-lg shadow-indigo-100"
+              >
+                <FileText className="w-4 h-4" /> E-Invoice Portal
+              </Button>
+            )}
+
             <Button size="sm" onClick={handleDownloadPDF} disabled={isExporting} className="bg-black text-white gap-2 rounded-full px-6 flex-shrink-0">
               {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
               PDF
@@ -473,15 +508,22 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                       </div>
                     </div>
                   </div>
-                  {settings.logoUrl && (
+                  {settings.logoUrl ? (
                     <img src={settings.logoUrl} alt="Logo" className="h-20 w-auto object-contain" />
+                  ) : (
+                    <Logo className="h-20 w-20" />
                   )}
                 </div>
 
                 {/* PAN Bar */}
                 <div className="border-y border-slate-300 bg-slate-50 flex items-center justify-between px-4 py-1 font-bold text-[10px] md:text-xs uppercase tracking-wider">
                   <div>PAN : <span className="font-mono">{settings.pan || '-'}</span></div>
-                  <div className="text-sm md:text-lg tracking-tighter">{invoice.type}</div>
+                  <div className="flex flex-col items-center">
+                    <div className="text-sm md:text-lg tracking-tighter">{invoice.type}</div>
+                    {invoice.irn && (
+                      <div className="text-[7px] text-slate-500 font-mono tracking-tighter mt-0.5">IRN: {invoice.irn.substring(0, 30)}...</div>
+                    )}
+                  </div>
                   <div>Original for Recipient</div>
                 </div>
 
@@ -695,7 +737,7 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                       {settings.logoUrl ? (
                         <img src={settings.logoUrl} alt="Logo" className="h-16 w-auto object-contain" />
                       ) : (
-                        <div className={cn("text-4xl uppercase leading-none", style.heading)}>{settings.companyName}</div>
+                        <Logo className="h-16 w-16" />
                       )}
                       <div className="text-xs opacity-80 max-w-sm leading-relaxed font-medium">
                         {settings.address}
@@ -710,9 +752,15 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                       <div className="text-lg font-mono opacity-80 font-bold">{invoice.invoiceNumber}</div>
                       {invoice.irn && (
                         <div className="pt-2 text-right">
+                          <div className="text-[10px] md:text-sm font-black uppercase tracking-tight text-[#008080]">GST E-Invoice</div>
                           <div className="text-[8px] uppercase tracking-widest font-black opacity-40">IRN / Ack No</div>
-                          <div className="text-[10px] font-mono opacity-60 break-all max-w-[200px] ml-auto leading-tight">{invoice.irn}</div>
-                          <div className="text-[8px] font-bold opacity-40 mt-1">Ack Date: {invoice.irnDate ? format(new Date(invoice.irnDate), 'dd/MM/yyyy HH:mm') : '-'}</div>
+                          <div className="text-[10px] font-mono opacity-60 break-all max-w-[300px] ml-auto leading-tight">{invoice.irn}</div>
+                          <div className="text-[8px] font-bold opacity-40 mt-1">Ack Date: {invoice.ackDate || invoice.irnDate ? format(new Date(invoice.ackDate || invoice.irnDate || ''), 'dd/MM/yyyy HH:mm') : '-'}</div>
+                          {invoice.signedQrCode && (
+                            <div className="mt-2 flex justify-end">
+                              <QRCodeCanvas value={invoice.signedQrCode} size={80} level="H" />
+                            </div>
+                          )}
                         </div>
                       )}
                       <div className="pt-8 space-y-1">
@@ -758,7 +806,7 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                       </thead>
                       <tbody className={cn("divide-y", style.border)}>
                         {invoice.items.map((item, idx) => (
-                          <tr key={idx} className={cn(currentStyle === 'Modern' && idx % 2 === 1 ? "bg-[#f8fafc]/50" : "")}>
+                          <tr key={idx} className="">
                             <td className="py-6 pr-4">
                               <div className="font-bold text-sm text-[#0f172a]">{item.name}</div>
                             </td>
@@ -777,13 +825,13 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                     <div className="space-y-6 md:space-y-10">
                       <div className="space-y-2">
                         <div className="text-[10px] font-black uppercase tracking-widest text-[#94a3b8]">Total in Words</div>
-                        <div className={cn("text-xs italic font-bold leading-relaxed p-4 rounded-lg border", style.border, currentStyle === 'Modern' ? "bg-[#f8fafc]" : "bg-white")}>
+                        <div className={cn("text-xs italic font-bold leading-relaxed p-4 rounded-lg border", style.border, "bg-white")}>
                           {amountToWords(invoice.totalAmount, invoice.currency)}
                         </div>
                       </div>
                       
                       {upiUrl && (
-                        <div className={cn("flex gap-4 md:gap-6 items-center p-4 md:p-5 rounded-2xl border w-fit", style.border, currentStyle === 'Modern' ? "bg-[#f8fafc]" : "bg-white")}>
+                        <div className={cn("flex gap-4 md:gap-6 items-center p-4 md:p-5 rounded-2xl border w-fit", style.border, "bg-white")}>
                           <QRCodeCanvas value={upiUrl} size={80} level="H" />
                           <div className="space-y-1 md:space-y-2">
                             <div className="text-[10px] font-black uppercase tracking-widest text-[#0f172a]">Instant UPI Payment</div>
@@ -793,7 +841,7 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                       )}
 
                       {invoice.ewayBillNo && (
-                        <div className={cn("p-4 md:p-5 rounded-2xl border w-full space-y-3", style.border, currentStyle === 'Modern' ? "bg-blue-50/50" : "bg-white")}>
+                        <div className={cn("p-4 md:p-5 rounded-2xl border w-full space-y-3", style.border, "bg-white")}>
                            <div className="flex items-center justify-between">
                              <div className="text-[10px] font-black uppercase tracking-widest text-[#0f172a] flex items-center gap-2">
                                <Truck className="w-3 h-3" /> E-Way Bill Details
@@ -830,7 +878,7 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                     </div>
 
                     <div className="space-y-6">
-                      <div className={cn("p-6 md:p-8 rounded-2xl space-y-4 border", style.border, currentStyle === 'Modern' ? "bg-slate-950 text-white" : "bg-slate-50")}>
+                      <div className={cn("p-6 md:p-8 rounded-2xl space-y-4 border", style.border, "bg-slate-50")}>
                         <div className="flex justify-between items-center text-xs">
                           <span className="opacity-60 font-black uppercase tracking-widest">Gross Subtotal</span>
                           <span className="font-mono font-bold">{formatCurrency(invoice.subtotal, invoice.currency)}</span>
@@ -841,7 +889,7 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                             <span className="font-mono font-bold">{formatCurrency(invoice.totalCgst + invoice.totalSgst + invoice.totalIgst, invoice.currency)}</span>
                           </div>
                         )}
-                        <div className={cn("pt-6 border-t flex justify-between items-center", currentStyle === 'Modern' ? "border-white/10" : "border-[#e2e8f0]")}>
+                        <div className={cn("pt-6 border-t flex justify-between items-center", "border-[#e2e8f0]")}>
                           <span className="text-sm font-black uppercase tracking-widest">Final Total</span>
                           <span className={cn("text-2xl md:text-3xl font-black font-mono", style.accent)}>{formatCurrency(invoice.totalAmount, invoice.currency)}</span>
                         </div>
@@ -907,6 +955,14 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
           setInvoice(updatedInvoice);
         }}
       />
+      {isEInvoiceModalOpen && (
+        <EInvoiceManager
+          invoice={invoice}
+          settings={settings}
+          onUpdate={(updatedInvoice) => setInvoice(updatedInvoice)}
+          onClose={() => setIsEInvoiceModalOpen(false)}
+        />
+      )}
     </div>
   </div>
   );

@@ -41,6 +41,7 @@ export interface Item {
   gstRate: number; // e.g., 18 for 18%
   stock: number;
   barcode?: string;
+  sku?: string;
   unit: string;
   category: string; 
   description?: string;
@@ -71,9 +72,12 @@ export interface Invoice {
   clientGstin: string;
   clientAddress: string;
   clientStateCode: string;
+  clientPhone?: string;
   currency: string;
   items: InvoiceItem[];
   subtotal: number;
+  taxableAmount?: number;
+  totalGst?: number;
   totalCgst: number;
   totalSgst: number;
   totalIgst: number;
@@ -84,8 +88,13 @@ export interface Invoice {
   extraPages?: string; // Rich text extra content
   pdfStyle?: 'Standard' | 'Professional' | 'Classic' | 'Modern' | 'Simple' | 'Creative' | 'Detailed' | 'Thermal';
   paymentMethod?: string;
+  // E-Invoice Fields
+  ackNo?: string;
+  ackDate?: string;
   irn?: string;
   irnDate?: string;
+  signedQrCode?: string;
+  einvoiceStatus?: 'Generated' | 'Pending' | 'Cancelled';
   challanNo?: string;
   challanDate?: string;
   // E-Way Bill Fields

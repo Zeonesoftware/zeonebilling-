@@ -9,6 +9,7 @@ import { Download, Printer, CreditCard, Loader2, Truck } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { toast } from 'sonner';
+import { Logo } from '@/components/Logo';
 
 export default function PublicInvoiceView() {
   const { id } = useParams<{ id: string }>();
@@ -59,11 +60,16 @@ export default function PublicInvoiceView() {
           clonedDoc.documentElement.classList.remove('dark');
           clonedDoc.body.classList.remove('dark');
 
+          // Neutralize modern CSS functions and font properties that crash html2canvas
           const styleSheets = clonedDoc.querySelectorAll('style');
           styleSheets.forEach(sheet => {
-            if (sheet.innerHTML.includes('okl')) {
-              sheet.innerHTML = sheet.innerHTML.replace(/oklch\([^)]+\)/g, 'inherit');
-              sheet.innerHTML = sheet.innerHTML.replace(/oklab\([^)]+\)/g, 'inherit');
+            if (sheet.innerHTML.includes('okl') || sheet.innerHTML.includes('font-') || sheet.innerHTML.includes('var(')) {
+              // Replace oklch/oklab with hex
+              sheet.innerHTML = sheet.innerHTML.replace(/okl[a-z]{2,3}\s*\([^)]+\)/gi, '#334155');
+              // Remove modern font properties that can cause issues
+              sheet.innerHTML = sheet.innerHTML.replace(/font-variant-[a-z-]+\s*:[^;]+;/gi, '');
+              sheet.innerHTML = sheet.innerHTML.replace(/font-feature-settings\s*:[^;]+;/gi, '');
+              sheet.innerHTML = sheet.innerHTML.replace(/font-variation-settings\s*:[^;]+;/gi, '');
             }
           });
 
@@ -71,9 +77,20 @@ export default function PublicInvoiceView() {
           for (let i = 0; i < elements.length; i++) {
             const el = elements[i] as HTMLElement;
             try {
-              if (el.style.color?.includes('okl')) el.style.color = 'inherit';
-              if (el.style.backgroundColor?.includes('okl')) el.style.backgroundColor = 'transparent';
-              if (el.style.borderColor?.includes('okl')) el.style.borderColor = 'inherit';
+              const style = el.style;
+              if (style) {
+                // Reset any styles that might use modern color functions
+                if (style.color?.match(/okl/i)) style.color = '#334155';
+                if (style.backgroundColor?.match(/okl/i)) style.backgroundColor = 'transparent';
+                if (style.borderColor?.match(/okl/i)) style.borderColor = '#334155';
+                
+                // Defensively clear font-variant which often causes PDF crashes
+                style.fontVariantNumeric = 'normal';
+                style.fontFeatureSettings = 'normal';
+                style.fontVariantCaps = 'normal';
+                style.fontVariantLigatures = 'none';
+                style.fontVariantAlternates = 'normal';
+              }
             } catch (e) {}
           }
           const style = clonedDoc.createElement('style');
@@ -83,7 +100,15 @@ export default function PublicInvoiceView() {
               --background: 255 255 255 !important;
               --foreground: 30 41 59 !important;
             }
-            * { color-scheme: light !important; }
+            * { 
+              color-scheme: light !important; 
+              font-variant-numeric: normal !important;
+              font-feature-settings: normal !important;
+              font-variant-caps: normal !important;
+              font-variant-ligatures: none !important;
+              font-variant-alternates: normal !important;
+              font-variation-settings: normal !important;
+            }
             #invoice-print-area { background-color: white !important; color: #1e293b !important; }
             .bg-background { background-color: #ffffff !important; }
             .text-foreground { color: #1e293b !important; }
@@ -98,6 +123,11 @@ export default function PublicInvoiceView() {
           clonedDoc.head.appendChild(style);
         }
       });
+
+      if (!canvas || canvas.width === 0) {
+        throw new Error('Failed to generate image from invoice area');
+      }
+
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -154,15 +184,22 @@ export default function PublicInvoiceView() {
                       </div>
                     </div>
                   </div>
-                  {settings.logoUrl && (
+                  {settings.logoUrl ? (
                     <img src={settings.logoUrl} alt="Logo" className="h-20 w-auto object-contain" />
+                  ) : (
+                    <Logo className="h-20 w-20" />
                   )}
                 </div>
 
                 {/* PAN Bar */}
                 <div className="border-y border-slate-300 bg-slate-50 flex items-center justify-between px-4 py-1 font-bold text-[10px] md:text-xs uppercase tracking-wider">
                   <div>PAN : <span className="font-mono">{settings.pan || '-'}</span></div>
-                  <div className="text-sm md:text-lg tracking-tighter">{invoice.type}</div>
+                  <div className="flex flex-col items-center">
+                    <div className="text-sm md:text-lg tracking-tighter">{invoice.type}</div>
+                    {invoice.irn && (
+                      <div className="text-[7px] text-slate-500 font-mono tracking-tighter mt-0.5">IRN: {invoice.irn.substring(0, 30)}...</div>
+                    )}
+                  </div>
                   <div>Original for Recipient</div>
                 </div>
 
@@ -335,7 +372,7 @@ export default function PublicInvoiceView() {
                     {settings.logoUrl ? (
                       <img src={settings.logoUrl} alt="Logo" className="h-12 md:h-16 w-auto object-contain" />
                     ) : (
-                      <h2 className="text-3xl md:text-4xl font-extrabold tracking-tighter uppercase leading-none">{settings.companyName}</h2>
+                      <Logo className="h-16 w-16" />
                     )}
                     <div className="space-y-1">
                       <p className="text-xs md:text-sm text-slate-600 leading-relaxed max-w-md whitespace-pre-wrap font-medium">{settings.address}</p>
@@ -350,6 +387,17 @@ export default function PublicInvoiceView() {
                   <div className="space-y-1">
                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Invoice Date</div>
                     <div className="text-lg md:text-xl font-bold">{invoice.date}</div>
+                    {invoice.irn && (
+                      <div className="pt-2">
+                        <div className="text-[8px] font-black uppercase tracking-widest text-[#008080]">E-Invoice Registered</div>
+                        <div className="text-[9px] font-mono opacity-50 break-all max-w-[200px] ml-auto">{invoice.irn}</div>
+                         {invoice.signedQrCode && (
+                            <div className="mt-2 flex justify-end">
+                              <QRCodeCanvas value={invoice.signedQrCode} size={60} level="H" />
+                            </div>
+                          )}
+                      </div>
+                    )}
                   </div>
                   <div className="mt-8">
                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Amount</div>

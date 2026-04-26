@@ -15,10 +15,13 @@ import {
   ChevronDown,
   Tag,
   Check,
-  Loader2
+  Loader2,
+  Search,
+  Filter
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { ExpenseForm } from '@/components/expenses/ExpenseForm';
@@ -43,6 +46,8 @@ export default function Expenses() {
   const { profile } = useAuth();
   const { canCreate, canEdit, canDelete } = useRBAC();
   const { data: expenses, loading, addItem, updateItem, deleteItem } = useData<Expense>('expenses');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [isAiLoading, setIsAiLoading] = React.useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -175,6 +180,15 @@ export default function Expenses() {
     );
   };
 
+  const filteredExpenses = expenses.filter(exp => {
+    const matchesSearch = 
+      exp.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      exp.category.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = categoryFilter === 'all' || exp.category === categoryFilter;
+    
+    return matchesSearch && matchesCategory;
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -290,12 +304,42 @@ export default function Expenses() {
       )}
 
       <div className="bg-white border rounded-lg overflow-hidden shadow-sm">
+        <div className="flex items-center gap-2 bg-white p-4 border border-slate-200 rounded-xl shadow-sm">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input 
+              placeholder="Search expenses..." 
+              className="pl-10 border-slate-200 focus-visible:ring-black h-10 text-sm rounded-lg"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className={cn("gap-2 text-slate-500 font-bold text-[10px] uppercase tracking-widest", categoryFilter !== 'all' && "text-blue-600 bg-blue-50")}>
+                <Filter className="w-4 h-4" />
+                {categoryFilter !== 'all' ? 'Category: ' + categoryFilter : 'Filters'}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 p-2 rounded-xl border-slate-100 shadow-2xl max-h-64 overflow-auto">
+              <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-slate-400 font-black">Filter Category</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setCategoryFilter('all')} className={cn("font-bold text-xs uppercase tracking-wider", categoryFilter === 'all' && "text-blue-600")}>All Categories</DropdownMenuItem>
+              {CATEGORIES.map(cat => (
+                <DropdownMenuItem key={cat} onClick={() => setCategoryFilter(cat)} className={cn("font-bold text-xs uppercase tracking-wider", categoryFilter === cat && "text-blue-600")}>
+                  {cat}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
         <Table>
           <TableHeader className="bg-[#FAFAFA]">
             <TableRow>
               <TableHead className="w-[50px] px-4">
                 <Checkbox 
-                  checked={selectedIds.length === expenses.length && expenses.length > 0}
+                  checked={selectedIds.length === filteredExpenses.length && filteredExpenses.length > 0}
                   onCheckedChange={toggleSelectAll}
                   className="translate-y-[2px]"
                 />
@@ -311,9 +355,9 @@ export default function Expenses() {
           <TableBody>
             {loading ? (
               <TableRow><TableCell colSpan={7} className="text-center py-12 text-slate-400 flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Loading expenses...</TableCell></TableRow>
-            ) : expenses.length === 0 ? (
-              <TableRow><TableCell colSpan={7} className="text-center py-12 text-slate-400">No expenses recorded yet.</TableCell></TableRow>
-            ) : expenses.map((exp) => (
+            ) : filteredExpenses.length === 0 ? (
+              <TableRow><TableCell colSpan={7} className="text-center py-12 text-slate-400">No expenses found.</TableCell></TableRow>
+            ) : filteredExpenses.map((exp) => (
               <TableRow 
                 key={exp.id} 
                 className={cn(

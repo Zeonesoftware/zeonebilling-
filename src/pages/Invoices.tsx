@@ -46,6 +46,7 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { InvoiceForm } from '@/components/invoices/InvoiceForm';
 import { InvoiceView } from '@/components/invoices/InvoiceView';
+import { BulkEInvoiceManager } from '@/components/invoices/BulkEInvoiceManager';
 import { toast } from 'sonner';
 import { formatCurrency, generateNextInvoiceNumber } from '@/lib/invoice-utils';
 
@@ -58,6 +59,8 @@ export default function Invoices() {
   const { data: items, updateItem: updateProduct } = useData<Item>('items');
   const { settings } = useSettings();
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
   const [isCreating, setIsCreating] = useState(false);
 
   // Handle quick action from navigation state
@@ -70,6 +73,7 @@ export default function Invoices() {
   }, [location.state]);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [viewingInvoice, setViewingInvoice] = useState<Invoice | null>(null);
+  const [isBulkEInvoicing, setIsBulkEInvoicing] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isBulkExporting, setIsBulkExporting] = useState(false);
   const [isPaying, setIsPaying] = useState<string | null>(null);
@@ -109,10 +113,16 @@ export default function Invoices() {
     );
   };
 
-  const filteredInvoices = invoices.filter(inv => 
-    inv.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    inv.clientName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredInvoices = invoices.filter(inv => {
+    const matchesSearch = 
+      inv.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      inv.clientName.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = statusFilter === 'all' || inv.status === statusFilter;
+    const matchesType = typeFilter === 'all' || inv.type === typeFilter;
+    
+    return matchesSearch && matchesStatus && matchesType;
+  });
 
   const handleCreate = async (invoiceData: Partial<Invoice>) => {
     try {
@@ -177,34 +187,7 @@ export default function Invoices() {
   };
 
   const handleBulkEInvoice = async () => {
-    const selectedInvoices = invoices.filter(inv => selectedIds.includes(inv.id));
-    if (selectedInvoices.length === 0) return;
-
-    const toastId = toast.loading(`Initiating Bulk E-Invoice for ${selectedInvoices.length} documents...`);
-    
-    try {
-      for (let i = 0; i < selectedInvoices.length; i++) {
-        const inv = selectedInvoices[i];
-        toast.loading(`Registering IRN for ${inv.invoiceNumber} (${i + 1}/${selectedInvoices.length})...`, { id: toastId });
-        
-        // Simulate API latency
-        await new Promise(resolve => setTimeout(resolve, 800));
-
-        // Update invoice with mock IRN if it doesn't have one
-        if (!inv.irn) {
-          const mockIrn = Math.random().toString(16).substring(2, 64).toUpperCase();
-          await updateItem(inv.id, { 
-            irn: mockIrn,
-            irnDate: new Date().toISOString()
-          });
-        }
-      }
-      
-      toast.success(`Successfully generated IRNs for ${selectedInvoices.length} documents`, { id: toastId });
-      setSelectedIds([]);
-    } catch (err) {
-      toast.error('Bulk E-Invoicing failed', { id: toastId });
-    }
+    setIsBulkEInvoicing(true);
   };
 
   const handleBulkStatusUpdate = async (newStatus: Invoice['status']) => {
@@ -260,6 +243,17 @@ export default function Invoices() {
     <div className="space-y-6">
       {viewingInvoice && settings && (
         <InvoiceView invoice={viewingInvoice} settings={settings} onClose={() => setViewingInvoice(null)} />
+      )}
+      {isBulkEInvoicing && settings && (
+        <BulkEInvoiceManager 
+          selectedInvoices={invoices.filter(inv => selectedIds.includes(inv.id))}
+          settings={settings}
+          onClose={() => setIsBulkEInvoicing(false)}
+          onComplete={() => {
+            setSelectedIds([]);
+            setIsBulkEInvoicing(false);
+          }}
+        />
       )}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -332,10 +326,38 @@ export default function Invoices() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <Button variant="ghost" size="sm" className="gap-2 text-slate-500 font-bold text-[10px] uppercase tracking-widest">
-          <Filter className="w-4 h-4" />
-          Advanced Filters
-        </Button>
+        
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className={cn("gap-2 text-slate-500 font-bold text-[10px] uppercase tracking-widest", (statusFilter !== 'all' || typeFilter !== 'all') && "text-[#237227] bg-emerald-50")}>
+              <Filter className="w-4 h-4" />
+              {statusFilter !== 'all' || typeFilter !== 'all' ? 'Filters Active' : 'Advanced Filters'}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56 p-2 rounded-xl shadow-2xl border-slate-100">
+            <div className="px-2 py-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b mb-1">Filter by Status</div>
+            <DropdownMenuItem onClick={() => setStatusFilter('all')} className={cn("font-bold text-xs uppercase tracking-wider", statusFilter === 'all' && "text-[#237227]")}>All Statuses</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setStatusFilter('Paid')} className={cn("font-bold text-xs uppercase tracking-wider", statusFilter === 'Paid' && "text-emerald-600")}>Paid</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setStatusFilter('Pending')} className={cn("font-bold text-xs uppercase tracking-wider", statusFilter === 'Pending' && "text-orange-600")}>Pending</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setStatusFilter('Draft')} className={cn("font-bold text-xs uppercase tracking-wider", statusFilter === 'Draft' && "text-slate-600")}>Draft</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setStatusFilter('Cancelled')} className={cn("font-bold text-xs uppercase tracking-wider", statusFilter === 'Cancelled' && "text-rose-600")}>Void</DropdownMenuItem>
+            
+            <div className="px-2 py-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b my-1">Filter by Type</div>
+            <DropdownMenuItem onClick={() => setTypeFilter('all')} className={cn("font-bold text-xs uppercase tracking-wider", typeFilter === 'all' && "text-[#237227]")}>All Types</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setTypeFilter('Tax Invoice')} className={cn("font-bold text-xs uppercase tracking-wider", typeFilter === 'Tax Invoice' && "text-[#237227]")}>Tax Invoice</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setTypeFilter('Proforma')} className={cn("font-bold text-xs uppercase tracking-wider", typeFilter === 'Proforma' && "text-[#237227]")}>Proforma</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setTypeFilter('Delivery Challan')} className={cn("font-bold text-xs uppercase tracking-wider", typeFilter === 'Delivery Challan' && "text-[#237227]")}>Challan</DropdownMenuItem>
+            
+            {(statusFilter !== 'all' || typeFilter !== 'all') && (
+              <>
+                <div className="border-t my-1" />
+                <DropdownMenuItem onClick={() => { setStatusFilter('all'); setTypeFilter('all'); }} className="font-bold text-xs uppercase tracking-wider text-red-600">
+                  <X className="w-3 h-3 mr-2" /> Clear All
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
