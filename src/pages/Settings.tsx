@@ -8,10 +8,18 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { Save, Download, Upload, Cloud, Check, Building, Trash2, Loader2, Image as ImageIcon } from 'lucide-react';
+import { Save, Download, Upload, Cloud, Check, Building, Trash2, Loader2, Image as ImageIcon, Truck, Eraser, PenTool } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import SignatureCanvas from 'react-signature-canvas';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { 
   Select, 
   SelectContent, 
@@ -29,6 +37,38 @@ export default function Settings() {
   const [activeTab, setActiveTab] = useState<'business' | 'users'>('business');
   const [isUploading, setIsUploading] = useState(false);
   const [isSigUploading, setIsSigUploading] = useState(false);
+  const [isSignModalOpen, setIsSignModalOpen] = useState(false);
+  const sigCanvas = React.useRef<SignatureCanvas>(null);
+
+  const clearSignature = () => {
+    sigCanvas.current?.clear();
+  };
+
+  const saveSignature = async () => {
+    if (sigCanvas.current?.isEmpty()) {
+      toast.error('Please draw your signature first');
+      return;
+    }
+
+    try {
+      setIsSigUploading(true);
+      const dataUrl = sigCanvas.current?.getTrimmedCanvas().toDataURL('image/png');
+      if (!dataUrl) throw new Error('Failed to get signature image');
+
+      // Convert dataUrl to blob
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+      const file = new File([blob], `signature_${Date.now()}.png`, { type: 'image/png' });
+
+      await handleFileUpload(file, 'signature');
+      setIsSignModalOpen(false);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to save drawn signature');
+    } finally {
+      setIsSigUploading(false);
+    }
+  };
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const logoInputRef = React.useRef<HTMLInputElement>(null);
@@ -313,6 +353,15 @@ export default function Settings() {
                       >
                         <Upload className="w-3 h-3" /> Signature
                       </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-8 text-[10px] font-bold uppercase tracking-wider gap-2 rounded-xl"
+                        onClick={() => setIsSignModalOpen(true)}
+                        disabled={isSigUploading}
+                      >
+                        <PenTool className="w-3 h-3" /> Draw
+                      </Button>
                       <input 
                         type="file" 
                         ref={logoInputRef} 
@@ -341,6 +390,10 @@ export default function Settings() {
                 <div className="space-y-2">
                   <Label className="text-xs uppercase font-bold text-[#666666]">GSTIN</Label>
                   <Input value={formData.gstin} onChange={e => setFormData({ ...formData, gstin: e.target.value })} />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs uppercase font-bold text-[#666666]">PAN No.</Label>
+                  <Input value={formData.pan || ""} onChange={e => setFormData({ ...formData, pan: e.target.value })} placeholder="ABCDE1234F" />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs uppercase font-bold text-[#666666]">State Code</Label>
@@ -435,11 +488,13 @@ export default function Settings() {
                   <Input value={formData.bankName} onChange={e => setFormData({ ...formData, bankName: e.target.value })} />
                 </div>
                 <div className="space-y-2">
+                  <Label className="text-xs uppercase font-bold text-[#666666]">Branch Name</Label>
+                  <Input value={formData.bankBranch || ""} onChange={e => setFormData({ ...formData, bankBranch: e.target.value })} />
+                </div>
+                <div className="space-y-2">
                   <Label className="text-xs uppercase font-bold text-[#666666]">Account Number</Label>
                   <Input value={formData.accountNumber} onChange={e => setFormData({ ...formData, accountNumber: e.target.value })} />
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-xs uppercase font-bold text-[#666666]">IFSC Code</Label>
                   <Input value={formData.ifscCode} onChange={e => setFormData({ ...formData, ifscCode: e.target.value })} />
@@ -534,6 +589,39 @@ export default function Settings() {
           </div>
         </div>
       )}
+      {/* Signature Modal */}
+      <Dialog open={isSignModalOpen} onOpenChange={setIsSignModalOpen}>
+        <DialogContent className="sm:max-w-md bg-white rounded-[2rem]">
+          <DialogHeader>
+            <DialogTitle className="text-center font-black uppercase tracking-tight text-[#237227]">Draw Signature</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-4 py-4">
+            <div className="w-full h-64 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl overflow-hidden relative group">
+              <SignatureCanvas 
+                ref={sigCanvas}
+                penColor="black"
+                canvasProps={{
+                  className: 'w-full h-full cursor-crosshair',
+                  style: { width: '100%', height: '100%' }
+                }}
+              />
+              <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full bg-white/80 hover:bg-white text-red-500" onClick={clearSignature}>
+                  <Eraser className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Draw your signature in the area above</p>
+          </div>
+          <DialogFooter className="flex flex-row gap-2">
+            <Button variant="ghost" className="flex-1 rounded-xl" onClick={() => setIsSignModalOpen(false)}>Cancel</Button>
+            <Button className="flex-1 bg-[#237227] hover:bg-[#1b5a1e] rounded-xl font-bold gap-2" onClick={saveSignature} disabled={isSigUploading}>
+              {isSigUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              Save Signature
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

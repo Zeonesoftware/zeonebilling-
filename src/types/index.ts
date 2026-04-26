@@ -7,8 +7,10 @@ export interface BusinessSettings {
   email: string;
   logoUrl?: string;
   bankName: string;
+  bankBranch?: string; // Added for detailed invoice
   accountNumber: string;
   ifscCode: string;
+  pan?: string; // Added for GST compliance
   upiId?: string;
   signatureUrl?: string;
   terms: string;
@@ -84,6 +86,8 @@ export interface Invoice {
   paymentMethod?: string;
   irn?: string;
   irnDate?: string;
+  challanNo?: string;
+  challanDate?: string;
   // E-Way Bill Fields
   ewayBillNo?: string;
   ewayBillDate?: string;

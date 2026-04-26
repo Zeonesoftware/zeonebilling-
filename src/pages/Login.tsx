@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { RecaptchaVerifier, ConfirmationResult } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
+import { cn } from '@/lib/utils';
 
 export default function LoginPage() {
   const { signIn, signInWithEmail, signUpWithEmail, signInWithPhone, loading, profile } = useAuth();
@@ -65,32 +66,68 @@ export default function LoginPage() {
     };
   }, []);
 
-  const setupRecaptcha = () => {
-    try {
-      if (!(window as any).recaptchaVerifier) {
-        (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-          'size': 'invisible',
-          'callback': (response: any) => {
-            // reCAPTCHA solved, allow signInWithPhoneNumber.
+  useEffect(() => {
+      if (authType === 'phone' && !isOtpSent) {
+        // Use a small timeout to ensure the DOM element #phone-recaptcha-container is available
+        const timer = setTimeout(() => {
+          setupRecaptcha();
+        }, 500);
+        return () => {
+          clearTimeout(timer);
+          if ((window as any).recaptchaVerifier) {
+            try {
+              (window as any).recaptchaVerifier.clear();
+            } catch (e) {}
+            (window as any).recaptchaVerifier = null;
+          }
+        };
+      }
+    }, [authType, isOtpSent]);
+  
+    const setupRecaptcha = () => {
+      try {
+        const container = document.getElementById('phone-recaptcha-container');
+        if (!container) return;
+  
+        if ((window as any).recaptchaVerifier) {
+          try {
+            (window as any).recaptchaVerifier.clear();
+          } catch (e) {}
+          (window as any).recaptchaVerifier = null;
+        }
+  
+        container.innerHTML = '';
+          
+        (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'phone-recaptcha-container', {
+          'size': 'normal',
+          'callback': () => {
+            console.log('reCAPTCHA solved');
           },
           'expired-callback': () => {
-            if ((window as any).recaptchaVerifier) {
-              (window as any).recaptchaVerifier.clear();
-              (window as any).recaptchaVerifier = null;
-            }
+            toast.error('Security check expired. Please try again.');
+            setupRecaptcha();
           }
         });
+          
+        (window as any).recaptchaVerifier.render().catch((err: any) => {
+          console.error('Recaptcha render error:', err);
+          // Fallback to invisible if normal fails for some reason
+          if (err.message?.includes('render')) {
+            toast.info('Adjusting security check for your device...');
+            (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'phone-recaptcha-container', { 'size': 'invisible' });
+          }
+        });
+      } catch (err) {
+        console.error('Recaptcha Setup Error:', err);
       }
-    } catch (err) {
-      console.error('Recaptcha Setup Error:', err);
-    }
-  };
+    };
 
   const handlePhoneSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Simple validation: should be digits, maybe starts with +
-    const cleanPhone = phoneNumber.trim().replace(/\s+/g, '');
+    // Improved phone number cleaning
+    let cleanPhone = phoneNumber.trim().replace(/[^0-9+]/g, '');
+    
     if (!cleanPhone || cleanPhone.length < 10) {
       toast.error('Please enter a valid phone number');
       return;
@@ -98,37 +135,51 @@ export default function LoginPage() {
 
     setAuthLoading(true);
     try {
-      setupRecaptcha();
-      const appVerifier = (window as any).recaptchaVerifier;
-      
-      // Force country code if missing
-      let formattedPhone = cleanPhone;
-      if (!formattedPhone.startsWith('+')) {
-        // If it starts with 0, remove it (common in some regions, but for +91 we usually don't have leading 0)
-        formattedPhone = `+91${formattedPhone.replace(/^0+/, '')}`;
+      if (!(window as any).recaptchaVerifier) {
+        setupRecaptcha();
       }
       
-      console.log('Initiating phone sign in for:', formattedPhone);
+      const appVerifier = (window as any).recaptchaVerifier;
+      if (!appVerifier) {
+        throw new Error('Security check initialization failed. Please refresh the page.');
+      }
+      
+      // Smart formatting for Indian numbers (defaulting to +91 if no code provided)
+      let formattedPhone = cleanPhone;
+      if (!formattedPhone.startsWith('+')) {
+        // If it starts with 91 and looks like a full number already
+        if (formattedPhone.length === 12 && formattedPhone.startsWith('91')) {
+          formattedPhone = `+${formattedPhone}`;
+        } else {
+          // Remove any leading zero and add +91
+          formattedPhone = `+91${formattedPhone.replace(/^0+/, '')}`;
+        }
+      }
+      
+      console.log('Sending OTP to:', formattedPhone);
       const result = await signInWithPhone(formattedPhone, appVerifier);
-      console.log('Phone sign in result received');
       setConfirmationResult(result);
       setIsOtpSent(true);
       toast.success('OTP sent to ' + formattedPhone);
     } catch (error: any) {
-      console.error('Phone Auth Error Details:', {
-        code: error.code,
-        message: error.message,
-        stack: error.stack
-      });
-      let msg = 'Failed to send OTP. Please check your network or number.';
+      console.error('Phone Auth Error:', error);
+      let msg = 'Failed to send OTP. Please try again.';
+      
       if (error.code === 'auth/invalid-phone-number') msg = 'Invalid phone number format.';
-      if (error.code === 'auth/too-many-requests') msg = 'Too many attempts. Try again later.';
-      if (error.code === 'auth/network-request-failed') msg = 'Network error. Please check your connection.';
+      if (error.code === 'auth/too-many-requests') msg = 'Too many attempts. Please try again later.';
+      if (error.code === 'auth/network-request-failed') msg = 'Network error. Check your connection.';
+      if (error.code === 'auth/captcha-check-failed') msg = 'Security check failed. Please refresh and try again.';
+      if (error.code === 'auth/operation-not-allowed') msg = 'Phone login is disabled. Please contact admin to enable it in Firebase Console.';
+      
       toast.error(msg);
       
+      // Cleanup recaptcha on error so it can be recreated
       if ((window as any).recaptchaVerifier) {
-        (window as any).recaptchaVerifier.clear();
+        try {
+          (window as any).recaptchaVerifier.clear();
+        } catch (e) {}
         (window as any).recaptchaVerifier = null;
+        setTimeout(setupRecaptcha, 100);
       }
     } finally {
       setAuthLoading(false);
@@ -148,7 +199,11 @@ export default function LoginPage() {
       toast.success('Phone verified successfully');
       navigate('/');
     } catch (error: any) {
-      toast.error('Invalid OTP code. Please try again.');
+      console.error('OTP Verification Error:', error);
+      let msg = 'Invalid OTP code. Please try again.';
+      if (error.code === 'auth/code-expired') msg = 'OTP code has expired. Please request a new one.';
+      if (error.code === 'auth/invalid-verification-code') msg = 'Incorrect OTP code. Please check and try again.';
+      toast.error(msg);
     } finally {
       setAuthLoading(false);
     }
@@ -156,7 +211,6 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] p-4 font-sans relative">
-      <div id="recaptcha-container"></div>
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -342,6 +396,15 @@ export default function LoginPage() {
                 <p className="text-slate-500 text-sm mb-6">
                   {isOtpSent ? `Enter the 6-digit code sent to ${phoneNumber}.` : 'Securely access your account using your mobile number.'}
                 </p>
+
+                {/* Always keep recaptcha container in DOM for phone auth view */}
+                <div 
+                  id="phone-recaptcha-container" 
+                  className={cn(
+                    "flex justify-center p-2 min-h-[100px]",
+                    isOtpSent ? "hidden" : "block"
+                  )}
+                ></div>
 
                 {!isOtpSent ? (
                   <form onSubmit={handlePhoneSignIn} className="space-y-4">
