@@ -109,7 +109,9 @@ export const ThermalReceipt = React.forwardRef<HTMLDivElement, ThermalReceiptPro
         {/* Footer */}
         <div className="text-center space-y-1 mb-8">
           <div className="font-bold uppercase">Thank You!</div>
-          <div className="text-[8px]">Visit Again</div>
+          <div className="text-[8px] italic opacity-60">
+            {invoice.createdBy ? `Operator: ${invoice.createdBy.name}` : 'Visit Again'}
+          </div>
           {settings.upiId && (
             <div className="pt-2 text-[8px] opacity-60">UPI: {settings.upiId}</div>
           )}

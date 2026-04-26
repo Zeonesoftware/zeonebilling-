@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useData, useSettings } from '@/hooks/useData';
+import { useRBAC } from '@/hooks/useRBAC';
 import { Item, Client, Invoice, InvoiceItem } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +26,7 @@ import { formatCurrency, calculateGST } from '@/lib/invoice-utils';
 import { InvoiceView } from '@/components/invoices/InvoiceView';
 
 export default function POS() {
+  const { profile } = useRBAC();
   const { data: items, updateItem: updateProduct } = useData<Item>('items');
   const { data: clients } = useData<Client>('clients');
   const { addItem: addInvoice } = useData<Invoice>('invoices');
@@ -183,6 +185,10 @@ export default function POS() {
       totalIgst: totalIgst || 0,
       totalAmount: total || 0,
       status: 'Paid',
+      createdBy: profile ? {
+        uid: profile.uid,
+        name: profile.displayName || profile.email.split('@')[0]
+      } : undefined
     };
 
     try {

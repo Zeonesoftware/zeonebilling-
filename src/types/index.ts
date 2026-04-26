@@ -84,6 +84,10 @@ export interface Invoice {
   totalIgst: number;
   totalAmount: number;
   status: 'Draft' | 'Paid' | 'Pending' | 'Cancelled';
+  createdBy?: {
+    uid: string;
+    name: string;
+  };
   notes?: string;
   internalNotes?: string; // Private
   extraPages?: string; // Rich text extra content

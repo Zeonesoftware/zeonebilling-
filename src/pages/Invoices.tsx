@@ -176,7 +176,14 @@ export default function Invoices() {
         setEditingInvoice(null);
         toast.success('Invoice updated');
       } else {
-        await addItem(invoiceData);
+        const fullInvoiceData = {
+          ...invoiceData,
+          createdBy: profile ? {
+            uid: profile.uid,
+            name: profile.displayName || profile.email.split('@')[0]
+          } : undefined
+        };
+        await addItem(fullInvoiceData as Partial<Invoice>);
         // Deduct stock
         if (invoiceData.items) {
           for (const invoiceItem of invoiceData.items) {
@@ -497,6 +504,7 @@ export default function Invoices() {
                   Issue Date {getSortIcon('date')}
                 </Button>
               </TableHead>
+              <TableHead className="hidden xl:table-cell font-black text-[10px] uppercase tracking-widest text-slate-400">Created By</TableHead>
               <TableHead className="hidden xl:table-cell">
                 <Button 
                   variant="ghost" 
@@ -561,6 +569,14 @@ export default function Invoices() {
                 </TableCell>
                 <TableCell className="hidden lg:table-cell text-slate-500 text-xs font-bold tabular-nums">
                   {format(new Date(inv.date), 'dd MMM yyyy')}
+                </TableCell>
+                <TableCell className="hidden xl:table-cell">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-600">
+                      {inv.createdBy?.name?.charAt(0) || '?'}
+                    </div>
+                    <span className="text-xs font-medium text-slate-600">{inv.createdBy?.name || 'Unknown'}</span>
+                  </div>
                 </TableCell>
                 <TableCell className="hidden xl:table-cell text-slate-500 text-xs font-bold tabular-nums">
                   {inv.dueDate ? format(new Date(inv.dueDate), 'dd MMM yyyy') : '-'}

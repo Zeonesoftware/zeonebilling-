@@ -724,7 +724,12 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                 </div>
 
                 <div className="p-4 flex justify-between items-center text-[10px] font-bold text-slate-500 italic mt-auto">
-                   <div>Thank you for shopping with us!</div>
+                   <div className="flex flex-col gap-1">
+                     <div>Thank you for shopping with us!</div>
+                     {invoice.createdBy && (
+                       <div className="not-italic text-[9px] font-bold text-slate-400">Billed By: {invoice.createdBy.name}</div>
+                     )}
+                   </div>
                    <div className="opacity-40 uppercase tracking-[0.3em] font-sans not-italic text-[8px]">Powered by Zeone Engine</div>
                 </div>
               </div>
@@ -908,8 +913,11 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
 
                  {/* Footer */}
                  <div className="p-12 pt-0 flex items-center justify-between">
-                  <div className="text-[8px] text-[#94a3b8] uppercase font-bold tracking-[0.2em]">
-                    System ID: {invoice.id.slice(0, 8)}
+                  <div className="text-[8px] text-[#94a3b8] uppercase font-bold tracking-[0.2em] flex flex-col gap-1">
+                    <div>System ID: {invoice.id.slice(0, 8)}</div>
+                    {invoice.createdBy && (
+                      <div className="text-[#64748b]">Issued By: {invoice.createdBy.name}</div>
+                    )}
                   </div>
                   <div className="text-[8px] text-[#94a3b8] uppercase font-bold tracking-[0.2em] flex items-center gap-3">
                     <span>Computer Generated document</span>
