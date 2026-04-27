@@ -45,6 +45,7 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
   const [currentStyle, setCurrentStyle] = useState<Invoice['pdfStyle'] | 'Thermal'>(
     initialStyle || invoice.pdfStyle || settings.defaultPdfStyle || 'Professional'
   );
+  const [paperSize, setPaperSize] = useState<'A4' | 'A5'>(initialStyle === 'Simple' ? 'A5' : 'A4');
 
   const handlePrint = () => {
     const content = (currentStyle === 'Thermal' ? thermalRef : printRef).current;
@@ -64,6 +65,8 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
       .map(node => node.outerHTML)
       .join('\n');
 
+    const selectedPaperSize = paperSize;
+
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
@@ -73,14 +76,14 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
           <style>
             @media print {
               @page { 
-                size: ${currentStyle === 'Thermal' ? '58mm auto' : 'A4'}; 
+                size: ${currentStyle === 'Thermal' ? '58mm auto' : selectedPaperSize}; 
                 margin: 0 !important; 
               }
               body { margin: 0 !important; padding: 0 !important; background: white !important; }
               #invoice-print-area { 
-                width: 210mm !important;
-                height: 296mm !important;
-                min-height: 296mm !important;
+                width: ${selectedPaperSize === 'A5' ? '148mm' : '210mm'} !important;
+                height: ${selectedPaperSize === 'A5' ? '210mm' : '296mm'} !important;
+                min-height: ${selectedPaperSize === 'A5' ? '210mm' : '296mm'} !important;
                 box-shadow: none !important;
                 margin: 0 !important;
                 padding: 0 !important;
@@ -341,7 +344,7 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
-        format: 'a4',
+        format: (currentStyle === 'Simple' || paperSize === 'A5') ? 'a5' : 'a4',
       });
 
       const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -433,7 +436,14 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
         <div className={cn("flex flex-col md:flex-row items-start md:items-center justify-between px-6 py-4 border-b bg-white sticky top-0 z-20 gap-4", style.font)}>
           <div className="flex items-center gap-4 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
             <h3 className="font-bold flex-shrink-0">Preview</h3>
-            <Select value={currentStyle || ""} onValueChange={(v: any) => setCurrentStyle(v)}>
+            <Select 
+              value={currentStyle || ""} 
+              onValueChange={(v: any) => {
+                setCurrentStyle(v);
+                if (v === 'Simple') setPaperSize('A5');
+                else if (v !== 'Thermal') setPaperSize('A4');
+              }}
+            >
               <SelectTrigger className="w-40 h-9 font-bold flex-shrink-0">
                 <SelectValue />
               </SelectTrigger>
@@ -446,6 +456,15 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                 <SelectItem value="Creative">Creative</SelectItem>
                 <SelectItem value="Detailed">Detailed</SelectItem>
                 <SelectItem value="Thermal">Thermal Receipt (58mm)</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={paperSize} onValueChange={(v: any) => setPaperSize(v)}>
+              <SelectTrigger className="w-24 h-9 font-bold flex-shrink-0">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="A4">A4</SelectItem>
+                <SelectItem value="A5">A5</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -1018,76 +1037,81 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                 </div>
               </div>
             ) : currentStyle === 'Simple' ? (
-              <div className="flex flex-col text-[10px] text-black bg-white border-2 border-black m-2">
+              <div 
+                className={cn(
+                  "flex flex-col text-[9px] text-black bg-white border-2 border-black m-1",
+                  (paperSize === 'A5' || currentStyle === 'Simple') ? "w-[148mm] min-h-[210mm]" : "w-[210mm] min-h-[297mm]"
+                )}
+              >
                 {/* Image-style Header */}
-                <div className="p-4 border-b-2 border-black">
-                  <div className="flex justify-between items-start text-[9px] font-bold">
+                <div className="p-2 border-b-2 border-black">
+                  <div className="flex justify-between items-start text-[8px] font-bold">
                     <div className="space-y-0.5">
                       <div>GSTIN:{settings.gstin}</div>
                       <div>FASSAI NO:{settings.fssai || 'N/A'}</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-xs font-black uppercase tracking-widest border-b border-black pb-0.5 mb-1 px-4">TAX INVOICE</div>
+                      <div className="text-[10px] font-black uppercase tracking-widest border-b border-black pb-0.5 mb-1 px-4">TAX INVOICE</div>
                     </div>
                     <div>MOBILE:{settings.phone}</div>
                   </div>
                   
-                  <div className="text-center mt-2 space-y-1">
-                    <h1 className="text-2xl font-black tracking-tighter uppercase">{settings.companyName}</h1>
-                    <div className="text-[9px] font-bold uppercase">{settings.address}</div>
+                  <div className="text-center mt-1 space-y-0.5">
+                    <h1 className="text-xl font-black tracking-tighter uppercase leading-none">{settings.companyName}</h1>
+                    <div className="text-[8px] font-bold uppercase">{settings.address}</div>
                   </div>
                 </div>
 
                 {/* Sub-Header bar - Invoice No & Date */}
-                <div className="border-b-2 border-black flex divide-x-2 divide-black font-bold uppercase text-[10px]">
+                <div className="border-b-2 border-black flex divide-x-2 divide-black font-bold uppercase text-[9px]">
                   <div className="flex-1 p-1 px-2">Invoice No:{invoice.invoiceNumber}</div>
                   <div className="flex-1 p-1 px-2 text-right">DATE: {format(new Date(invoice.date), 'dd-MM-yyyy')}</div>
                 </div>
 
                 {/* Info Grid - Bill To & State info */}
                 <div className="grid grid-cols-2 divide-x-2 divide-black border-b-2 border-black">
-                  <div className="p-2 space-y-1">
-                    <div className="grid grid-cols-[80px,1fr] gap-x-2">
+                  <div className="p-1.5 space-y-0.5">
+                    <div className="grid grid-cols-[60px,1fr] gap-x-1">
                       <span className="font-bold uppercase">BILL TO</span>
                       <span className="font-black">:{invoice.clientName}</span>
                       <span className="font-bold uppercase">ADDRESS</span>
-                      <span className="font-bold uppercase leading-tight line-clamp-2">:{invoice.clientAddress}</span>
-                      <span className="mt-1 font-bold uppercase">MOBILE</span>
-                      <span className="mt-1 font-black">:{invoice.clientPhone || '-'}</span>
+                      <span className="font-bold uppercase leading-tight line-clamp-1">:{invoice.clientAddress}</span>
+                      <span className="font-bold uppercase">MOBILE</span>
+                      <span className="font-black">:{invoice.clientPhone || '-'}</span>
                     </div>
                   </div>
-                  <div className="p-2 space-y-1">
-                    <div className="grid grid-cols-[100px,1fr] gap-x-2">
+                  <div className="p-1.5 space-y-0.5">
+                    <div className="grid grid-cols-[80px,1fr] gap-x-1">
                       <span className="font-bold uppercase">STATE & CODE</span>
                       <span className="font-black uppercase">{invoice.clientState} : {invoice.clientStateCode}</span>
                       <span className="font-bold uppercase">GST</span>
                       <span className="font-black uppercase">:{invoice.clientGstin || '-'}</span>
-                      <span className="mt-1 font-bold uppercase">SMAN</span>
-                      <span className="mt-1 font-black">:{invoice.salesmanName || 'karthi'}</span>
+                      <span className="font-bold uppercase">SMAN</span>
+                      <span className="font-black">:{invoice.salesmanName || 'karthi'}</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Table with Detailed GST Breakdown */}
-                <div className="border-b-2 border-black min-h-[300px]">
+                <div className="border-b-2 border-black flex-1 min-h-[150px]">
                   <table className="w-full border-collapse">
                     <thead>
-                      <tr className="bg-white text-[8px] font-black uppercase divide-x-2 divide-black border-b-2 border-black text-center">
+                      <tr className="bg-white text-[7px] font-black uppercase divide-x-2 divide-black border-b-2 border-black text-center">
                         <th className="w-8 py-1">SI.NO</th>
                         <th className="text-left px-2 py-1">PARTICULARS</th>
-                        <th className="w-16 py-1">HSN CODE</th>
-                        <th className="w-14 py-1">QTY</th>
-                        <th className="w-16 py-1">RATE</th>
-                        <th className="w-12 py-1">CGST</th>
-                        <th className="w-16 py-1">CGST (amt)</th>
-                        <th className="w-12 py-1">SGST</th>
-                        <th className="w-16 py-1">SGST (amt)</th>
-                        <th className="w-20 py-1">Total</th>
+                        <th className="w-14 py-1">HSN CODE</th>
+                        <th className="w-12 py-1">QTY</th>
+                        <th className="w-14 py-1">RATE</th>
+                        <th className="w-10 py-1">CGST</th>
+                        <th className="w-14 py-1">CGST (amt)</th>
+                        <th className="w-10 py-1">SGST</th>
+                        <th className="w-14 py-1">SGST (amt)</th>
+                        <th className="w-18 py-1">Total</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y-2 divide-black">
+                    <tbody className="divide-y divide-black">
                       {invoice.items.map((item, idx) => (
-                        <tr key={idx} className="divide-x-2 divide-black text-[9px] font-bold align-top h-8 uppercase">
+                        <tr key={idx} className="divide-x-2 divide-black text-[8px] font-bold align-top h-6 uppercase">
                           <td className="text-center py-1">{idx + 1}</td>
                           <td className="px-2 py-1 text-left font-black">{item.name}</td>
                           <td className="text-center py-1">{item.hsn}</td>
@@ -1100,22 +1124,22 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                           <td className="text-right px-2 py-1 font-black">{(item.total || 0).toFixed(2)}</td>
                         </tr>
                       ))}
-                      {/* Fill empty space */}
-                      {Array.from({ length: Math.max(0, 10 - invoice.items.length) }).map((_, i) => (
-                        <tr key={`empty-${i}`} className="divide-x-2 divide-black h-8">
+                      {/* Remove empty items to increase print area for real content as per user request */}
+                      {invoice.items.length < 3 && Array.from({ length: 3 - invoice.items.length }).map((_, i) => (
+                        <tr key={`empty-${i}`} className="divide-x-2 divide-black h-6">
                           {Array.from({ length: 10 }).map((__, j) => <td key={j}></td>)}
                         </tr>
                       ))}
                     </tbody>
-                    <tfoot className="border-t-2 border-black font-black bg-white uppercase text-[9px]">
-                      <tr className="divide-x-2 divide-black h-6">
+                    <tfoot className="border-t-2 border-black font-black bg-white uppercase text-[8px]">
+                      <tr className="divide-x-2 divide-black h-5">
                         <td colSpan={5}></td>
                         <td className="text-right px-1 font-mono" colSpan={2}>{invoice.subtotal.toFixed(2)}</td>
                         <td className="text-right px-1 font-mono" colSpan={2}>{(invoice.totalCgst + invoice.totalSgst + (invoice.totalIgst || 0)).toFixed(2)}</td>
                         <td className="text-right px-2 font-black">{invoice.totalAmount.toFixed(2)}</td>
                       </tr>
                       {/* Totals row breakdown matches the image row above footer */}
-                      <tr className="divide-x-2 divide-black h-6 border-t-2 border-black text-center">
+                      <tr className="divide-x-2 divide-black h-5 border-t-2 border-black text-center">
                         <td colSpan={4}></td>
                         <td className="px-1 text-right">{invoice.subtotal.toFixed(2)}</td>
                         <td colSpan={2} className="px-1 text-right">{(invoice.totalCgst || (invoice.totalIgst / 2) || 0).toFixed(2)}</td>
@@ -1127,19 +1151,19 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                 </div>
 
                 {/* Amount In Words Row */}
-                <div className="border-b-2 border-black p-1 px-8 flex gap-4 items-center">
-                  <span className="font-bold italic uppercase text-[9px]">Amount In Words:</span>
-                  <span className="font-black uppercase text-[10px]">Rupees {amountToWords(invoice.totalAmount, invoice.currency)} Only</span>
+                <div className="border-b-2 border-black p-1 px-4 flex gap-2 items-center">
+                  <span className="font-bold italic uppercase text-[8px]">Amount In Words:</span>
+                  <span className="font-black uppercase text-[8px]">Rupees {amountToWords(invoice.totalAmount, invoice.currency)} Only</span>
                 </div>
 
                 {/* Boxed Footer with Bank Details */}
-                <div className="p-1 px-4 flex justify-between items-center text-[9px] font-bold uppercase divide-x-2 divide-black -mx-px">
-                  <div className="flex-1 flex gap-4">
-                    <span>Ac No:{settings.accountNumber}</span>
-                    <span>Ifsc:{settings.ifscCode}</span>
-                    <span>{settings.bankName}</span>
+                <div className="p-1 px-2 flex justify-between items-center text-[8px] font-bold uppercase divide-x-2 divide-black -mx-px">
+                  <div className="flex-1 flex gap-2 overflow-hidden text-[7px]">
+                    <span className="truncate">Ac No:{settings.accountNumber}</span>
+                    <span className="truncate">Ifsc:{settings.ifscCode}</span>
+                    <span className="truncate">{settings.bankName}</span>
                   </div>
-                  <div className="px-8 font-black">For {settings.companyName.toUpperCase()}</div>
+                  <div className="px-4 font-black">For {settings.companyName.toUpperCase()}</div>
                 </div>
               </div>
             ) : (
@@ -1376,7 +1400,7 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
             border: none !important;
           }
           @page {
-            size: A4;
+            size: ${paperSize};
             margin: 0;
           }
         }
