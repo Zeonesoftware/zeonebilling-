@@ -1,9 +1,15 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useData } from '@/hooks/useData';
 import { useAuth } from '@/contexts/AuthContext';
 import { Invoice, Expense, Purchase, Item } from '@/types';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu';
 import { 
   BarChart, 
   Bar, 
@@ -19,8 +25,9 @@ import {
   Line,
   CartesianGrid
 } from 'recharts';
-import { format, parseISO, startOfMonth, subMonths, eachMonthOfInterval } from 'date-fns';
-import { TrendingUp, ArrowUpRight, ArrowDownRight, IndianRupee, PieChart as PieChartIcon, Zap } from 'lucide-react';
+import { format, parseISO, startOfMonth, subMonths, eachMonthOfInterval, isWithinInterval, startOfYear, endOfYear, setMonth, setYear } from 'date-fns';
+import { TrendingUp, ArrowUpRight, ArrowDownRight, IndianRupee, PieChart as PieChartIcon, Zap, ChevronDown, Download, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function Reports() {
   const { profile } = useAuth();
@@ -29,14 +36,59 @@ export default function Reports() {
   const { data: purchases } = useData<Purchase>('purchases');
   const { data: items } = useData<Item>('items');
 
+  // Financial Year Selection
+  const getCurrentFY = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1; // 1-indexed
+    if (month < 4) return `${year - 1}-${year % 100}`;
+    return `${year}-${(year + 1) % 100}`;
+  };
+
+  const [selectedFY, setSelectedFY] = useState(getCurrentFY());
+  const [isExporting, setIsExporting] = useState(false);
+
+  const financialYears = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let i = 0; i < 5; i++) {
+        const startYear = currentYear - i + (new Date().getMonth() < 3 ? -1 : 0);
+        years.push(`${startYear}-${(startYear + 1) % 100}`);
+    }
+    return years;
+  }, []);
+
+  const getFYInterval = (fy: string) => {
+    const [startYearStr] = fy.split('-');
+    const startYear = parseInt(startYearStr);
+    return {
+      start: new Date(startYear, 3, 1), // April 1st
+      end: new Date(startYear + 1, 2, 31, 23, 59, 59) // March 31st
+    };
+  };
+
+  const fyInterval = useMemo(() => getFYInterval(selectedFY), [selectedFY]);
+
+  const filteredInvoices = useMemo(() => 
+    invoices.filter(i => isWithinInterval(parseISO(i.date), fyInterval)),
+  [invoices, fyInterval]);
+
+  const filteredExpenses = useMemo(() => 
+    expenses.filter(e => isWithinInterval(parseISO(e.date), fyInterval)),
+  [expenses, fyInterval]);
+
+  const filteredPurchases = useMemo(() => 
+    purchases.filter(p => isWithinInterval(parseISO(p.date), fyInterval)),
+  [purchases, fyInterval]);
+
   // Basic Summaries
-  const totalSales = useMemo(() => invoices.reduce((acc, i) => acc + i.totalAmount, 0), [invoices]);
-  const totalExpenses = useMemo(() => expenses.reduce((acc, i) => acc + i.amount, 0), [expenses]);
-  const totalPurchases = useMemo(() => purchases.reduce((acc, i) => acc + i.totalAmount, 0), [purchases]);
+  const totalSales = useMemo(() => filteredInvoices.reduce((acc, i) => acc + i.totalAmount, 0), [filteredInvoices]);
+  const totalExpenses = useMemo(() => filteredExpenses.reduce((acc, i) => acc + i.amount, 0), [filteredExpenses]);
+  const totalPurchases = useMemo(() => filteredPurchases.reduce((acc, i) => acc + i.totalAmount, 0), [filteredPurchases]);
   
-  const totalCgst = useMemo(() => invoices.reduce((acc, i) => acc + (i.totalCgst || 0), 0), [invoices]);
-  const totalSgst = useMemo(() => invoices.reduce((acc, i) => acc + (i.totalSgst || 0), 0), [invoices]);
-  const totalIgst = useMemo(() => invoices.reduce((acc, i) => acc + (i.totalIgst || 0), 0), [invoices]);
+  const totalCgst = useMemo(() => filteredInvoices.reduce((acc, i) => acc + (i.totalCgst || 0), 0), [filteredInvoices]);
+  const totalSgst = useMemo(() => filteredInvoices.reduce((acc, i) => acc + (i.totalSgst || 0), 0), [filteredInvoices]);
+  const totalIgst = useMemo(() => filteredInvoices.reduce((acc, i) => acc + (i.totalIgst || 0), 0), [filteredInvoices]);
   const totalGstCollected = totalCgst + totalSgst + totalIgst;
 
   const totalCgstInput = useMemo(() => purchases.reduce((acc, i) => acc + (i.totalCgst || 0), 0), [purchases]);
@@ -44,24 +96,24 @@ export default function Reports() {
   const totalIgstInput = useMemo(() => purchases.reduce((acc, i) => acc + (i.totalIgst || 0), 0), [purchases]);
   const totalGstITC = totalCgstInput + totalSgstInput + totalIgstInput;
 
-  // Monthly Sales Trends (Last 6 Months)
+  // Monthly Sales Trends (Selected FY)
   const monthlyTrendsData = useMemo(() => {
     const months = eachMonthOfInterval({
-      start: subMonths(new Date(), 5),
-      end: new Date()
+      start: fyInterval.start,
+      end: fyInterval.end < new Date() ? fyInterval.end : new Date()
     });
 
     return months.map(month => {
       const monthStr = format(month, 'MMM yyyy');
-      const sales = invoices
+      const sales = filteredInvoices
         .filter(i => format(parseISO(i.date), 'MMM yyyy') === monthStr)
         .reduce((sum, i) => sum + i.totalAmount, 0);
       
-      const purchaseAmount = purchases
+      const purchaseAmount = filteredPurchases
         .filter(p => format(parseISO(p.date), 'MMM yyyy') === monthStr)
         .reduce((sum, p) => sum + p.totalAmount, 0);
       
-      const expenseAmount = expenses
+      const expenseAmount = filteredExpenses
         .filter(e => format(parseISO(e.date), 'MMM yyyy') === monthStr)
         .reduce((sum, e) => sum + e.amount, 0);
 
@@ -72,12 +124,12 @@ export default function Reports() {
         Profit: sales - (purchaseAmount + expenseAmount)
       };
     });
-  }, [invoices, purchases, expenses]);
+  }, [filteredInvoices, filteredPurchases, filteredExpenses, fyInterval]);
 
   // Top Products by Revenue
   const topProductsData = useMemo(() => {
     const productSales: Record<string, number> = {};
-    invoices.forEach(inv => {
+    filteredInvoices.forEach(inv => {
       inv.items.forEach(item => {
         productSales[item.name] = (productSales[item.name] || 0) + (item.price * item.quantity);
       });
@@ -87,11 +139,11 @@ export default function Reports() {
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 5);
-  }, [invoices]);
+  }, [filteredInvoices]);
 
   // Expense Category Pie Data
   const categoryData = useMemo(() => {
-    const cats = expenses.reduce((acc: any[], exp) => {
+    const cats = filteredExpenses.reduce((acc: any[], exp) => {
       const existing = acc.find(a => a.name === exp.category);
       if (existing) {
         existing.value += exp.amount;
@@ -101,7 +153,49 @@ export default function Reports() {
       return acc;
     }, []);
     return cats.sort((a, b) => b.value - a.value);
-  }, [expenses]);
+  }, [filteredExpenses]);
+
+  const handleExportAudit = async () => {
+    setIsExporting(true);
+    const toastId = toast.loading('Generating audit file...');
+    try {
+      const headers = ['Date', 'Type', 'Number', 'Client', 'GSTIN', 'Taxable', 'CGST', 'SGST', 'IGST', 'Total', 'Status'];
+      const rows = filteredInvoices.map(inv => [
+        inv.date,
+        inv.type,
+        inv.invoiceNumber,
+        inv.clientName,
+        inv.clientGstin || '',
+        inv.subtotal.toFixed(2),
+        (inv.totalCgst || 0).toFixed(2),
+        (inv.totalSgst || 0).toFixed(2),
+        (inv.totalIgst || 0).toFixed(2),
+        inv.totalAmount.toFixed(2),
+        inv.status
+      ]);
+
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+      ].join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `Audit_Report_FY_${selectedFY}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success('Audit file exported successfully', { id: toastId });
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to export audit file', { id: toastId });
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const COLORS = ['#0F172A', '#237227', '#FFAA00', '#519A66', '#E2E8F0', '#94A3B8'];
 
@@ -113,10 +207,31 @@ export default function Reports() {
           <p className="text-slate-500 text-sm font-medium">Deep dive into your business performance and tax health.</p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline" className="border-slate-200 text-slate-600 font-bold text-[10px] uppercase tracking-widest h-10 px-6 rounded-xl">
-            FY 2024-25
-          </Button>
-          <Button className="bg-slate-900 text-white hover:bg-black uppercase text-[10px] tracking-widest font-black h-10 px-6 rounded-xl shadow-lg shadow-slate-200">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="border-slate-200 text-slate-600 font-bold text-[10px] uppercase tracking-widest h-10 px-6 rounded-xl flex gap-2 items-center">
+                FY {selectedFY}
+                <ChevronDown className="w-3 h-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40 p-2 rounded-xl shadow-2xl border-slate-100">
+              {financialYears.map(fy => (
+                <DropdownMenuItem 
+                  key={fy} 
+                  onClick={() => setSelectedFY(fy)}
+                  className="font-bold text-xs uppercase tracking-wider cursor-pointer"
+                >
+                  FY {fy}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button 
+            onClick={handleExportAudit}
+            disabled={isExporting}
+            className="bg-slate-900 text-white hover:bg-black uppercase text-[10px] tracking-widest font-black h-10 px-6 rounded-xl shadow-lg shadow-slate-200 flex gap-2 items-center"
+          >
+            {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
             Export Audit File
           </Button>
         </div>

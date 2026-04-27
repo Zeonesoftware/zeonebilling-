@@ -11,6 +11,7 @@ export interface BusinessSettings {
   accountNumber: string;
   ifscCode: string;
   pan?: string; // Added for GST compliance
+  fssai?: string;
   upiId?: string;
   signatureUrl?: string;
   terms: string;

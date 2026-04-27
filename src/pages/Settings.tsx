@@ -10,8 +10,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { Save, Download, Upload, Cloud, Check, Building, Trash2, Loader2, Image as ImageIcon, Truck, Eraser, PenTool } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
-import { storage } from '@/lib/firebase';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import SignatureCanvas from 'react-signature-canvas';
 import {
   Dialog,
@@ -28,6 +26,8 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+
+import { compressImage } from '@/lib/imageUtils';
 
 export default function Settings() {
   const { settings, loading, updateSettings } = useSettings();
@@ -54,13 +54,10 @@ export default function Settings() {
       setIsSigUploading(true);
       const dataUrl = sigCanvas.current?.getTrimmedCanvas().toDataURL('image/png');
       if (!dataUrl) throw new Error('Failed to get signature image');
-
-      // Convert dataUrl to blob
-      const res = await fetch(dataUrl);
-      const blob = await res.blob();
-      const file = new File([blob], `signature_${Date.now()}.png`, { type: 'image/png' });
-
-      await handleFileUpload(file, 'signature');
+      
+      // Store directly as Base64/DataURL
+      setFormData((prev: any) => ({ ...prev, signatureUrl: dataUrl }));
+      toast.success('Signature drawn successfully. Save to apply.');
       setIsSignModalOpen(false);
     } catch (err) {
       console.error(err);
@@ -88,24 +85,18 @@ export default function Settings() {
       return;
     }
 
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error('Image must be less than 2MB');
-      return;
-    }
-
     const setStatus = type === 'logo' ? setIsUploading : setIsSigUploading;
     setStatus(true);
 
     try {
-      const storageRef = ref(storage, `business/${type}_${Date.now()}`);
-      const snapshot = await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(snapshot.ref);
+      // Compress and convert to Base64
+      const base64 = await compressImage(file, type === 'logo' ? 400 : 300, type === 'logo' ? 400 : 150);
       
-      setFormData((prev: any) => ({ ...prev, [`${type}Url`]: url }));
-      toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} uploaded successfully`);
+      setFormData((prev: any) => ({ ...prev, [`${type}Url`]: base64 }));
+      toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} processed successfully. Save to apply.`);
     } catch (err) {
       console.error(err);
-      toast.error(`Failed to upload ${type}`);
+      toast.error(`Failed to process ${type}`);
     } finally {
       setStatus(false);
     }
@@ -394,6 +385,10 @@ export default function Settings() {
                 <div className="space-y-2">
                   <Label className="text-xs uppercase font-bold text-[#666666]">PAN No.</Label>
                   <Input value={formData.pan || ""} onChange={e => setFormData({ ...formData, pan: e.target.value })} placeholder="ABCDE1234F" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs uppercase font-bold text-[#666666]">FSSAI No.</Label>
+                  <Input value={formData.fssai || ""} onChange={e => setFormData({ ...formData, fssai: e.target.value })} placeholder="14-digit FSSAI Number" />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs uppercase font-bold text-[#666666]">State Code</Label>

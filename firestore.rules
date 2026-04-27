@@ -11,20 +11,24 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    function getUserData(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data;
     }
 
     function isAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().role == 'admin';
+      return isSignedIn() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+             getUserData(request.auth.uid).role == 'admin';
     }
 
     function isBilling() {
-      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (getUserData().role == 'admin' || getUserData().role == 'billing');
+      return isSignedIn() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+             (getUserData(request.auth.uid).role == 'admin' || getUserData(request.auth.uid).role == 'billing');
     }
 
     function isAnyUser() {
-      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().role in ['admin', 'billing'];
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
     }
 
     function incoming() {
@@ -43,58 +47,53 @@ service cloud.firestore {
 
     function isValidUser(data) {
       return data.keys().hasAll(['email', 'role']) && 
-             data.email is string && data.email.size() <= 256 &&
+             data.email is string &&
              data.role in ['admin', 'billing', 'removed'] &&
              (!('permissions' in data) || data.permissions is list) &&
-             data.keys().size() <= 15;
+             data.keys().size() <= 20;
     }
 
     function isValidInvoice(data) {
        return data.keys().hasAll(['invoiceNumber', 'clientId', 'totalAmount', 'status']) &&
-              data.invoiceNumber is string && data.invoiceNumber.size() <= 100 &&
+              data.invoiceNumber is string &&
               data.clientId is string &&
               data.totalAmount is number &&
-              data.status in ['Draft', 'Paid', 'Pending', 'Cancelled'] &&
-              data.keys().size() <= 60;
+              data.status in ['Draft', 'Paid', 'Pending', 'Cancelled', 'Delivered'] &&
+              data.keys().size() <= 80;
     }
 
     function isValidClient(data) {
       return data.keys().hasAll(['name', 'email']) &&
-             data.name is string && data.name.size() <= 200 &&
-             data.email is string && data.email.size() <= 256 &&
-             data.keys().size() <= 30;
-    }
-
-    function isValidPurchase(data) {
-      return data.keys().hasAll(['purchaseNumber', 'supplierName', 'totalAmount', 'status']) &&
-             data.purchaseNumber is string && data.purchaseNumber.size() <= 100 &&
-             data.supplierName is string && data.supplierName.size() <= 200 &&
-             data.totalAmount is number &&
-             data.status in ['Paid', 'Pending', 'Cancelled'] &&
-             data.keys().size() <= 50;
+             data.name is string &&
+             data.email is string &&
+             data.keys().size() <= 40;
     }
 
     function isValidItem(data) {
       return data.keys().hasAll(['name', 'price', 'gstRate']) &&
-             data.name is string && data.name.size() <= 200 &&
+             data.name is string &&
              data.price is number &&
              data.gstRate is number &&
-             data.keys().size() <= 20;
+             data.keys().size() <= 30;
     }
 
     // --- Rules ---
+    match /test/connection {
+      allow read: if isSignedIn();
+    }
+
     match /users/{userId} {
       allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
       allow create: if isSignedIn() && request.auth.uid == userId && isValidUser(incoming());
-      allow update: if (isAdmin() || (isSignedIn() && request.auth.uid == userId)) && isValidUser(incoming());
+      allow update: if (isSignedIn() && request.auth.uid == userId) || isAdmin();
       allow delete: if isAdmin() && userId != request.auth.uid;
     }
 
     match /invoices/{invoiceId} {
       allow read, list: if isAnyUser();
-      allow create: if isBilling() && isValidId(invoiceId) && isValidInvoice(incoming());
-      allow update: if isBilling() && isValidId(invoiceId) && isValidInvoice(incoming()) && (
-        incoming().invoiceNumber == existing().invoiceNumber
+      allow create: if isBilling() && isValidInvoice(incoming());
+      allow update: if isBilling() && (
+        incoming().invoiceNumber == existing().invoiceNumber || isAdmin()
       );
       allow delete: if isAdmin();
     }
@@ -119,12 +118,12 @@ service cloud.firestore {
 
     match /purchases/{purchaseId} {
       allow read, list: if isAnyUser();
-      allow create, update: if isBilling() && isValidPurchase(incoming());
+      allow create, update: if isBilling();
       allow delete: if isAdmin();
     }
 
     match /settings/{settingId} {
-      allow read: if isAnyUser();
+      allow read: if isSignedIn();
       allow write: if isBilling();
     }
   }

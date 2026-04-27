@@ -66,9 +66,18 @@ export function formatCurrency(amount: number, currency: string = 'INR') {
   }).format(amount);
 }
 
-export function calculateGST(price: number, quantity: number, rate: number, isInterState: boolean) {
-  const taxableAmount = price * quantity;
-  const gstAmount = (taxableAmount * rate) / 100;
+export function calculateGST(price: number, quantity: number, rate: number, isInterState: boolean, isTaxInclusive: boolean = false) {
+  let taxableAmount;
+  let gstAmount;
+
+  if (isTaxInclusive) {
+    const totalAmount = price * quantity;
+    taxableAmount = totalAmount / (1 + rate / 100);
+    gstAmount = totalAmount - taxableAmount;
+  } else {
+    taxableAmount = price * quantity;
+    gstAmount = (taxableAmount * rate) / 100;
+  }
   
   if (isInterState) {
     return { cgst: 0, sgst: 0, igst: gstAmount, total: taxableAmount + gstAmount };

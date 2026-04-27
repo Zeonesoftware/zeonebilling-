@@ -59,13 +59,15 @@ export default function PublicInvoiceView() {
         onclone: (clonedDoc) => {
           clonedDoc.documentElement.classList.remove('dark');
           clonedDoc.body.classList.remove('dark');
+          clonedDoc.querySelectorAll('.dark').forEach(el => el.classList.remove('dark'));
+          clonedDoc.querySelectorAll('*').forEach(el => (el as HTMLElement).style.colorScheme = 'light');
 
           // Neutralize modern CSS functions and font properties that crash html2canvas
           const styleSheets = clonedDoc.querySelectorAll('style');
           styleSheets.forEach(sheet => {
             if (sheet.innerHTML.includes('okl') || sheet.innerHTML.includes('font-') || sheet.innerHTML.includes('var(')) {
-              // Replace oklch/oklab with hex
-              sheet.innerHTML = sheet.innerHTML.replace(/okl[a-z]{2,3}\s*\([^)]+\)/gi, '#334155');
+              // Replace oklch/oklab with hex - handling nested parentheses (common in Tailwind 4)
+              sheet.innerHTML = sheet.innerHTML.replace(/okl[a-z]{2,3}\s*\([^()]*(\([^()]*\)[^()]*)*\)/gi, '#334155');
               // Remove modern font properties that can cause issues
               sheet.innerHTML = sheet.innerHTML.replace(/font-variant-[a-z-]+\s*:[^;]+;/gi, '');
               sheet.innerHTML = sheet.innerHTML.replace(/font-feature-settings\s*:[^;]+;/gi, '');
@@ -97,8 +99,8 @@ export default function PublicInvoiceView() {
           style.innerHTML = `
             :root {
               color-scheme: light !important;
-              --background: 255 255 255 !important;
-              --foreground: 30 41 59 !important;
+              --background: #ffffff !important;
+              --foreground: #1e293b !important;
             }
             * { 
               color-scheme: light !important; 

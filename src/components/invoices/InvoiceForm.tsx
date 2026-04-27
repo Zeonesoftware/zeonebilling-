@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Plus, 
+  Minus,
   Trash2, 
   Search, 
   Calculator,
@@ -19,10 +20,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useData } from '@/hooks/useData';
+import { ClientForm } from '@/components/clients/ClientForm';
 import { Client, Item, Invoice, InvoiceItem, BusinessSettings } from '@/types';
 import { toast } from 'sonner';
 import { formatCurrency, calculateGST, generateNextInvoiceNumber } from '@/lib/invoice-utils';
@@ -39,7 +42,7 @@ interface InvoiceFormProps {
 }
 
 export function InvoiceForm({ onSave, onCancel, settings, invoices, initialData }: InvoiceFormProps) {
-  const { data: clients } = useData<Client>('clients');
+  const { data: clients, addItem: addClient } = useData<Client>('clients');
   const { data: items } = useData<Item>('items');
 
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
@@ -57,6 +60,8 @@ export function InvoiceForm({ onSave, onCancel, settings, invoices, initialData 
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [pdfStyle, setPdfStyle] = useState<Invoice['pdfStyle']>('Standard');
+  const [isTaxInclusive, setIsTaxInclusive] = useState(false);
+  const [isClientModalOpen, setIsClientModalOpen] = useState(false);
 
   // E-Way Bill State
   const [ewayBillNo, setEwayBillNo] = useState('');
@@ -118,9 +123,9 @@ export function InvoiceForm({ onSave, onCancel, settings, invoices, initialData 
     return () => clearTimeout(timer);
   }, [invoiceItems, selectedClient, invoiceType, notes]);
 
-  const recalculateItem = useCallback((item: InvoiceItem, quantity: number, price: number, client: Client | null) => {
+  const recalculateItem = useCallback((item: InvoiceItem, quantity: number, price: number, client: Client | null, taxInclusive: boolean) => {
     const isInterState = client ? client.stateCode !== settings.stateCode : false;
-    const gstResults = calculateGST(price, quantity, item.gstRate, isInterState);
+    const gstResults = calculateGST(price, quantity, item.gstRate, isInterState, taxInclusive);
     
     return {
       ...item,
@@ -138,12 +143,23 @@ export function InvoiceForm({ onSave, onCancel, settings, invoices, initialData 
     setSelectedClient(client);
   };
 
+  const handleCreateClient = async (clientData: Partial<Client>) => {
+    try {
+      const newClient = await addClient(clientData) as Client;
+      setSelectedClient(newClient);
+      setIsClientModalOpen(false);
+      toast.success('Client added successfully');
+    } catch (error) {
+      toast.error('Failed to add client');
+    }
+  };
+
   const addItemRow = (itemId: string) => {
     const item = items.find(i => i.id === itemId);
     if (!item) return;
 
     const isInterState = selectedClient ? selectedClient.stateCode !== settings.stateCode : false;
-    const gstResults = calculateGST(item.price, 1, item.gstRate, isInterState);
+    const gstResults = calculateGST(item.price, 1, item.gstRate, isInterState, isTaxInclusive);
 
     const newItem: InvoiceItem = {
       itemId: item.id,
@@ -201,22 +217,22 @@ export function InvoiceForm({ onSave, onCancel, settings, invoices, initialData 
 
   const updateQuantity = (index: number, qty: number) => {
     const updated = [...invoiceItems];
-    updated[index] = recalculateItem(updated[index], qty, updated[index].price, selectedClient);
+    updated[index] = recalculateItem(updated[index], qty, updated[index].price, selectedClient, isTaxInclusive);
     setInvoiceItems(updated);
   };
 
   const updatePrice = (index: number, price: number) => {
     const updated = [...invoiceItems];
-    updated[index] = recalculateItem(updated[index], updated[index].quantity, price, selectedClient);
+    updated[index] = recalculateItem(updated[index], updated[index].quantity, price, selectedClient, isTaxInclusive);
     setInvoiceItems(updated);
   };
 
-  // When client changes, recalculate all taxes
+  // When client or tax setting changes, recalculate all taxes
   useEffect(() => {
-    setInvoiceItems(prev => prev.map(item => recalculateItem(item, item.quantity, item.price, selectedClient)));
-  }, [selectedClient, recalculateItem]);
+    setInvoiceItems(prev => prev.map(item => recalculateItem(item, item.quantity, item.price, selectedClient, isTaxInclusive)));
+  }, [selectedClient, isTaxInclusive, recalculateItem]);
 
-  const subtotal = invoiceItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+  const subtotal = invoiceItems.reduce((acc, item) => acc + (item.total - (item.cgst + item.sgst + item.igst)), 0);
   const totalCgst = invoiceItems.reduce((acc, item) => acc + item.cgst, 0);
   const totalSgst = invoiceItems.reduce((acc, item) => acc + item.sgst, 0);
   const totalIgst = invoiceItems.reduce((acc, item) => acc + item.igst, 0);
@@ -345,7 +361,12 @@ export function InvoiceForm({ onSave, onCancel, settings, invoices, initialData 
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Recipient Details</Label>
-                <Button variant="link" size="sm" className="h-auto p-0 text-[10px] font-black uppercase tracking-widest text-[#237227]">
+                <Button 
+                  variant="link" 
+                  size="sm" 
+                  className="h-auto p-0 text-[10px] font-black uppercase tracking-widest text-[#237227]"
+                  onClick={() => setIsClientModalOpen(true)}
+                >
                   + New Client
                 </Button>
               </div>
@@ -453,8 +474,8 @@ export function InvoiceForm({ onSave, onCancel, settings, invoices, initialData 
           </div>
 
           {/* Barcode / Item Search */}
-          <div className="flex gap-4">
-            <form onSubmit={handleBarcodeSearch} className="relative flex-1">
+          <div className="flex flex-col sm:flex-row gap-4 items-center">
+            <form onSubmit={handleBarcodeSearch} className="relative flex-1 w-full">
               <Barcode className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <Input 
                 placeholder="Scan Barcode or enter code..." 
@@ -463,16 +484,30 @@ export function InvoiceForm({ onSave, onCancel, settings, invoices, initialData 
                 onChange={e => setBarcodeInput(e.target.value)}
               />
             </form>
-            <Select onValueChange={addItemRow} value="">
-              <SelectTrigger className="w-[240px] h-10 border-slate-200 font-bold text-xs uppercase tracking-widest">
-                <SelectValue placeholder="Add Item Manually" />
-              </SelectTrigger>
-              <SelectContent>
-                {items.map(item => (
-                  <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-4 w-full sm:w-auto">
+              <Select onValueChange={addItemRow} value="">
+                <SelectTrigger className="flex-1 sm:w-[240px] h-10 border-slate-200 font-bold text-xs uppercase tracking-widest">
+                  <SelectValue placeholder="Add Item Manually" />
+                </SelectTrigger>
+                <SelectContent>
+                  {items.map(item => (
+                    <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              <div className="flex items-center gap-2 bg-slate-50 p-2 px-3 rounded-lg border border-slate-200 shrink-0">
+                <Switch 
+                  id="tax-inclusive" 
+                  checked={isTaxInclusive} 
+                  onCheckedChange={setIsTaxInclusive}
+                  className="scale-75"
+                />
+                <Label htmlFor="tax-inclusive" className="text-[9px] font-black uppercase tracking-widest text-slate-500 cursor-pointer">
+                  Includes GST
+                </Label>
+              </div>
+            </div>
           </div>
 
           {/* Items Table */}
@@ -496,12 +531,30 @@ export function InvoiceForm({ onSave, onCancel, settings, invoices, initialData 
                       <div className="text-[10px] text-slate-400 font-bold font-mono">HSN: {item.hsn}</div>
                     </TableCell>
                     <TableCell>
-                      <Input 
-                        type="number" 
-                        value={item.quantity === 0 ? '' : item.quantity} 
-                        onChange={e => updateQuantity(idx, Number(e.target.value))}
-                        className="h-8 text-center font-bold font-mono border-slate-100"
-                      />
+                      <div className="flex items-center gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="icon" 
+                          className="h-7 w-7 rounded-full shrink-0"
+                          onClick={() => updateQuantity(idx, Math.max(0, item.quantity - 1))}
+                        >
+                          <Minus className="w-3 h-3" />
+                        </Button>
+                        <Input 
+                          type="number" 
+                          value={item.quantity === 0 ? '' : item.quantity} 
+                          onChange={e => updateQuantity(idx, Number(e.target.value))}
+                          className="h-8 w-12 text-center font-bold font-mono border-slate-100 p-0"
+                        />
+                        <Button 
+                          variant="outline" 
+                          size="icon" 
+                          className="h-7 w-7 rounded-full shrink-0"
+                          onClick={() => updateQuantity(idx, item.quantity + 1)}
+                        >
+                          <Plus className="w-3 h-3" />
+                        </Button>
+                      </div>
                     </TableCell>
                     <TableCell>
                        <Input 
@@ -513,8 +566,15 @@ export function InvoiceForm({ onSave, onCancel, settings, invoices, initialData 
                     </TableCell>
                     <TableCell className="text-right">
                        <div className="text-xs font-black text-slate-900">{item.gstRate}%</div>
-                       <div className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">
-                         {item.igst > 0 ? `IGST: ${item.igst.toFixed(2)}` : `C+S GST: ${(item.cgst + item.sgst).toFixed(2)}`}
+                       <div className="text-[8px] text-slate-400 font-bold uppercase tracking-tight">
+                         {item.igst > 0 ? (
+                           `IGST: ${item.igst.toFixed(2)}`
+                         ) : (
+                           <>
+                             <div>CGST: {item.cgst.toFixed(2)}</div>
+                             <div>SGST: {item.sgst.toFixed(2)}</div>
+                           </>
+                         )}
                        </div>
                     </TableCell>
                     <TableCell className="text-right font-black text-slate-900 font-mono">
@@ -724,6 +784,12 @@ export function InvoiceForm({ onSave, onCancel, settings, invoices, initialData 
           onClose={() => setShowPreview(false)} 
         />
       )}
+
+      <ClientForm 
+        isOpen={isClientModalOpen}
+        onClose={() => setIsClientModalOpen(false)}
+        onSave={handleCreateClient}
+      />
     </div>
   );
 }

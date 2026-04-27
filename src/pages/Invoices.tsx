@@ -23,10 +23,19 @@ import {
   CreditCard,
   ArrowUpDown,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  Truck
 } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { 
   Table, 
   TableBody, 
@@ -83,7 +92,52 @@ export default function Invoices() {
   const [isBulkEInvoicing, setIsBulkEInvoicing] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isBulkExporting, setIsBulkExporting] = useState(false);
+  const [isExportingAudit, setIsExportingAudit] = useState(false);
   const [isPaying, setIsPaying] = useState<string | null>(null);
+
+  // ... (existing code)
+
+  const handleExportAudit = async () => {
+    setIsExportingAudit(true);
+    const toastId = toast.loading('Preparing audit export...');
+    try {
+      const headers = ['Date', 'Type', 'Number', 'Client', 'GSTIN', 'Taxable', 'CGST', 'SGST', 'IGST', 'Total', 'Status'];
+      const rows = filteredInvoices.map(inv => [
+        inv.date,
+        inv.type,
+        inv.invoiceNumber,
+        inv.clientName,
+        inv.clientGstin || '',
+        inv.subtotal.toFixed(2),
+        (inv.totalCgst || 0).toFixed(2),
+        (inv.totalSgst || 0).toFixed(2),
+        (inv.totalIgst || 0).toFixed(2),
+        inv.totalAmount.toFixed(2),
+        inv.status
+      ]);
+
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+      ].join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `Invoice_Audit_Log_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success('Audit log exported', { id: toastId });
+    } catch (error) {
+      toast.error('Failed to export audit', { id: toastId });
+    } finally {
+      setIsExportingAudit(false);
+    }
+  };
+  const [ewayPromptInvoice, setEwayPromptInvoice] = useState<Invoice | null>(null);
 
   // Handle return from Stripe
   useEffect(() => {
@@ -169,6 +223,23 @@ export default function Invoices() {
       <ArrowDown className="w-3 h-3 ml-1 text-[#237227]" />;
   };
 
+  const hasFilters = statusFilter !== 'all' || typeFilter !== 'all' || startDate !== '' || endDate !== '' || searchTerm !== '';
+
+  const resetFilters = () => {
+    setStatusFilter('all');
+    setTypeFilter('all');
+    setStartDate('');
+    setEndDate('');
+    setSearchTerm('');
+  };
+
+  const getUserName = (p: any) => {
+    if (!p) return 'Unknown';
+    if (p.displayName && p.displayName !== 'User') return p.displayName;
+    if (p.email) return p.email.split('@')[0];
+    return 'User';
+  };
+
   const handleCreate = async (invoiceData: Partial<Invoice>) => {
     try {
       if (editingInvoice) {
@@ -180,10 +251,10 @@ export default function Invoices() {
           ...invoiceData,
           createdBy: profile ? {
             uid: profile.uid,
-            name: profile.displayName || profile.email.split('@')[0]
+            name: getUserName(profile)
           } : undefined
         };
-        await addItem(fullInvoiceData as Partial<Invoice>);
+        const newInvoice = await addItem(fullInvoiceData as Partial<Invoice>);
         // Deduct stock
         if (invoiceData.items) {
           for (const invoiceItem of invoiceData.items) {
@@ -196,6 +267,11 @@ export default function Invoices() {
         }
         setIsCreating(false);
         toast.success('Invoice created and stock updated');
+
+        // Check for E-Way Bill requirement
+        if (fullInvoiceData.totalAmount > 50000 && fullInvoiceData.type === 'Tax Invoice') {
+          setEwayPromptInvoice(newInvoice as Invoice);
+        }
       }
     } catch (err) {
       toast.error('Failed to save invoice');
@@ -293,6 +369,56 @@ export default function Invoices() {
 
   return (
     <div className="space-y-6">
+      {ewayPromptInvoice && (
+        <Dialog open={!!ewayPromptInvoice} onOpenChange={() => setEwayPromptInvoice(null)}>
+          <DialogContent className="sm:max-w-md border-none shadow-2xl p-0 overflow-hidden">
+            <div className="bg-orange-500 p-6 flex flex-col items-center text-white gap-2">
+              <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
+                <Truck className="w-6 h-6" />
+              </div>
+              <DialogTitle className="text-xl font-black uppercase tracking-tighter">E-Way Bill Required?</DialogTitle>
+              <DialogDescription className="text-orange-50 font-bold text-center">
+                This Tax Invoice exceeds ₹50,000 threshold.
+              </DialogDescription>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-2">
+                <div className="flex justify-between items-center text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  <span>Document Amount</span>
+                  <span className="text-slate-900">₹{ewayPromptInvoice.totalAmount.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between items-center text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  <span>GST Threshold</span>
+                  <span className="text-orange-600">₹50,000</span>
+                </div>
+              </div>
+              <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                As per GST rules, an E-Way bill is mandatory for interstate movement of goods exceeding ₹50,000. Would you like to generate the GePP JSON now?
+              </p>
+            </div>
+            <DialogFooter className="p-6 pt-0 flex flex-col sm:flex-row gap-2">
+              <Button 
+                variant="outline" 
+                className="flex-1 font-black uppercase text-[10px] tracking-widest rounded-xl h-12 border-slate-200"
+                onClick={() => setEwayPromptInvoice(null)}
+              >
+                Skip for now
+              </Button>
+              <Button 
+                className="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-black uppercase text-[10px] tracking-widest rounded-xl h-12 shadow-lg shadow-orange-100 gap-2"
+                onClick={() => {
+                  setSelectedIds([ewayPromptInvoice.id]);
+                  setIsBulkEInvoicing(true);
+                  setEwayPromptInvoice(null);
+                }}
+              >
+                <Zap className="w-4 h-4 fill-current" />
+                Generate JSON
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
       {viewingInvoice && settings && (
         <InvoiceView invoice={viewingInvoice} settings={settings} onClose={() => setViewingInvoice(null)} />
       )}
@@ -353,8 +479,14 @@ export default function Invoices() {
             </div>
           ) : (
             <>
-              <Button variant="outline" size="sm" className="hidden sm:flex gap-2 rounded-lg font-bold text-[10px] uppercase tracking-widest h-10 px-5">
-                <Download className="w-4 h-4" />
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleExportAudit}
+                disabled={isExportingAudit}
+                className="hidden sm:flex gap-2 rounded-lg font-bold text-[10px] uppercase tracking-widest h-10 px-5"
+              >
+                {isExportingAudit ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                 Export Audit
               </Button>
               {canCreate && (
@@ -380,6 +512,18 @@ export default function Invoices() {
         </div>
         
         <div className="flex items-center gap-2">
+          {hasFilters && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={resetFilters}
+              className="h-10 px-4 rounded-lg bg-red-50 text-red-600 border-red-100 hover:bg-red-100 font-bold text-[10px] uppercase tracking-widest gap-2"
+            >
+              <X className="w-4 h-4" />
+              Reset Filters
+            </Button>
+          )}
+          
           <div className="flex items-center gap-1.5 bg-slate-50 p-1 px-2 rounded-lg border border-slate-200">
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Date Range</span>
             <Input 
@@ -504,7 +648,7 @@ export default function Invoices() {
                   Issue Date {getSortIcon('date')}
                 </Button>
               </TableHead>
-              <TableHead className="hidden xl:table-cell font-black text-[10px] uppercase tracking-widest text-slate-400">Created By</TableHead>
+              <TableHead className="hidden md:table-cell font-black text-[10px] uppercase tracking-widest text-slate-400">Created By</TableHead>
               <TableHead className="hidden xl:table-cell">
                 <Button 
                   variant="ghost" 
@@ -529,7 +673,7 @@ export default function Invoices() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-20">
+                <TableCell colSpan={10} className="text-center py-20">
                   <div className="flex flex-col items-center gap-2">
                     <Loader2 className="w-8 h-8 animate-spin text-slate-300" />
                     <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Syncing with server...</span>
@@ -538,7 +682,7 @@ export default function Invoices() {
               </TableRow>
             ) : filteredInvoices.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-20 text-slate-400 italic text-sm">No records matching your search</TableCell>
+                <TableCell colSpan={10} className="text-center py-20 text-slate-400 italic text-sm">No records matching your search</TableCell>
               </TableRow>
             ) : filteredInvoices.map((inv) => (
               <TableRow key={inv.id} className={cn("hover:bg-slate-50 transition-colors group border-slate-100", selectedIds.includes(inv.id) && "bg-slate-50")}>
@@ -570,12 +714,12 @@ export default function Invoices() {
                 <TableCell className="hidden lg:table-cell text-slate-500 text-xs font-bold tabular-nums">
                   {format(new Date(inv.date), 'dd MMM yyyy')}
                 </TableCell>
-                <TableCell className="hidden xl:table-cell">
+                <TableCell className="hidden md:table-cell">
                   <div className="flex items-center gap-2">
                     <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-600">
                       {inv.createdBy?.name?.charAt(0) || '?'}
                     </div>
-                    <span className="text-xs font-medium text-slate-600">{inv.createdBy?.name || 'Unknown'}</span>
+                    <span className="text-xs font-medium text-slate-600 truncate max-w-[80px]">{inv.createdBy?.name || 'Unknown'}</span>
                   </div>
                 </TableCell>
                 <TableCell className="hidden xl:table-cell text-slate-500 text-xs font-bold tabular-nums">

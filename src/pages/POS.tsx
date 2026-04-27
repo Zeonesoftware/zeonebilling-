@@ -17,9 +17,20 @@ import {
   CheckCircle2, 
   Keyboard,
   XCircle,
-  Package
+  Package,
+  Truck,
+  Zap
 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { formatCurrency, calculateGST } from '@/lib/invoice-utils';
@@ -39,6 +50,8 @@ export default function POS() {
   const [cart, setCart] = useState<InvoiceItem[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string>('c1');
   const [searchTerm, setSearchTerm] = useState('');
+  const [ewayPromptInvoice, setEwayPromptInvoice] = useState<Invoice | null>(null);
+  const [isTaxInclusive, setIsTaxInclusive] = useState(false);
   const barcodeRef = useRef<HTMLInputElement>(null);
 
   // Keyboard Shortcuts
@@ -85,52 +98,36 @@ export default function POS() {
     setCart(prevCart => {
       const client = clients.find(c => c.id === selectedClientId) || clients[0];
       const isInterState = client?.stateCode && settings?.stateCode ? client.stateCode !== settings.stateCode : false;
-      const gstResults = calculateGST(item.price, 1, item.gstRate, isInterState);
+      const gstResults = calculateGST(item.price, 1, item.gstRate, isInterState, isTaxInclusive);
 
-      const existing = prevCart.find(i => i.itemId === item.id);
-      if (existing) {
-        const newQty = existing.quantity + 1;
-        const updatedGst = calculateGST(item.price, newQty, item.gstRate, isInterState);
-        return prevCart.map(i => 
-          i.itemId === item.id 
-            ? { 
-                ...i, 
-                quantity: newQty, 
-                cgst: updatedGst.cgst, 
-                sgst: updatedGst.sgst, 
-                igst: updatedGst.igst, 
-                total: updatedGst.total 
-              } 
-            : i
-        );
-      } else {
-        return [...prevCart, {
-          itemId: item.id,
-          name: item.name,
-          hsn: item.hsn,
-          quantity: 1,
-          price: item.price,
-          gstRate: item.gstRate,
-          cgst: gstResults.cgst,
-          sgst: gstResults.sgst,
-          igst: gstResults.igst,
-          total: gstResults.total
-        }];
-      }
+      // Add as separate item as per user request
+      return [...prevCart, {
+        itemId: item.id,
+        name: item.name,
+        hsn: item.hsn,
+        quantity: 1,
+        price: item.price,
+        gstRate: item.gstRate,
+        cgst: gstResults.cgst,
+        sgst: gstResults.sgst,
+        igst: gstResults.igst,
+        total: gstResults.total
+      }];
     });
     toast.success(`${item.name} added`, { duration: 1000 });
-  }, [clients, selectedClientId, settings]);
+  }, [clients, selectedClientId, settings, isTaxInclusive]);
 
-  const updateQuantity = (id: string, delta: number) => {
+  const updateQuantity = (id: string, delta: number, index?: number) => {
     setCart(prevCart => {
-      return prevCart.map(item => {
-        if (item.itemId === id) {
+      // Use index if available to specifically target the "separate" item
+      return prevCart.map((item, idx) => {
+        if (item.itemId === id && (index === undefined || index === idx)) {
           const newQty = Math.max(0, item.quantity + delta);
           if (newQty === 0) return item;
           
           const client = clients.find(c => c.id === selectedClientId) || clients[0];
           const isInterState = client?.stateCode && settings?.stateCode ? client.stateCode !== settings.stateCode : false;
-          const gstResults = calculateGST(item.price, newQty, item.gstRate, isInterState);
+          const gstResults = calculateGST(item.price, newQty, item.gstRate, isInterState, isTaxInclusive);
           
           return {
             ...item,
@@ -146,11 +143,11 @@ export default function POS() {
     });
   };
 
-  const removeFromCart = useCallback((id: string) => {
-    setCart(prevCart => prevCart.filter(i => i.itemId !== id));
+  const removeFromCart = useCallback((id: string, index: number) => {
+    setCart(prevCart => prevCart.filter((i, idx) => !(i.itemId === id && idx === index)));
   }, []);
 
-  const subtotal = cart.reduce((acc, i) => acc + (i.price * i.quantity), 0);
+  const subtotal = cart.reduce((acc, i) => acc + (i.total - (i.cgst + i.sgst + (i.igst || 0))), 0);
   const totalCgst = cart.reduce((acc, i) => acc + i.cgst, 0);
   const totalSgst = cart.reduce((acc, i) => acc + i.sgst, 0);
   const totalIgst = cart.reduce((acc, i) => acc + (i.igst || 0), 0);
@@ -164,6 +161,13 @@ export default function POS() {
       return toast.error('Business state code is missing in Settings. Please set it for tax calculation.');
     }
     
+    const getUserName = (p: any) => {
+      if (!p) return 'Unknown';
+      if (p.displayName && p.displayName !== 'User') return p.displayName;
+      if (p.email) return p.email.split('@')[0];
+      return 'User';
+    };
+
     const invoice: Partial<Invoice> = {
       invoiceNumber: `POS-${Date.now().toString().slice(-6)}`,
       type: 'Tax Invoice',
@@ -187,7 +191,7 @@ export default function POS() {
       status: 'Paid',
       createdBy: profile ? {
         uid: profile.uid,
-        name: profile.displayName || profile.email.split('@')[0]
+        name: getUserName(profile)
       } : undefined
     };
 
@@ -207,7 +211,13 @@ export default function POS() {
       toast.success('Checkout successful!', {
         description: 'Invoice generated and stock updated.'
       });
-      setShowQuickDialog(true);
+
+      // E-Way Bill Prompt
+      if (invoice.totalAmount && invoice.totalAmount > 50000) {
+        setEwayPromptInvoice(newInvoice as Invoice);
+      } else {
+        setShowQuickDialog(true);
+      }
     } catch (err) {
       toast.error('Checkout failed');
     }
@@ -245,6 +255,74 @@ export default function POS() {
 
   return (
     <div className="min-h-screen lg:h-full flex flex-col lg:flex-row gap-4 sm:gap-6 lg:overflow-hidden">
+      {ewayPromptInvoice && (
+        <Dialog open={!!ewayPromptInvoice} onOpenChange={() => {
+          setEwayPromptInvoice(null);
+          setShowQuickDialog(true);
+        }}>
+          <DialogContent className="sm:max-w-md border-none shadow-2xl p-0 overflow-hidden">
+            <div className="bg-orange-500 p-6 flex flex-col items-center text-white gap-2">
+              <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
+                <Truck className="w-6 h-6" />
+              </div>
+              <DialogTitle className="text-xl font-black uppercase tracking-tighter">Large Order: E-Way Bill?</DialogTitle>
+              <DialogDescription className="text-orange-50 font-bold text-center">
+                This POS order exceeds ₹50,000 threshold.
+              </DialogDescription>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-2">
+                <div className="flex justify-between items-center text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  <span>Current Bill Total</span>
+                  <span className="text-slate-900">₹{ewayPromptInvoice.totalAmount.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between items-center text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  <span>E-Way Threshold</span>
+                  <span className="text-orange-600">₹50,000</span>
+                </div>
+              </div>
+              <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                As per regulation, inter-state movement of goods above ₹50k requires an E-Way Bill. Do you want to generate the JSON for portal upload now?
+              </p>
+            </div>
+            <DialogFooter className="p-6 pt-0 flex flex-col sm:flex-row gap-2">
+              <Button 
+                variant="outline" 
+                className="flex-1 font-black uppercase text-[10px] tracking-widest rounded-xl h-12 border-slate-200"
+                onClick={() => {
+                  setEwayPromptInvoice(null);
+                  setShowQuickDialog(true);
+                }}
+              >
+                Just Receipt
+              </Button>
+              <Button 
+                className="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-black uppercase text-[10px] tracking-widest rounded-xl h-12 shadow-lg shadow-orange-100 gap-2"
+                onClick={() => {
+                  // Trigger JSON download directly
+                  const { generateEInvoiceJSON } = require('@/lib/einvoice-generator');
+                  const json = generateEInvoiceJSON(ewayPromptInvoice, settings);
+                  const blob = new Blob([JSON.stringify(json, null, 2)], { type: 'application/json' });
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = `EWayBill_${ewayPromptInvoice.invoiceNumber}.json`;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                  
+                  setEwayPromptInvoice(null);
+                  setShowQuickDialog(true);
+                  toast.success('E-Way Bill JSON downloaded');
+                }}
+              >
+                <Zap className="w-4 h-4 fill-current" />
+                Generate JSON
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
       {/* Product Selection Side */}
       <div className="flex-1 flex flex-col gap-4 min-w-0 h-full order-2 lg:order-1">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 shrink-0">
@@ -351,7 +429,7 @@ export default function POS() {
           <Badge className="bg-black text-white rounded-full px-2 sm:px-3 py-1 font-black text-[10px] sm:text-xs">{cart.length} ITEMS</Badge>
         </div>
 
-        <div className="p-3 sm:p-4 bg-white border-b border-slate-50 shrink-0">
+        <div className="p-3 sm:p-4 bg-white border-b border-slate-50 shrink-0 space-y-3">
           <div className="flex items-center gap-3 p-2 sm:p-3 bg-slate-50 rounded-xl border border-slate-100 transition-all focus-within:border-[#237227] focus-within:bg-white">
             <User className="w-4 h-4 text-slate-400" />
             <div className="flex-1 overflow-hidden">
@@ -367,13 +445,24 @@ export default function POS() {
               </select>
             </div>
           </div>
+          <div className="flex items-center justify-between gap-2 bg-slate-50 p-2 px-3 rounded-lg border border-slate-100">
+             <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Tax Settings</span>
+             <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-slate-600">Inclusive GST</span>
+                <Switch 
+                  checked={isTaxInclusive} 
+                  onCheckedChange={setIsTaxInclusive}
+                  className="scale-75"
+                />
+             </div>
+          </div>
         </div>
 
         <ScrollArea className="flex-1 min-h-0 bg-slate-50/20">
           <div className="p-3 sm:p-4 space-y-3">
-            {cart.map(item => (
+            {cart.map((item, idx) => (
               <div 
-                key={item.itemId} 
+                key={`${item.itemId}-${idx}`} 
                 className="group p-2 sm:p-3 bg-white border border-slate-100 rounded-xl hover:border-slate-200 hover:shadow-sm transition-all flex items-center gap-2 sm:gap-3"
               >
                 <div className="w-10 h-10 sm:w-12 sm:h-12 bg-slate-50 rounded-lg flex items-center justify-center text-slate-300 font-bold text-xs uppercase overflow-hidden shrink-0">
@@ -393,7 +482,7 @@ export default function POS() {
                       variant="ghost" 
                       size="icon" 
                       className="h-5 w-5 sm:h-6 sm:w-6 rounded-md hover:bg-white hover:text-red-500"
-                      onClick={() => updateQuantity(item.itemId, -1)}
+                      onClick={() => updateQuantity(item.itemId, -1, idx)}
                     >
                       <Minus className="w-2.5 h-2.5 sm:w-3 h-3" />
                     </Button>
@@ -402,7 +491,7 @@ export default function POS() {
                       variant="ghost" 
                       size="icon" 
                       className="h-5 w-5 sm:h-6 sm:w-6 rounded-md hover:bg-white hover:text-[#237227]"
-                      onClick={() => updateQuantity(item.itemId, 1)}
+                      onClick={() => updateQuantity(item.itemId, 1, idx)}
                     >
                       <Plus className="w-2.5 h-2.5 sm:w-3 h-3" />
                     </Button>
@@ -411,7 +500,7 @@ export default function POS() {
                     <span className="font-black text-[11px] sm:text-sm text-slate-900">₹{item.total.toFixed(0)}</span>
                     <button 
                       className="text-slate-200 hover:text-red-500 transition-colors p-1"
-                      onClick={() => removeFromCart(item.itemId)}
+                      onClick={() => removeFromCart(item.itemId, idx)}
                     >
                       <Trash2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                     </button>
@@ -437,13 +526,16 @@ export default function POS() {
             </div>
             <div className="flex justify-between items-center text-[9px] sm:text-[10px]">
               <span className="font-bold text-slate-400 uppercase tracking-widest">Calculated GST</span>
-              <span className="font-black text-emerald-600">
+              <div className="text-right">
                 {totalIgst > 0 ? (
-                  `+ ₹${totalIgst.toFixed(2)} (IGST)`
+                  <div className="font-black text-emerald-600">+ ₹{totalIgst.toFixed(2)} (IGST)</div>
                 ) : (
-                  `+ ₹${(totalCgst + totalSgst).toFixed(2)} (C+S GST)`
+                  <div className="space-y-0.5">
+                    <div className="font-black text-emerald-600">+ ₹{totalCgst.toFixed(2)} (CGST)</div>
+                    <div className="font-black text-emerald-600">+ ₹{totalSgst.toFixed(2)} (SGST)</div>
+                  </div>
                 )}
-              </span>
+              </div>
             </div>
             <div className="pt-2 mt-1 border-t border-slate-100 flex justify-between items-center">
               <span className="font-black text-[10px] sm:text-[11px] text-slate-800 uppercase tracking-tighter">Payable Amount</span>

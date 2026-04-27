@@ -18,6 +18,7 @@ import PublicInvoiceView from '@/pages/PublicInvoiceView';
 import Reconciliation from '@/pages/Reconciliation';
 import Purchases from '@/pages/Purchases';
 import Payment from '@/pages/Payment';
+import GSTReturns from '@/pages/GSTReturns';
 
 function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode, allowedRoles?: string[] }) {
   const { user, profile, loading } = useAuth();
@@ -59,6 +60,7 @@ export default function App() {
               <Route path="/pos" element={<POS />} />
               <Route path="/payment/:id" element={<Payment />} />
               <Route path="/reconciliation" element={<Reconciliation />} />
+              <Route path="/gst-returns" element={<GSTReturns />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/settings" element={
                 <ProtectedRoute allowedRoles={['admin']}>

@@ -53,6 +53,7 @@ export function Shell() {
     { icon: Package, label: t('products'), path: '/products', permission: 'inventory' },
     { icon: Users, label: t('clients'), path: '/clients', permission: 'clients' },
     { icon: ReceiptIndianRupee, label: t('expenses'), path: '/expenses', permission: 'expenses' },
+    { icon: Globe, label: 'GST Returns', path: '/gst-returns', permission: 'reports' },
     { icon: Dna, label: 'Reconciliation', path: '/reconciliation', permission: 'reconciliation' },
     { icon: TrendingUp, label: t('reports'), path: '/reports', permission: 'reports' },
     { icon: SettingsIcon, label: t('settings'), path: '/settings' },

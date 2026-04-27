@@ -75,12 +75,20 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                 margin: 0 !important; 
               }
               body { margin: 0 !important; padding: 0 !important; background: white !important; }
-              #invoice-print-area, #thermal-receipt { 
-                width: 100% !important; 
+              #invoice-print-area { 
+                width: 210mm !important;
+                height: 296mm !important;
+                min-height: 296mm !important;
                 box-shadow: none !important;
                 margin: 0 !important;
                 padding: 0 !important;
                 border: none !important;
+                position: relative !important;
+              }
+              #thermal-receipt {
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
               }
               /* Hide UI elements */
               .fixed, .sticky, header, button, .toaster { display: none !important; }
@@ -135,13 +143,15 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
         // Remove dark mode to avoid oklch colors from .dark variables
         clonedDoc.documentElement.classList.remove('dark');
         clonedDoc.body.classList.remove('dark');
+        clonedDoc.querySelectorAll('.dark').forEach(el => el.classList.remove('dark'));
+        clonedDoc.querySelectorAll('*').forEach(el => (el as HTMLElement).style.colorScheme = 'light');
 
         // Neutralize modern CSS functions and font properties that crash html2canvas
         const styleSheets = clonedDoc.querySelectorAll('style');
         styleSheets.forEach(sheet => {
           if (sheet.innerHTML.includes('okl') || sheet.innerHTML.includes('font-') || sheet.innerHTML.includes('var(')) {
-            // Replace oklch/oklab with hex
-            sheet.innerHTML = sheet.innerHTML.replace(/okl[a-z]{2,3}\s*\([^)]+\)/gi, '#334155');
+            // Replace oklch/oklab with hex - handling nested parentheses (common in Tailwind 4)
+            sheet.innerHTML = sheet.innerHTML.replace(/okl[a-z]{2,3}\s*\([^()]*(\([^()]*\)[^()]*)*\)/gi, '#334155');
             // Remove modern font properties that can cause issues
             sheet.innerHTML = sheet.innerHTML.replace(/font-variant-[a-z-]+\s*:[^;]+;/gi, '');
             sheet.innerHTML = sheet.innerHTML.replace(/font-feature-settings\s*:[^;]+;/gi, '');
@@ -174,8 +184,8 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
         style.innerHTML = `
           :root { 
             color-scheme: light !important;
-            --background: 255 255 255 !important;
-            --foreground: 30 41 59 !important;
+            --background: #ffffff !important;
+            --foreground: #1e293b !important;
           }
           * {
             color-scheme: light !important;
@@ -270,13 +280,16 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
           // Remove dark mode to avoid oklch colors from .dark variables
           clonedDoc.documentElement.classList.remove('dark');
           clonedDoc.body.classList.remove('dark');
+          clonedDoc.querySelectorAll('.dark').forEach(el => el.classList.remove('dark'));
+          clonedDoc.querySelectorAll('*').forEach(el => (el as HTMLElement).style.colorScheme = 'light');
 
           // Identify and and neutralize modern color functions in all style tags
           const styleSheets = clonedDoc.querySelectorAll('style');
           styleSheets.forEach(sheet => {
             if (sheet.innerHTML.includes('okl')) {
               // Replace oklch/oklab with hex or inherit to prevent parsing errors
-              sheet.innerHTML = sheet.innerHTML.replace(/okl[a-z]{2,3}\s*\([^)]+\)/gi, '#000000');
+              // Handling nested parentheses which are common with Tailwind 4 variable lookups
+              sheet.innerHTML = sheet.innerHTML.replace(/okl[a-z]{2,3}\s*\([^()]*(\([^()]*\)[^()]*)*\)/gi, '#000000');
             }
           });
 
@@ -296,8 +309,8 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
           style.innerHTML = `
             :root {
               color-scheme: light !important;
-              --background: 255 255 255 !important;
-              --foreground: 30 41 59 !important;
+              --background: #ffffff !important;
+              --foreground: #1e293b !important;
             }
             * {
               color-scheme: light !important;
@@ -435,10 +448,22 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
             </Select>
           </div>
           <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
-            <Button variant="outline" size="sm" onClick={handleCopyLink} className="gap-2 rounded-full flex-shrink-0">
+            <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleCopyLink} 
+                disabled={invoice.id === 'draft'}
+                className="gap-2 rounded-full flex-shrink-0"
+              >
               <LinkIcon className="w-4 h-4" /> Copy
             </Button>
-            <Button variant="outline" size="sm" onClick={handleEmailInvoice} disabled={isEmailing} className="gap-2 rounded-full border-blue-200 text-blue-600 hover:bg-blue-50 flex-shrink-0">
+            <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleEmailInvoice} 
+                disabled={isEmailing || invoice.id === 'draft'} 
+                className="gap-2 rounded-full border-blue-200 text-blue-600 hover:bg-blue-50 flex-shrink-0"
+              >
               {isEmailing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
               Email
             </Button>
@@ -446,7 +471,7 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
               <Printer className="w-4 h-4" /> Print
             </Button>
             
-            {invoice.status !== 'Draft' && !invoice.ewayBillNo && (
+            {invoice.id !== 'draft' && invoice.status !== 'Draft' && !invoice.ewayBillNo && (
               <Button 
                 onClick={() => setIsEWayBillModalOpen(true)}
                 className="bg-blue-600 hover:bg-blue-700 text-white gap-2 rounded-full px-6 flex-shrink-0 shadow-lg shadow-blue-100"
@@ -455,7 +480,7 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
               </Button>
             )}
 
-            {invoice.status !== 'Draft' && !invoice.irn && (
+            {invoice.id !== 'draft' && invoice.status !== 'Draft' && !invoice.irn && (
               <Button 
                 onClick={() => setIsEInvoiceModalOpen(true)}
                 className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2 rounded-full px-6 flex-shrink-0 shadow-lg shadow-indigo-100"
@@ -488,7 +513,257 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                 style.font
               )}
             >
-            {currentStyle === 'Modern' ? (
+            {currentStyle === 'Standard' ? (
+              <div className="flex flex-col text-[10px] text-slate-900 bg-white border-2 border-slate-950 m-2">
+                {/* PDF-like Header */}
+                <div className="p-8 pb-6 flex justify-between items-start border-b-2 border-slate-950">
+                  <div className="space-y-4">
+                    <h1 className="text-4xl font-black text-blue-900 tracking-tight uppercase leading-tight">
+                      {settings.companyName}
+                    </h1>
+                    <div className="space-y-0.5 text-slate-600 font-medium">
+                      <div className="max-w-md uppercase">{settings.address}</div>
+                      <div className="flex gap-4 font-bold text-slate-900">
+                        <span>GSTIN : {settings.gstin}</span>
+                        <span>MOBILE : {settings.phone}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-3 min-w-[300px]">
+                    {settings.logoUrl ? (
+                      <img src={settings.logoUrl} alt="Logo" className="h-20 w-auto object-contain mb-2" />
+                    ) : (
+                      <Logo className="h-16 w-16 mb-2" />
+                    )}
+                    {(invoice.irn || invoice.ackNo) && (
+                      <div className="flex items-start gap-4 border-2 border-[#008080] p-3 bg-white w-full rounded-sm">
+                        {invoice.signedQrCode ? (
+                          <div className="bg-white p-1">
+                            <QRCodeCanvas value={invoice.signedQrCode} size={84} level="M" />
+                          </div>
+                        ) : (
+                          <div className="w-[84px] h-[84px] bg-slate-50 border border-dashed border-slate-300 flex items-center justify-center text-[8px] font-black uppercase text-slate-400 text-center px-1">QR CODE</div>
+                        )}
+                        <div className="flex flex-col gap-1 flex-1">
+                           <div className="text-[#008080] font-black text-lg leading-none tracking-tighter">GST E-INVOICE</div>
+                           <div className="flex flex-col mt-1">
+                              <span className="text-[8px] font-black uppercase text-slate-400 leading-none">IRN / ACK NO</span>
+                              <span className="text-[10px] font-mono font-bold leading-tight break-all uppercase text-slate-700">{invoice.irn || invoice.ackNo || 'PENDING'}</span>
+                           </div>
+                           {(invoice.ackDate || invoice.date) && (
+                             <div className="flex items-center gap-1 mt-1 font-bold text-slate-500 text-[9px]">
+                                <span className="opacity-60 uppercase">Ack Date:</span>
+                                <span>{invoice.ackDate ? format(new Date(invoice.ackDate), 'dd/MM/yyyy HH:mm') : format(new Date(invoice.date), 'dd/MM/yyyy 09:24')}</span>
+                             </div>
+                           )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Sub-Header bar */}
+                <div className="bg-white border-b-2 border-slate-950 flex divide-x-2 divide-slate-950 font-black uppercase tracking-widest text-[11px]">
+                  <div className="flex-1 p-2 px-4">FSSAI : {settings.fssai || 'N/A'}</div>
+                  <div className="flex-[2] p-2 px-4 text-center text-base">TAX INVOICE</div>
+                  <div className="flex-1 p-2 px-4 text-right">ORIGINAL FOR RECIPIENT</div>
+                </div>
+
+                {/* Info Grid */}
+                <div className="grid grid-cols-2 divide-x-2 divide-slate-950 border-b-2 border-slate-950">
+                  <div className="p-0 flex flex-col">
+                    <div className="bg-slate-50 p-2 border-b-2 border-slate-950 text-center font-black uppercase tracking-wider text-sm">Customer Detail</div>
+                    <div className="p-4 grid grid-cols-[100px,1fr] gap-x-2 gap-y-1.5 flex-1">
+                      <span className="font-bold opacity-60 uppercase">M/S</span>
+                      <span className="font-black text-sm">{invoice.clientName}</span>
+                      <span className="font-bold opacity-60 uppercase">Address</span>
+                      <span className="font-bold uppercase leading-snug">{invoice.clientAddress}</span>
+                      <span className="font-bold opacity-60 uppercase">Mobile</span>
+                      <span className="font-black">{invoice.clientPhone || '-'}</span>
+                      <span className="font-bold opacity-60 uppercase">GSTIN</span>
+                      <span className="font-black">{invoice.clientGstin}</span>
+                      <span className="font-bold opacity-60 uppercase">Place of Supply</span>
+                      <span className="font-bold">{invoice.clientStateCode}</span>
+                    </div>
+                  </div>
+                  <div className="p-0 border-r-0">
+                    <div className="p-4 grid grid-cols-2 gap-x-4 gap-y-3 font-bold">
+                       <div className="space-y-1">
+                          <div className="flex justify-between items-baseline gap-2">
+                             <span className="opacity-60 text-[9px] uppercase tracking-widest">Invoice No.</span>
+                             <span className="font-black">{invoice.invoiceNumber}</span>
+                          </div>
+                          <div className="flex justify-between items-baseline gap-2">
+                             <span className="opacity-60 text-[9px] uppercase tracking-widest">Challan No</span>
+                             <span className="font-black">{invoice.challanNo || '-'}</span>
+                          </div>
+                          <div className="flex justify-between items-baseline gap-2">
+                             <span className="opacity-60 text-[9px] uppercase tracking-widest">E-Way Bill No.</span>
+                             <span className="font-black">{invoice.ewayBillNo || '-'}</span>
+                          </div>
+                          <div className="flex justify-between items-baseline gap-2">
+                             <span className="opacity-60 text-[9px] uppercase tracking-widest">Transport</span>
+                             <span className="font-black">{invoice.transporterName || '-'}</span>
+                          </div>
+                       </div>
+                       <div className="space-y-1">
+                          <div className="flex justify-between items-baseline gap-2">
+                             <span className="opacity-60 text-[9px] uppercase tracking-widest">Invoice Date</span>
+                             <span className="font-black">{format(new Date(invoice.date), 'dd/MM/yyyy')}</span>
+                          </div>
+                          <div className="flex justify-between items-baseline gap-2">
+                             <span className="opacity-60 text-[9px] uppercase tracking-widest">Challan Date</span>
+                             <span className="font-black">{invoice.challanDate ? format(new Date(invoice.challanDate), 'dd/MM/yyyy') : '-'}</span>
+                          </div>
+                          <div className="flex justify-between items-baseline gap-2 mt-4">
+                             <span className="opacity-60 text-[9px] uppercase tracking-widest">Transport ID</span>
+                             <span className="font-black">{invoice.transporterId || '-'}</span>
+                          </div>
+                       </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Table */}
+                <div className="border-b-2 border-slate-950">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-white text-[9px] font-black uppercase tracking-widest text-slate-900 divide-x-2 divide-slate-950 border-b-2 border-slate-950 text-center h-10">
+                        <th className="w-10">Sr. No.</th>
+                        <th className="text-left px-4">Name of Product / Service</th>
+                        <th className="px-2">HSN / SAC</th>
+                        <th className="px-2">Qty</th>
+                        <th className="px-2 text-right">Rate</th>
+                        <th className="px-2 text-right">Taxable Value</th>
+                        <th className="p-0 border-b-2 border-slate-950" colSpan={2}>CGST</th>
+                        <th className="p-0 border-b-2 border-slate-950" colSpan={2}>SGST</th>
+                        <th className="px-4 text-right">Total</th>
+                      </tr>
+                      <tr className="bg-white text-[8px] font-black uppercase text-slate-900 divide-x-2 divide-slate-950 border-b-2 border-slate-950">
+                         <th colSpan={6}></th>
+                         <th className="w-8 py-1">%</th>
+                         <th className="w-16 py-1 pr-2 text-right">Amount</th>
+                         <th className="w-8 py-1">%</th>
+                         <th className="w-16 py-1 pr-2 text-right">Amount</th>
+                         <th></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {invoice.items.map((item, idx) => (
+                        <tr key={idx} className="divide-x-2 divide-slate-950 text-[10px] font-bold align-middle h-10 uppercase">
+                          <td className="text-center">{idx + 1}</td>
+                          <td className="px-4 text-left font-black">{item.name}</td>
+                          <td className="text-center italic text-slate-500">{item.hsn}</td>
+                          <td className="text-center">{item.quantity}</td>
+                          <td className="text-right px-2 font-mono">₹{item.price.toLocaleString()}</td>
+                          <td className="text-right px-2 font-mono">₹{((item.total - (item.cgst + item.sgst + (item.igst || 0)))).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                          <td className="text-center">{item.gstRate / 2}%</td>
+                          <td className="text-right px-2 font-mono">₹{(item.cgst || (item.igst / 2) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                          <td className="text-center">{item.gstRate / 2}%</td>
+                          <td className="text-right px-2 font-mono">₹{(item.sgst || (item.igst / 2) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                          <td className="text-right px-4 font-black">₹{item.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot className="border-t-2 border-slate-950 font-black bg-white uppercase text-[10px]">
+                      <tr className="divide-x-2 divide-slate-950 h-10">
+                        <td colSpan={2}></td>
+                         <td className="text-center">Total</td>
+                        <td className="text-center">{invoice.items.reduce((acc, i) => acc + i.quantity, 0)} NOS</td>
+                        <td></td>
+                        <td className="text-right px-2 font-mono">₹{invoice.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td colSpan={2} className="text-right px-2 font-mono">₹{(invoice.totalCgst || (invoice.totalIgst / 2) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td colSpan={2} className="text-right px-2 font-mono">₹{(invoice.totalSgst || (invoice.totalIgst / 2) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td className="text-right px-4 font-black">₹{(invoice.totalAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+
+                {/* Summary Section */}
+                <div className="grid grid-cols-12 divide-x-2 divide-slate-950 border-b-2 border-slate-950 min-h-[120px]">
+                   <div className="col-span-7 flex flex-col">
+                      <div className="p-3 border-b-2 border-slate-950 h-24">
+                        <div className="text-[10px] font-black uppercase tracking-widest mb-1 text-slate-400">Total in words</div>
+                        <div className="text-sm font-black uppercase italic leading-tight">
+                          {amountToWords(invoice.totalAmount, invoice.currency)} ONLY
+                        </div>
+                      </div>
+                    <div className="flex-1 p-3">
+                        <div className="text-[10px] font-black uppercase tracking-widest text-center border-b border-slate-400 mb-2">Bank Details</div>
+                        <div className="flex justify-between gap-4">
+                           <div className="space-y-1 font-bold">
+                             <div className="flex justify-between w-64 text-[10px] items-center"><span className="opacity-50">Name</span> <span>{settings.bankName}</span></div>
+                             <div className="flex justify-between w-64 text-[10px] items-center"><span className="opacity-50">Acc. Number</span> <span>{settings.accountNumber}</span></div>
+                             <div className="flex justify-between w-64 text-[10px] items-center"><span className="opacity-50">IFSC</span> <span className="font-mono">{settings.ifscCode}</span></div>
+                             <div className="flex justify-between w-64 text-[10px] items-center"><span className="opacity-50">UPI ID</span> <span className="font-mono">{settings.upiId}</span></div>
+                           </div>
+                           {upiUrl && (
+                             <div className="flex flex-col items-center gap-1 border-2 border-slate-950 p-1 bg-white">
+                               <QRCodeCanvas value={upiUrl} size={84} level="H" />
+                               <div className="text-[7px] font-black text-center leading-none mt-1">Pay ₹{invoice.totalAmount.toLocaleString()}<br/>using UPI</div>
+                             </div>
+                           )}
+                        </div>
+                      </div>
+                   </div>
+                    <div className="col-span-5 flex flex-col font-black divide-y-2 divide-slate-950">
+                      <div className="flex-1 p-3 space-y-2 text-xs uppercase font-black">
+                        <div className="flex justify-between items-center">
+                          <span className="opacity-60">Taxable Amount</span>
+                          <span className="font-mono">{formatCurrency(invoice.subtotal, invoice.currency)}</span>
+                        </div>
+                        
+                        <div className="flex justify-between items-center">
+                          <span className="opacity-60">Add : CGST</span>
+                          <span className="font-mono">{formatCurrency(invoice.totalCgst || (invoice.totalIgst / 2) || 0, invoice.currency)}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="opacity-60">Add : SGST</span>
+                          <span className="font-mono">{formatCurrency(invoice.totalSgst || (invoice.totalIgst / 2) || 0, invoice.currency)}</span>
+                        </div>
+
+                        <div className="border-t-2 border-slate-950 pt-2 flex justify-between items-center text-slate-900 font-black">
+                          <span>Total Tax</span>
+                          <span className="font-mono">{formatCurrency((invoice.totalIgst || 0) + (invoice.totalCgst || 0) + (invoice.totalSgst || 0), invoice.currency)}</span>
+                        </div>
+                      </div>
+                      <div className="h-12 grid grid-cols-[1fr,120px] divide-x-2 divide-slate-950 bg-slate-100 items-center text-sm">
+                         <div className="px-2">Total Amount After Tax</div>
+                         <div className="px-2 text-right font-black font-mono">{formatCurrency(invoice.totalAmount, invoice.currency)}</div>
+                      </div>
+                      <div className="flex-1 p-4 flex flex-col justify-between items-center bg-white min-h-[140px]">
+                         <div className="text-[8px] italic opacity-60 self-start">Certified that the particulars given above are true and correct.</div>
+                         <div className="text-center w-full">
+                            <div className="text-xs font-black mb-10">For {settings.companyName.toUpperCase()}</div>
+                            {settings.signatureUrl ? (
+                              <div className="relative flex flex-col items-center">
+                                <img src={settings.signatureUrl} alt="Signature" className="h-16 w-auto mix-blend-multiply brightness-75 -mt-8 mb-2" />
+                                <div className="text-[10px] font-black uppercase tracking-widest border-t-2 border-slate-950 pt-2 w-full mx-8">Authorised Signatory</div>
+                              </div>
+                            ) : (
+                              <div className="mt-4 border-t-2 border-slate-950 w-full mx-8 pt-2 text-[10px] font-black">Authorised Signatory</div>
+                            )}
+                         </div>
+                      </div>
+                   </div>
+                </div>
+
+                {/* Closing Footer */}
+                <div className="p-4 flex justify-between items-center text-[10px] font-bold italic">
+                   <div className="flex flex-col gap-0.5">
+                     <div>Thank you for shopping with us!</div>
+                     <div className="not-italic text-[8px] opacity-40">Software Maintain By Zeone Software Mobile:8667586727</div>
+                   </div>
+                   <div className="not-italic flex items-center gap-4">
+                      <div className="flex flex-col items-end gap-0.5">
+                        <div className="bg-slate-950 text-white px-2 py-0.5 rounded text-[8px] tracking-widest font-black uppercase">Verified Document</div>
+                        <div className="opacity-40 uppercase tracking-tighter text-[7px] font-black">GST Compliant Invoice</div>
+                      </div>
+                   </div>
+                </div>
+              </div>
+            ) : currentStyle === 'Modern' ? (
               <div className="flex flex-col h-full text-[11px] text-slate-900">
                 {/* Modern / Industrial Header */}
                 <div className="p-6 md:p-8 flex justify-between items-start gap-4">
@@ -584,7 +859,7 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                 </div>
 
                 {/* Items Table */}
-                <div className="flex-1 border-b border-slate-300">
+                <div className="border-b border-slate-300">
                   <table className="w-full h-full border-collapse">
                     <thead>
                       <tr className="bg-slate-50 text-[9px] font-bold uppercase tracking-widest text-slate-600 divide-x divide-slate-300 border-b border-slate-300">
@@ -594,7 +869,7 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                         <th className="py-2 px-2 text-center">Qty</th>
                         <th className="py-2 px-2 text-right">Rate</th>
                         <th className="py-2 px-2 text-right">Taxable Value</th>
-                        <th className="py-2 px-2 text-center border-b border-slate-300" colSpan={2}>IGST</th>
+                        <th className="py-2 px-2 text-center border-b border-slate-300" colSpan={2}>CGST / SGST</th>
                         <th className="py-2 px-2 text-right">Total</th>
                       </tr>
                       <tr className="bg-slate-50 text-[8px] font-bold uppercase text-slate-500 divide-x divide-slate-300 border-b border-slate-300">
@@ -614,16 +889,15 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                           <td className="py-3 px-2 text-center font-mono">{item.hsn}</td>
                           <td className="py-3 px-2 text-center font-bold">{item.quantity} NOS</td>
                           <td className="py-3 px-2 text-right font-mono">{formatCurrency(item.price, invoice.currency)}</td>
-                          <td className="py-3 px-2 text-right font-mono font-bold">{formatCurrency(item.quantity * item.price, invoice.currency)}</td>
-                          <td className="py-3 px-2 text-center font-mono">{item.gstRate}%</td>
-                          <td className="py-3 px-2 text-right font-mono">{formatCurrency(item.igst || 0, invoice.currency)}</td>
+                          <td className="py-3 px-2 text-right font-mono font-bold">{formatCurrency((item.quantity * item.price), invoice.currency)}</td>
+                          <td className="py-3 px-2 text-center font-mono">{item.gstRate / 2}%</td>
+                          <td className="py-3 px-2 text-right font-mono italic">
+                              <div className="space-y-0.5">
+                                <div>C: {formatCurrency(item.cgst || (item.igst / 2) || 0, invoice.currency)}</div>
+                                <div>S: {formatCurrency(item.sgst || (item.igst / 2) || 0, invoice.currency)}</div>
+                              </div>
+                          </td>
                           <td className="py-3 px-2 text-right font-bold font-mono">{formatCurrency(item.total, invoice.currency)}</td>
-                        </tr>
-                      ))}
-                      {/* Fill empty space */}
-                      {Array.from({ length: Math.max(0, 10 - invoice.items.length) }).map((_, i) => (
-                        <tr key={`empty-${i}`} className="divide-x divide-slate-300 h-8">
-                          {Array.from({ length: 9 }).map((__, j) => <td key={j}></td>)}
                         </tr>
                       ))}
                     </tbody>
@@ -650,16 +924,24 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                         {amountToWords(invoice.totalAmount, invoice.currency)} ONLY
                       </div>
                    </div>
-                   <div className="col-span-4 grid grid-cols-2 divide-x divide-slate-300 font-bold text-[10px]">
-                      <div className="p-2 space-y-1">
-                        <div className="opacity-60">Taxable Amount</div>
-                        <div className="opacity-60">Add: IGST</div>
-                        <div className="opacity-60">Total Tax</div>
+                   <div className="col-span-4 p-3 space-y-2 font-bold text-[10px]">
+                      <div className="flex justify-between items-center text-slate-500">
+                        <span className="uppercase tracking-tight text-[9px]">Taxable Amount</span>
+                        <span className="font-mono text-slate-900">{formatCurrency(invoice.subtotal, invoice.currency)}</span>
                       </div>
-                      <div className="p-2 space-y-1 text-right font-mono">
-                        <div>{formatCurrency(invoice.subtotal, invoice.currency)}</div>
-                        <div>{formatCurrency(invoice.totalIgst || (invoice.totalCgst + invoice.totalSgst), invoice.currency)}</div>
-                        <div>{formatCurrency(invoice.totalIgst || (invoice.totalCgst + invoice.totalSgst), invoice.currency)}</div>
+                      
+                      <div className="flex justify-between items-center text-slate-500">
+                        <span className="uppercase tracking-tight text-[9px]">Add: CGST</span>
+                        <span className="font-mono text-slate-800">{formatCurrency(invoice.totalCgst || (invoice.totalIgst / 2) || 0, invoice.currency)}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-slate-500">
+                        <span className="uppercase tracking-tight text-[9px]">Add: SGST</span>
+                        <span className="font-mono text-slate-800">{formatCurrency(invoice.totalSgst || (invoice.totalIgst / 2) || 0, invoice.currency)}</span>
+                      </div>
+
+                      <div className="flex justify-between items-center mt-2 pt-2 border-t border-slate-200">
+                         <span className="uppercase tracking-widest text-[#008080] text-[9px]">Total Tax</span>
+                         <span className="font-mono font-black text-slate-900">{formatCurrency((invoice.totalIgst || 0) + (invoice.totalCgst || 0) + (invoice.totalSgst || 0), invoice.currency)}</span>
                       </div>
                    </div>
                 </div>
@@ -888,12 +1170,14 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                           <span className="opacity-60 font-black uppercase tracking-widest">Gross Subtotal</span>
                           <span className="font-mono font-bold">{formatCurrency(invoice.subtotal, invoice.currency)}</span>
                         </div>
-                        {(invoice.totalCgst > 0 || invoice.totalSgst > 0 || invoice.totalIgst > 0) && (
-                          <div className="flex justify-between items-center text-xs">
-                            <span className="opacity-60 font-black uppercase tracking-widest">Total Taxes</span>
-                            <span className="font-mono font-bold">{formatCurrency(invoice.totalCgst + invoice.totalSgst + invoice.totalIgst, invoice.currency)}</span>
-                          </div>
-                        )}
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="opacity-60 font-black uppercase tracking-widest">CGST Total</span>
+                          <span className="font-mono font-bold">{formatCurrency(invoice.totalCgst || 0, invoice.currency)}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="opacity-60 font-black uppercase tracking-widest">SGST Total</span>
+                          <span className="font-mono font-bold">{formatCurrency(invoice.totalSgst || 0, invoice.currency)}</span>
+                        </div>
                         <div className={cn("pt-6 border-t flex justify-between items-center", "border-[#e2e8f0]")}>
                           <span className="text-sm font-black uppercase tracking-widest">Final Total</span>
                           <span className={cn("text-2xl md:text-3xl font-black font-mono", style.accent)}>{formatCurrency(invoice.totalAmount, invoice.currency)}</span>
@@ -925,15 +1209,6 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                     <span className="text-[#0f172a]">Verified by Zeone Engine</span>
                   </div>
                  </div>
-                 
-                 {invoice.extraPages && (
-                  <div className="p-20 border-t-2 border-dashed border-[#f1f5f9] flex flex-col gap-8 min-h-[297mm]">
-                    <div className="text-[10px] font-black uppercase tracking-widest text-[#94a3b8]">Appendix / Scope of Work</div>
-                    <div className="prose prose-sm max-w-none text-[#475569] whitespace-pre-line leading-relaxed">
-                      {invoice.extraPages}
-                    </div>
-                  </div>
-                 )}
                </>
             )}
             </div>
@@ -953,6 +1228,30 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
           --color-slate-800: #1e293b;
           --color-slate-900: #0f172a;
           --color-slate-950: #020617;
+        }
+
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          #invoice-print-area, #invoice-print-area * {
+            visibility: visible;
+          }
+          #invoice-print-area {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 210mm !important;
+            height: 296mm !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            box-shadow: none !important;
+            border: none !important;
+          }
+          @page {
+            size: A4;
+            margin: 0;
+          }
         }
       ` }} />
       <EWayBillForm 
