@@ -445,6 +445,33 @@ export default function Settings() {
                   <Input type="number" value={formData.invoicePadding} onChange={e => setFormData({ ...formData, invoicePadding: Number(e.target.value) })} />
                 </div>
                 <div className="space-y-2">
+                  <Label className="text-xs uppercase font-bold text-[#666666]">Fiscal Year</Label>
+                  <div className="flex items-center gap-2 h-10">
+                    <Switch 
+                      checked={formData.useFiscalYear !== false} 
+                      onCheckedChange={checked => setFormData({ ...formData, useFiscalYear: checked })} 
+                    />
+                    <span className="text-[10px] font-bold text-slate-500 uppercase">Use Financial Year</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs uppercase font-bold text-[#666666]">FY Format</Label>
+                  <Select 
+                    value={formData.fiscalYearFormat || "YYYY"} 
+                    onValueChange={v => setFormData({ ...formData, fiscalYearFormat: v })}
+                    disabled={formData.useFiscalYear === false}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="YYYY">2024</SelectItem>
+                      <SelectItem value="YYYY-YY">2024-25</SelectItem>
+                      <SelectItem value="YY-YY">24-25</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
                   <Label className="text-xs uppercase font-bold text-[#666666]">Default PDF Style</Label>
                   <Select value={formData.defaultPdfStyle || "Standard"} onValueChange={v => setFormData({ ...formData, defaultPdfStyle: v })}>
                     <SelectTrigger>

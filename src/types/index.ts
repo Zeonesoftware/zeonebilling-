@@ -21,6 +21,8 @@ export interface BusinessSettings {
   invoicePrefix: string;
   invoiceSeparator: string;
   invoicePadding: number;
+  useFiscalYear?: boolean;
+  fiscalYearFormat?: 'YYYY' | 'YYYY-YY' | 'YY-YY';
   lowStockThreshold: number;
   defaultPdfStyle?: 'Standard' | 'Professional' | 'Classic' | 'Modern' | 'Simple' | 'Creative' | 'Detailed' | 'Thermal';
 }

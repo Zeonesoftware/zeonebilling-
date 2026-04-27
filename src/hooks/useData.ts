@@ -129,6 +129,8 @@ export function useSettings() {
           invoicePrefix: 'INV',
           invoiceSeparator: '-',
           invoicePadding: 4,
+          useFiscalYear: true,
+          fiscalYearFormat: 'YYYY',
           lowStockThreshold: 10,
           autoUploadToDrive: false
         };

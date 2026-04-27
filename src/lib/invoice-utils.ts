@@ -96,20 +96,45 @@ export function generateUPIUrl(upiId: string, name: string, amount: number, tran
   return url.toString();
 }
 
-export function generateNextInvoiceNumber(invoices: any[], settings: any, date: string = new Date().toISOString()) {
-  const currentYear = new Date(date).getFullYear();
-  const yearPrefix = currentYear.toString();
+export function getFiscalYear(date: string | Date, format: 'YYYY' | 'YYYY-YY' | 'YY-YY' = 'YYYY'): string {
+  const d = new Date(date);
+  const month = d.getMonth(); // 0-indexed, 3 is April
+  const year = d.getFullYear();
   
-  // Filter invoices for current year
-  const yearInvoices = invoices.filter(inv => {
+  // Fiscal year in India starts from April
+  const fiscalYearStart = month >= 3 ? year : year - 1;
+  const nextYear = fiscalYearStart + 1;
+  
+  switch (format) {
+    case 'YYYY-YY':
+      return `${fiscalYearStart}-${nextYear.toString().slice(-2)}`;
+    case 'YY-YY':
+      return `${fiscalYearStart.toString().slice(-2)}-${nextYear.toString().slice(-2)}`;
+    case 'YYYY':
+    default:
+      return fiscalYearStart.toString();
+  }
+}
+
+export function generateNextInvoiceNumber(invoices: any[], settings: any, date: string = new Date().toISOString()) {
+  const targetDate = new Date(date);
+  const useFiscal = settings.useFiscalYear !== false; // Default to true if not specified
+  const fyFormat = settings.fiscalYearFormat || 'YYYY';
+  
+  const targetFY = getFiscalYear(targetDate, fyFormat);
+  
+  // Filter invoices that match the same fiscal year logic
+  const sameFYInvoices = invoices.filter(inv => {
     const invDate = new Date(inv.date);
-    return !isNaN(invDate.getTime()) && invDate.getFullYear() === currentYear;
+    if (isNaN(invDate.getTime())) return false;
+    return getFiscalYear(invDate, fyFormat) === targetFY;
   });
 
   let nextSequence = 1;
 
-  if (yearInvoices.length > 0) {
-    const numbers = yearInvoices.map(inv => {
+  if (sameFYInvoices.length > 0) {
+    const numbers = sameFYInvoices.map(inv => {
+      // Find the sequence number at the end of the string
       const match = inv.invoiceNumber.match(/(\d+)$/);
       return match ? parseInt(match[1], 10) : 0;
     });
@@ -120,5 +145,12 @@ export function generateNextInvoiceNumber(invoices: any[], settings: any, date: 
   const sep = settings.invoiceSeparator || '-';
   const pad = settings.invoicePadding || 4;
   
-  return `${prefix}${sep}${yearPrefix}${sep}${nextSequence.toString().padStart(pad, '0')}`;
+  if (useFiscal) {
+    return `${prefix}${sep}${targetFY}${sep}${nextSequence.toString().padStart(pad, '0')}`;
+  } else {
+    // If not using fiscal year, just use calendar year as requested before if needed, 
+    // but the prompt asked for financial year specifically.
+    const calendarYear = targetDate.getFullYear();
+    return `${prefix}${sep}${calendarYear}${sep}${nextSequence.toString().padStart(pad, '0')}`;
+  }
 }

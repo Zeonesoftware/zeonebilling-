@@ -20,8 +20,8 @@ import { QRCodeCanvas } from 'qrcode.react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import html2canvas from 'html2canvas';
-import { jsPDF } from 'jspdf';
+import { pdf } from '@react-pdf/renderer';
+import { InvoicePDF } from './InvoicePDF';
 import { ThermalReceipt } from './ThermalReceipt';
 import { EWayBillForm } from './EWayBillForm';
 import { EInvoiceManager } from './EInvoiceManager';
@@ -134,89 +134,21 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
   };
 
   const generatePDFAsBase64 = async () => {
-    const element = printRef.current;
-    if (!element) throw new Error('Print area not found');
-
-    await new Promise(resolve => setTimeout(resolve, 800));
-
-    const canvas = await html2canvas(element, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: '#ffffff',
-      windowWidth: 1200,
-      onclone: (clonedDoc) => {
-        // Remove dark mode to avoid oklch colors from .dark variables
-        clonedDoc.documentElement.classList.remove('dark');
-        clonedDoc.body.classList.remove('dark');
-        clonedDoc.querySelectorAll('.dark').forEach(el => el.classList.remove('dark'));
-        clonedDoc.querySelectorAll('*').forEach(el => (el as HTMLElement).style.colorScheme = 'light');
-
-        // Neutralize modern CSS functions and font properties that crash html2canvas
-        const styleSheets = clonedDoc.querySelectorAll('style');
-        styleSheets.forEach(sheet => {
-          if (sheet.innerHTML.includes('okl') || sheet.innerHTML.includes('font-') || sheet.innerHTML.includes('var(')) {
-            // Replace oklch/oklab with hex - handling nested parentheses (common in Tailwind 4)
-            sheet.innerHTML = sheet.innerHTML.replace(/okl[a-z]{2,3}\s*\([^()]*(\([^()]*\)[^()]*)*\)/gi, '#334155');
-            // Remove modern font properties that can cause issues
-            sheet.innerHTML = sheet.innerHTML.replace(/font-variant-[a-z-]+\s*:[^;]+;/gi, '');
-            sheet.innerHTML = sheet.innerHTML.replace(/font-feature-settings\s*:[^;]+;/gi, '');
-            sheet.innerHTML = sheet.innerHTML.replace(/font-variation-settings\s*:[^;]+;/gi, '');
-          }
-        });
-
-        const elements = clonedDoc.getElementsByTagName('*');
-        for (let i = 0; i < elements.length; i++) {
-          const el = elements[i] as HTMLElement;
-          try {
-            const style = el.style;
-            if (style) {
-              // Reset any styles that might use modern color functions
-              if (style.color?.match(/okl/i)) style.color = '#334155';
-              if (style.backgroundColor?.match(/okl/i)) style.backgroundColor = 'transparent';
-              if (style.borderColor?.match(/okl/i)) style.borderColor = '#334155';
-              
-              // Defensively clear font-variant which often causes PDF crashes
-              style.fontVariantNumeric = 'normal';
-              style.fontFeatureSettings = 'normal';
-              style.fontVariantCaps = 'normal';
-              style.fontVariantLigatures = 'none';
-              style.fontVariantAlternates = 'normal';
-            }
-          } catch (e) {}
-        }
-
-        const style = clonedDoc.createElement('style');
-        style.innerHTML = `
-          :root { 
-            color-scheme: light !important;
-            --background: #ffffff !important;
-            --foreground: #1e293b !important;
-          }
-          * {
-            color-scheme: light !important;
-            font-variant-numeric: normal !important;
-            font-feature-settings: normal !important;
-            font-variant-caps: normal !important;
-            font-variant-ligatures: none !important;
-            font-variant-alternates: normal !important;
-            font-variation-settings: normal !important;
-          }
-          #invoice-print-area { background-color: white !important; }
-        `;
-        clonedDoc.head.appendChild(style);
-      }
-    });
-    
-    if (!canvas || canvas.width === 0) {
-      throw new Error('Failed to generate image from invoice area');
+    try {
+      const blob = await pdf(<InvoicePDF invoice={invoice} settings={settings} />).toBlob();
+      return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64data = reader.result as string;
+          resolve(base64data.split(',')[1]);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch (error) {
+      console.error('PDF Generation Error:', error);
+      throw new Error('Failed to generate professional PDF');
     }
-
-    const imgData = canvas.toDataURL('image/jpeg', 0.95);
-    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-    pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-    return pdf.output('datauristring').split(',')[1];
   };
 
   const handleEmailInvoice = async () => {
@@ -266,96 +198,21 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
   const handleDownloadPDF = async () => {
     try {
       setIsExporting(true);
-      const element = printRef.current;
-      if (!element) {
-        toast.error('Print area not found');
-        return;
-      }
-
-      // Small delay to ensure all styles and fonts are applied
-      await new Promise(resolve => setTimeout(resolve, 800));
-
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        logging: true,
-        backgroundColor: '#ffffff',
-        windowWidth: 1200,
-        onclone: (clonedDoc) => {
-          // Remove dark mode to avoid oklch colors from .dark variables
-          clonedDoc.documentElement.classList.remove('dark');
-          clonedDoc.body.classList.remove('dark');
-          clonedDoc.querySelectorAll('.dark').forEach(el => el.classList.remove('dark'));
-          clonedDoc.querySelectorAll('*').forEach(el => (el as HTMLElement).style.colorScheme = 'light');
-
-          // Identify and and neutralize modern color functions in all style tags
-          const styleSheets = clonedDoc.querySelectorAll('style');
-          styleSheets.forEach(sheet => {
-            if (sheet.innerHTML.includes('okl')) {
-              // Replace oklch/oklab with hex or inherit to prevent parsing errors
-              // Handling nested parentheses which are common with Tailwind 4 variable lookups
-              sheet.innerHTML = sheet.innerHTML.replace(/okl[a-z]{2,3}\s*\([^()]*(\([^()]*\)[^()]*)*\)/gi, '#000000');
-            }
-          });
-
-          const elements = clonedDoc.getElementsByTagName('*');
-          for (let i = 0; i < elements.length; i++) {
-            const el = elements[i] as HTMLElement;
-            try {
-              // Reset any inline styles that might use modern color functions
-              if (el.style.color?.match(/okl/i)) el.style.color = '#000000';
-              if (el.style.backgroundColor?.match(/okl/i)) el.style.backgroundColor = 'transparent';
-              if (el.style.borderColor?.match(/okl/i)) el.style.borderColor = '#000000';
-            } catch (e) {}
-          }
-          
-          // Inject a solid fallback style tag that uses only standard colors
-          const style = clonedDoc.createElement('style');
-          style.innerHTML = `
-            :root {
-              color-scheme: light !important;
-              --background: #ffffff !important;
-              --foreground: #1e293b !important;
-            }
-            * {
-              color-scheme: light !important;
-            }
-            /* Force basic colors for common components */
-            #invoice-print-area { background-color: white !important; color: #1e293b !important; }
-            .bg-background { background-color: #ffffff !important; }
-            .text-foreground { color: #1e293b !important; }
-            .bg-primary { background-color: #237227 !important; }
-            .text-primary { color: #237227 !important; }
-            .bg-slate-50 { background-color: #f8fafc !important; }
-            .bg-slate-100 { background-color: #f1f5f9 !important; }
-            .text-slate-900 { color: #0f172a !important; }
-            .text-slate-600 { color: #475569 !important; }
-            .text-slate-500 { color: #64748b !important; }
-          `;
-          clonedDoc.head.appendChild(style);
-        }
-      });
+      const blob = await pdf(<InvoicePDF invoice={invoice} settings={settings} />).toBlob();
       
-      if (canvas.width === 0 || canvas.height === 0) {
-        throw new Error('Generated canvas has zero dimensions');
-      }
-
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: (currentStyle === 'Simple' || paperSize === 'A5') ? 'a5' : 'a4',
-      });
-
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Invoice-${invoice.invoiceNumber}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
       
-      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`Invoice-${invoice.invoiceNumber}.pdf`);
-      toast.success('PDF Downloaded');
+      toast.success('Professional PDF Downloaded');
     } catch (err) {
       console.error('PDF Generation Error:', err);
-      toast.error('Failed to generate PDF. Please try printing (Ctrl+P) instead.');
+      toast.error('Failed to generate professional PDF.');
     } finally {
       setIsExporting(false);
     }
