@@ -8,7 +8,7 @@ export function useRBAC() {
   
   const canCreate = isAdmin || isBilling;
   const canEdit = isAdmin || isBilling;
-  const canDelete = isAdmin; 
+  const canDelete = isAdmin || isBilling; 
   const canManageUsers = isAdmin;
 
   return { 

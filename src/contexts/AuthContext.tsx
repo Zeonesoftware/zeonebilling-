@@ -89,7 +89,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               displayName: firebaseUser.displayName || 'User',
               photoURL: firebaseUser.photoURL || '',
               role: isOwner ? 'admin' : 'billing',
-              permissions: isOwner ? ['pos', 'invoices', 'inventory', 'purchases', 'clients', 'expenses', 'reconciliation', 'reports', 'quick_actions', 'gst_returns'] : [],
+              permissions: isOwner 
+                ? ['pos', 'invoices', 'inventory', 'purchases', 'clients', 'expenses', 'reconciliation', 'reports', 'quick_actions', 'gst_returns'] 
+                : ['invoices', 'purchases', 'inventory', 'clients', 'expenses', 'quick_actions', 'pos'],
               phoneNumber: firebaseUser.phoneNumber || ''
             };
             
@@ -138,7 +140,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       displayName: name,
       photoURL: '',
       role: 'billing',
-      permissions: []
+      permissions: ['invoices', 'purchases', 'inventory', 'clients', 'expenses', 'quick_actions', 'pos']
     };
     
     await setDoc(doc(db, 'users', cred.user.uid), {

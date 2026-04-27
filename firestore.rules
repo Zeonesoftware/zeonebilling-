@@ -112,14 +112,12 @@ service cloud.firestore {
 
     match /expenses/{expenseId} {
       allow read, list: if isAnyUser();
-      allow create, update: if isBilling();
-      allow delete: if isAdmin();
+      allow create, update, delete: if isBilling();
     }
 
     match /purchases/{purchaseId} {
       allow read, list: if isAnyUser();
-      allow create, update: if isBilling();
-      allow delete: if isAdmin();
+      allow create, update, delete: if isBilling();
     }
 
     match /settings/{settingId} {
