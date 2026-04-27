@@ -36,6 +36,7 @@ import {
 import { writeBatch, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 const CATEGORIES = [
   'Inventory', 'Travel', 'Rent', 'Utilities', 'Marketing', 
@@ -52,6 +53,8 @@ export default function Expenses() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [isBulkDeleteConfirmOpen, setIsBulkDeleteConfirmOpen] = useState(false);
 
   const handleCreate = async (data: Partial<Expense>) => {
     try {
@@ -88,8 +91,6 @@ export default function Expenses() {
   };
 
   const handleBulkDelete = async () => {
-    if (!window.confirm(`Are you sure you want to delete ${selectedIds.length} expenses?`)) return;
-
     try {
       setIsBulkUpdating(true);
       const loadingToast = toast.loading(`Deleting ${selectedIds.length} expenses...`);
@@ -104,6 +105,7 @@ export default function Expenses() {
       toast.dismiss(loadingToast);
       toast.success('Bulk delete complete');
       setSelectedIds([]);
+      setIsBulkDeleteConfirmOpen(false);
     } catch (err) {
       console.error(err);
       toast.error('Bulk delete failed');
@@ -180,7 +182,9 @@ export default function Expenses() {
     );
   };
 
-  const filteredExpenses = expenses.filter(exp => {
+  const filteredExpenses = expenses
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .filter(exp => {
     const matchesSearch = 
       exp.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
       exp.category.toLowerCase().includes(searchTerm.toLowerCase());
@@ -282,7 +286,7 @@ export default function Expenses() {
                 variant="ghost" 
                 size="sm" 
                 className="h-8 gap-2 text-red-400 hover:text-red-300 hover:bg-red-950/20 font-bold text-[10px] uppercase tracking-widest"
-                onClick={handleBulkDelete}
+                onClick={() => setIsBulkDeleteConfirmOpen(true)}
                 disabled={isBulkUpdating}
               >
                 <Trash2 className="w-3 h-3" /> Delete
@@ -390,9 +394,7 @@ export default function Expenses() {
                     variant="ghost" 
                     size="icon" 
                     className="h-8 w-8 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
-                    onClick={() => {
-                      if (window.confirm('Delete this expense?')) deleteItem(exp.id);
-                    }}
+                    onClick={() => setDeleteId(exp.id)}
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
@@ -407,6 +409,32 @@ export default function Expenses() {
         isOpen={isFormOpen} 
         onClose={() => setIsFormOpen(false)} 
         onSave={handleCreate} 
+      />
+
+      <ConfirmDialog
+        isOpen={!!deleteId}
+        onClose={() => setDeleteId(null)}
+        onConfirm={() => {
+          if (deleteId) {
+            deleteItem(deleteId);
+            toast.success('Expense deleted');
+            setDeleteId(null);
+          }
+        }}
+        title="Delete Expense"
+        description="Are you sure you want to permanently delete this expense? This action cannot be undone."
+        confirmText="Delete"
+        variant="destructive"
+      />
+
+      <ConfirmDialog
+        isOpen={isBulkDeleteConfirmOpen}
+        onClose={() => setIsBulkDeleteConfirmOpen(false)}
+        onConfirm={handleBulkDelete}
+        title="Bulk Delete Expenses"
+        description={`Are you sure you want to delete ${selectedIds.length} selected expenses? This action will permanently remove all selected records.`}
+        confirmText="Delete All"
+        variant="destructive"
       />
     </div>
   );

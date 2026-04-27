@@ -14,12 +14,14 @@ import {
   DropdownMenuItem, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 export default function Clients() {
   const { canCreate, canEdit, canDelete } = useRBAC();
   const { data: clients, loading, addItem, updateItem, deleteItem } = useData<Client>('clients');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleCsvImport = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -70,6 +72,9 @@ export default function Clients() {
     }
   };
 
+  const filteredClients = clients
+    .sort((a, b) => a.name.localeCompare(b.name));
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -106,9 +111,9 @@ export default function Clients() {
           <TableBody>
             {loading ? (
               <TableRow><TableCell colSpan={5} className="text-center py-12">Loading...</TableCell></TableRow>
-            ) : clients.length === 0 ? (
+            ) : filteredClients.length === 0 ? (
               <TableRow><TableCell colSpan={5} className="text-center py-12">No clients found</TableCell></TableRow>
-            ) : clients.map((client) => (
+            ) : filteredClients.map((client) => (
               <TableRow key={client.id}>
                 <TableCell>
                   <div className="font-medium text-xs sm:text-sm">{client.name}</div>
@@ -135,7 +140,7 @@ export default function Clients() {
                         </DropdownMenuItem>
                       )}
                       {canDelete && (
-                        <DropdownMenuItem className="gap-2 text-red-600" onClick={() => deleteItem(client.id)}>
+                        <DropdownMenuItem className="gap-2 text-red-600" onClick={() => setDeleteId(client.id)}>
                           <Trash2 className="w-4 h-4" /> Delete
                         </DropdownMenuItem>
                       )}
@@ -153,6 +158,22 @@ export default function Clients() {
         onClose={() => { setIsFormOpen(false); setEditingClient(null); }}
         onSave={handleSave}
         client={editingClient}
+      />
+
+      <ConfirmDialog
+        isOpen={!!deleteId}
+        onClose={() => setDeleteId(null)}
+        onConfirm={() => {
+          if (deleteId) {
+            deleteItem(deleteId);
+            toast.success('Client deleted');
+            setDeleteId(null);
+          }
+        }}
+        title="Delete Client"
+        description="Are you sure you want to permanently delete this client? This will remove all their details and history from your records."
+        confirmText="Delete Client"
+        variant="destructive"
       />
     </div>
   );

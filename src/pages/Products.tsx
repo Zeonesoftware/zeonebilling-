@@ -5,6 +5,7 @@ import { Item } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, Search, Package, MoreHorizontal, FileEdit, Trash2, Upload, CheckCircle2, XCircle, AlertCircle, Barcode, Printer, ChevronDown, ChevronRight, ChevronsUpDown } from 'lucide-react';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Input } from '@/components/ui/input';
 import { ItemForm } from '@/components/products/ItemForm';
 import { cn } from '@/lib/utils';
@@ -48,6 +49,8 @@ export default function Products() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkStockValue, setBulkStockValue] = useState('');
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [isBulkDeleteConfirmOpen, setIsBulkDeleteConfirmOpen] = useState(false);
   const [groupByCategory, setGroupByCategory] = useState(false);
   const [collapsedCategories, setCollapsedCategories] = useState<string[]>([]);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -58,7 +61,9 @@ export default function Products() {
 
   const categories = ['All', ...Array.from(new Set(items.map(i => i.category || 'General')))];
 
-  const filteredItems = items.filter(i => {
+  const filteredItems = items
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .filter(i => {
     const matchesSearch = i.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
       i.hsn.includes(searchTerm) ||
       (i.barcode && i.barcode.includes(searchTerm));
@@ -177,8 +182,6 @@ export default function Products() {
   };
 
   const handleBulkDelete = async () => {
-    if (!window.confirm(`Are you sure you want to delete ${selectedIds.length} items?`)) return;
-
     try {
       setIsBulkUpdating(true);
       const loadingToast = toast.loading(`Deleting ${selectedIds.length} items...`);
@@ -190,6 +193,7 @@ export default function Products() {
       toast.dismiss(loadingToast);
       toast.success('Bulk delete complete');
       setSelectedIds([]);
+      setIsBulkDeleteConfirmOpen(false);
     } catch (err) {
       toast.error('Bulk delete failed');
     } finally {
@@ -393,7 +397,7 @@ export default function Products() {
                   variant="ghost" 
                   size="sm" 
                   className="h-8 pr-4 gap-2 text-red-400 hover:text-red-300 hover:bg-red-950/20 font-bold text-[10px] uppercase tracking-widest border-r border-white/10 rounded-none"
-                  onClick={handleBulkDelete}
+                  onClick={() => setIsBulkDeleteConfirmOpen(true)}
                   disabled={isBulkUpdating}
                 >
                   <Trash2 className="w-3 h-3" /> Delete Selected
@@ -623,7 +627,7 @@ export default function Products() {
                                 </DropdownMenuItem>
                               )}
                               {canDelete && (
-                                <DropdownMenuItem className="gap-2 text-red-600" onClick={() => deleteItem(item.id)}>
+                                <DropdownMenuItem className="gap-2 text-red-600" onClick={() => setDeleteId(item.id)}>
                                   <Trash2 className="w-4 h-4" /> Delete
                                 </DropdownMenuItem>
                               )}
@@ -645,6 +649,32 @@ export default function Products() {
         onClose={() => { setIsFormOpen(false); setEditingItem(null); }} 
         onSave={handleSave}
         item={editingItem}
+      />
+
+      <ConfirmDialog
+        isOpen={!!deleteId}
+        onClose={() => setDeleteId(null)}
+        onConfirm={() => {
+          if (deleteId) {
+            deleteItem(deleteId);
+            toast.success('Product deleted');
+            setDeleteId(null);
+          }
+        }}
+        title="Delete Product"
+        description="Are you sure you want to permanently delete this product? This action cannot be undone."
+        confirmText="Delete"
+        variant="destructive"
+      />
+
+      <ConfirmDialog
+        isOpen={isBulkDeleteConfirmOpen}
+        onClose={() => setIsBulkDeleteConfirmOpen(false)}
+        onConfirm={handleBulkDelete}
+        title="Bulk Delete Products"
+        description={`Are you sure you want to delete ${selectedIds.length} selected products? This action will permanently remove all selected items from your catalog.`}
+        confirmText="Delete All"
+        variant="destructive"
       />
 
       <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>

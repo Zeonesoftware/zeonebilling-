@@ -42,6 +42,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/invoice-utils';
 import { PurchaseForm } from '@/components/purchases/PurchaseForm';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 export default function Purchases() {
   const { canCreate, canEdit, canDelete } = useRBAC();
@@ -50,6 +51,7 @@ export default function Purchases() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingPurchase, setEditingPurchase] = useState<Purchase | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   
   const filteredPurchases = purchases
     .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
@@ -85,13 +87,12 @@ export default function Purchases() {
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this purchase record?')) {
-      try {
-        await deleteItem(id);
-        toast.success('Purchase record deleted');
-      } catch (err) {
-        toast.error('Failed to delete record');
-      }
+    try {
+      await deleteItem(id);
+      toast.success('Purchase record deleted');
+      setDeleteId(null);
+    } catch (err) {
+      toast.error('Failed to delete record');
     }
   };
 
@@ -241,7 +242,7 @@ export default function Purchases() {
                       {canDelete && (
                         <DropdownMenuItem 
                           className="gap-3 py-2.5 cursor-pointer font-bold text-xs uppercase tracking-wider text-red-600 focus:text-red-600 focus:bg-red-50" 
-                          onClick={() => handleDelete(p.id)}
+                          onClick={() => setDeleteId(p.id)}
                         >
                           <Trash2 className="w-4 h-4" /> Delete Record
                         </DropdownMenuItem>
@@ -263,6 +264,16 @@ export default function Purchases() {
         }}
         onSave={handleSave}
         initialData={editingPurchase}
+      />
+
+      <ConfirmDialog
+        isOpen={!!deleteId}
+        onClose={() => setDeleteId(null)}
+        onConfirm={() => deleteId && handleDelete(deleteId)}
+        title="Delete Purchase Record"
+        description="Are you sure you want to permanently delete this purchase record? This will remove all associated item details from your history."
+        confirmText="Delete Record"
+        variant="destructive"
       />
     </div>
   );

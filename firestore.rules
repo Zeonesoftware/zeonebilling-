@@ -101,13 +101,13 @@ service cloud.firestore {
     match /clients/{clientId} {
       allow read, list: if isAnyUser();
       allow create, update: if isBilling() && isValidClient(incoming());
-      allow delete: if isAdmin();
+      allow delete: if isBilling();
     }
 
     match /items/{itemId} {
       allow read, list: if isAnyUser();
       allow create, update: if isBilling() && isValidItem(incoming());
-      allow delete: if isAdmin();
+      allow delete: if isBilling();
     }
 
     match /expenses/{expenseId} {

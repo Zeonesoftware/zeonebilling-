@@ -56,6 +56,7 @@ import { useRBAC } from '@/hooks/useRBAC';
 import { Invoice, Item } from '@/types';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { InvoiceForm } from '@/components/invoices/InvoiceForm';
 import { InvoiceView } from '@/components/invoices/InvoiceView';
 import { BulkEInvoiceManager } from '@/components/invoices/BulkEInvoiceManager';
@@ -137,6 +138,7 @@ export default function Invoices() {
       setIsExportingAudit(false);
     }
   };
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [ewayPromptInvoice, setEwayPromptInvoice] = useState<Invoice | null>(null);
 
   // Handle return from Stripe
@@ -438,6 +440,21 @@ export default function Invoices() {
           }}
         />
       )}
+      <ConfirmDialog
+        isOpen={!!deleteId}
+        onClose={() => setDeleteId(null)}
+        onConfirm={() => {
+          if (deleteId) {
+            deleteItem(deleteId);
+            toast.success('Invoice deleted');
+            setDeleteId(null);
+          }
+        }}
+        title="Delete Invoice"
+        description="Are you sure you want to permanently delete this invoice? This will remove the document and cannot be undone."
+        confirmText="Delete"
+        variant="destructive"
+      />
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-black tracking-tight text-slate-900 uppercase">Document Ledger</h2>
@@ -774,7 +791,7 @@ export default function Invoices() {
                         </DropdownMenuItem>
                       )}
                       {(canDelete || isBilling) && (
-                        <DropdownMenuItem className="gap-3 py-2.5 cursor-pointer font-bold text-xs uppercase tracking-wider text-red-600 focus:text-red-600 focus:bg-red-50" onClick={() => deleteItem(inv.id)}>
+                        <DropdownMenuItem className="gap-3 py-2.5 cursor-pointer font-bold text-xs uppercase tracking-wider text-red-600 focus:text-red-600 focus:bg-red-50" onClick={() => setDeleteId(inv.id)}>
                           <Trash2 className="w-4 h-4" /> Delete Permanently
                         </DropdownMenuItem>
                       )}
