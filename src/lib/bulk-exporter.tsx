@@ -189,7 +189,15 @@ import { cn } from '@/lib/utils';
 function InvoiceExportRenderer({ invoice, settings }: { invoice: Invoice, settings: BusinessSettings }) {
   const currentStyle = invoice.pdfStyle || 'Professional';
   
-  const styles = {
+  const styles: Record<string, any> = {
+    Standard: {
+      header: "bg-slate-100 p-12 border-b-2 border-slate-200",
+      accent: "text-slate-900",
+      border: "border-slate-200",
+      font: "font-sans",
+      tableHeader: "bg-slate-50 border-y border-slate-200 text-slate-600",
+      heading: "font-bold"
+    },
     Professional: {
       header: "bg-[#237227] text-white p-12",
       accent: "text-[#237227]",
@@ -199,12 +207,12 @@ function InvoiceExportRenderer({ invoice, settings }: { invoice: Invoice, settin
       heading: "font-black tracking-tight"
     },
     Modern: {
-      header: "bg-[#0f172a] text-white p-16 rounded-t-2xl",
-      accent: "text-[#0f172a]",
-      border: "border-[#f1f5f9]",
-      font: "font-display",
-      tableHeader: "bg-[#f8fafc] border-y border-[#f1f5f9] text-[#64748b]",
-      heading: "font-medium tracking-tighter"
+      header: "bg-white text-[#0f172a] p-0 rounded-t-2xl",
+      accent: "text-[#008080]",
+      border: "border-slate-300",
+      font: "font-sans",
+      tableHeader: "bg-slate-50 border-y border-slate-300 text-slate-700",
+      heading: "font-black tracking-tight"
     },
     Classic: {
       header: "bg-white text-black p-12 border-b-8 border-double border-black",
@@ -213,10 +221,42 @@ function InvoiceExportRenderer({ invoice, settings }: { invoice: Invoice, settin
       font: "font-serif",
       tableHeader: "border-y-2 border-black text-black",
       heading: "font-bold italic"
+    },
+    Simple: {
+      header: "bg-white p-4 border-2 border-black",
+      accent: "text-black",
+      border: "border-black",
+      font: "font-sans",
+      tableHeader: "bg-white border-y-2 border-black text-black font-bold uppercase text-[10px]",
+      heading: "font-black"
+    },
+    Creative: {
+      header: "bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-16",
+      accent: "text-blue-600",
+      border: "border-blue-100",
+      font: "font-sans",
+      tableHeader: "text-blue-600 border-b border-blue-100 uppercase text-[10px] tracking-widest",
+      heading: "tracking-widest uppercase font-black"
+    },
+    Detailed: {
+      header: "bg-slate-50 p-8 border border-slate-200",
+      accent: "text-red-700",
+      border: "border-slate-200",
+      font: "font-sans",
+      tableHeader: "bg-slate-100 border border-slate-300 text-slate-700 h-8",
+      heading: "font-black tracking-tighter uppercase"
+    },
+    Thermal: {
+      header: "",
+      accent: "text-black",
+      border: "border-black",
+      font: "font-mono",
+      tableHeader: "",
+      heading: ""
     }
   };
 
-  const style = styles[currentStyle];
+  const style = styles[currentStyle] || styles.Professional;
   const upiUrl = invoice.currency === 'INR' && settings.upiId 
     ? generateUPIUrl(settings.upiId, settings.companyName, invoice.totalAmount, invoice.invoiceNumber)
     : null;
@@ -231,7 +271,127 @@ function InvoiceExportRenderer({ invoice, settings }: { invoice: Invoice, settin
       )}
     >
       {/* Copy of the rendering logic from InvoiceView */}
-      <div className={style.header}>
+      {currentStyle === 'Simple' ? (
+        <div className="flex flex-col text-[10px] text-black bg-white border-2 border-black m-2">
+          {/* Image-style Header */}
+          <div className="p-4 border-b-2 border-black">
+            <div className="flex justify-between items-start text-[9px] font-bold">
+              <div className="space-y-0.5">
+                <div>GSTIN:{settings.gstin}</div>
+                <div>FASSAI NO:{settings.fssai || 'N/A'}</div>
+              </div>
+              <div className="text-center">
+                <div className="text-xs font-black uppercase tracking-widest border-b border-black pb-0.5 mb-1 px-4">TAX INVOICE</div>
+              </div>
+              <div>MOBILE:{settings.phone}</div>
+            </div>
+            
+            <div className="text-center mt-2 space-y-1">
+              <h1 className="text-2xl font-black tracking-tighter uppercase">{settings.companyName}</h1>
+              <div className="text-[9px] font-bold uppercase">{settings.address}</div>
+            </div>
+          </div>
+
+          {/* Sub-Header bar - Invoice No & Date */}
+          <div className="border-b-2 border-black flex divide-x-2 divide-black font-bold uppercase text-[10px]">
+            <div className="flex-1 p-1 px-2">Invoice No:{invoice.invoiceNumber}</div>
+            <div className="flex-1 p-1 px-2 text-right">DATE: {format(new Date(invoice.date), 'dd-MM-yyyy')}</div>
+          </div>
+
+          {/* Info Grid - Bill To & State info */}
+          <div className="grid grid-cols-2 divide-x-2 divide-black border-b-2 border-black">
+            <div className="p-2 space-y-1">
+              <div className="grid grid-cols-[80px,1fr] gap-x-2">
+                <span className="font-bold uppercase">BILL TO</span>
+                <span className="font-black">:{invoice.clientName}</span>
+                <span className="font-bold uppercase">ADDRESS</span>
+                <span className="font-bold uppercase leading-tight line-clamp-2">:{invoice.clientAddress}</span>
+                <span className="mt-1 font-bold uppercase">MOBILE</span>
+                <span className="mt-1 font-black">:{invoice.clientPhone || '-'}</span>
+              </div>
+            </div>
+            <div className="p-2 space-y-1">
+              <div className="grid grid-cols-[100px,1fr] gap-x-2">
+                <span className="font-bold uppercase">STATE & CODE</span>
+                <span className="font-black uppercase">{invoice.clientState} : {invoice.clientStateCode}</span>
+                <span className="font-bold uppercase">GST</span>
+                <span className="font-black uppercase">:{invoice.clientGstin || '-'}</span>
+                <span className="mt-1 font-bold uppercase">SMAN</span>
+                <span className="mt-1 font-black">:{invoice.salesmanName || 'karthi'}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Table with Detailed GST Breakdown */}
+          <div className="border-b-2 border-black min-h-[300px]">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-white text-[8px] font-black uppercase divide-x-2 divide-black border-b-2 border-black text-center">
+                  <th className="w-8 py-1">SI.NO</th>
+                  <th className="text-left px-2 py-1">PARTICULARS</th>
+                  <th className="w-16 py-1">HSN CODE</th>
+                  <th className="w-14 py-1">QTY</th>
+                  <th className="w-16 py-1">RATE</th>
+                  <th className="w-12 py-1">CGST</th>
+                  <th className="w-16 py-1">CGST (amt)</th>
+                  <th className="w-12 py-1">SGST</th>
+                  <th className="w-16 py-1">SGST (amt)</th>
+                  <th className="w-20 py-1">Total</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y-2 divide-black">
+                {invoice.items.map((item, idx) => (
+                  <tr key={idx} className="divide-x-2 divide-black text-[9px] font-bold align-top h-8 uppercase">
+                    <td className="text-center py-1">{idx + 1}</td>
+                    <td className="px-2 py-1 text-left font-black">{item.name}</td>
+                    <td className="text-center py-1">{item.hsn}</td>
+                    <td className="text-center py-1">{item.quantity}{item.unit || 'PCS'}</td>
+                    <td className="text-right px-1 py-1 font-mono">{item.price.toFixed(2)}</td>
+                    <td className="text-center py-1">{item.gstRate / 2}%</td>
+                    <td className="text-right px-1 py-1 font-mono">{(item.cgst || (item.igst / 2) || 0).toFixed(2)}</td>
+                    <td className="text-center py-1">{item.gstRate / 2}%</td>
+                    <td className="text-right px-1 py-1 font-mono">{(item.sgst || (item.igst / 2) || 0).toFixed(2)}</td>
+                    <td className="text-right px-2 py-1 font-black">{(item.total || 0).toFixed(2)}</td>
+                  </tr>
+                ))}
+                {/* Fill empty space */}
+                {Array.from({ length: Math.max(0, 10 - invoice.items.length) }).map((_, i) => (
+                  <tr key={`empty-${i}`} className="divide-x-2 divide-black h-8">
+                    {Array.from({ length: 10 }).map((__, j) => <td key={j}></td>)}
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot className="border-t-2 border-black font-black bg-white uppercase text-[9px]">
+                <tr className="divide-x-2 divide-black h-6 text-center">
+                  <td colSpan={4}></td>
+                  <td className="px-1 text-right">{invoice.subtotal.toFixed(2)}</td>
+                  <td colSpan={2} className="px-1 text-right">{(invoice.totalCgst || (invoice.totalIgst / 2) || 0).toFixed(2)}</td>
+                  <td colSpan={2} className="px-1 text-right">{(invoice.totalSgst || (invoice.totalIgst / 2) || 0).toFixed(2)}</td>
+                  <td className="px-2 text-right">{invoice.totalAmount.toFixed(2)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          {/* Amount In Words Row */}
+          <div className="border-b-2 border-black p-1 px-8 flex gap-4 items-center">
+            <span className="font-bold italic uppercase text-[9px]">Amount In Words:</span>
+            <span className="font-black uppercase text-[10px]">Rupees {amountToWords(invoice.totalAmount, invoice.currency)} Only</span>
+          </div>
+
+          {/* Boxed Footer with Bank Details */}
+          <div className="p-1 px-4 flex justify-between items-center text-[9px] font-bold uppercase divide-x-2 divide-black -mx-px">
+            <div className="flex-1 flex gap-4">
+              <span>Ac No:{settings.accountNumber}</span>
+              <span>Ifsc:{settings.ifscCode}</span>
+              <span>{settings.bankName}</span>
+            </div>
+            <div className="px-8 font-black">For {settings.companyName.toUpperCase()}</div>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className={style.header}>
         <div className="flex justify-between items-start">
           <div className="space-y-6">
             {settings.logoUrl ? (
@@ -346,6 +506,8 @@ function InvoiceExportRenderer({ invoice, settings }: { invoice: Invoice, settin
           </div>
         </div>
       </div>
-    </div>
-  );
+    </>
+    )}
+  </div>
+);
 }

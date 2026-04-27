@@ -4,7 +4,7 @@ import { useRBAC } from '@/hooks/useRBAC';
 import { Item } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Search, Package, MoreHorizontal, FileEdit, Trash2, Upload, CheckCircle2, XCircle, AlertCircle, Barcode, Printer } from 'lucide-react';
+import { Plus, Search, Package, MoreHorizontal, FileEdit, Trash2, Upload, CheckCircle2, XCircle, AlertCircle, Barcode, Printer, ChevronDown, ChevronRight, ChevronsUpDown } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { ItemForm } from '@/components/products/ItemForm';
 import { cn } from '@/lib/utils';
@@ -49,6 +49,7 @@ export default function Products() {
   const [bulkStockValue, setBulkStockValue] = useState('');
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
   const [groupByCategory, setGroupByCategory] = useState(false);
+  const [collapsedCategories, setCollapsedCategories] = useState<string[]>([]);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -212,6 +213,23 @@ export default function Products() {
     );
   };
 
+  const toggleCategoryCollapse = (category: string) => {
+    setCollapsedCategories(prev => 
+      prev.includes(category) 
+        ? prev.filter(c => c !== category) 
+        : [...prev, category]
+    );
+  };
+
+  const toggleAllCategories = (collapse: boolean) => {
+    if (collapse) {
+      const allCats = Object.keys(groupedItems).filter(k => k !== 'All Products');
+      setCollapsedCategories(allCats);
+    } else {
+      setCollapsedCategories([]);
+    }
+  };
+
   const handlePrintBarcode = (item: Item) => {
     if (!item.barcode) {
       toast.error('No barcode available for this product');
@@ -338,7 +356,18 @@ export default function Products() {
         </div>
 
         <div className="flex items-center gap-2 ml-auto">
-          <Switch id="group-mode" checked={groupByCategory} onCheckedChange={setGroupByCategory} />
+          {groupByCategory && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-8 gap-2 text-[10px] font-bold uppercase tracking-widest text-[#999999]"
+              onClick={() => toggleAllCategories(collapsedCategories.length < Object.keys(groupedItems).length)}
+            >
+              <ChevronsUpDown className="w-3 h-3" />
+              {collapsedCategories.length < Object.keys(groupedItems).length ? 'Collapse All' : 'Expand All'}
+            </Button>
+          )}
+          <Switch id="group-mode" checked={groupByCategory} onCheckedChange={(val) => { setGroupByCategory(val); if (!val) setCollapsedCategories([]); }} />
           <Label htmlFor="group-mode" className="text-[10px] font-bold uppercase tracking-widest text-[#999999] cursor-pointer">Group by Category</Label>
         </div>
       </div>
@@ -490,12 +519,22 @@ export default function Products() {
                 const totalStock = itemsInGroup.reduce((sum, item) => sum + item.stock, 0);
                 const totalValue = itemsInGroup.reduce((sum, item) => sum + (item.price * item.stock), 0);
 
+                const isCollapsed = collapsedCategories.includes(category);
+
                 return (
                   <React.Fragment key={category}>
                     {groupByCategory && (
-                      <TableRow className="bg-slate-50/80 hover:bg-slate-50/80 border-y border-slate-100">
+                      <TableRow 
+                        className="bg-slate-50/80 hover:bg-slate-100/80 border-y border-slate-100 cursor-pointer transition-colors"
+                        onClick={() => toggleCategoryCollapse(category)}
+                      >
                         <TableCell colSpan={2} className="py-2">
                           <div className="flex items-center gap-2">
+                            {isCollapsed ? (
+                              <ChevronRight className="w-4 h-4 text-slate-400" />
+                            ) : (
+                              <ChevronDown className="w-4 h-4 text-slate-400" />
+                            )}
                             <span className="text-xs font-black uppercase tracking-widest text-slate-900">{category}</span>
                             <Badge variant="outline" className="bg-white text-[9px] h-4 px-1.5 border-slate-200 text-slate-500">
                               {itemsInGroup.length} Items
@@ -503,21 +542,21 @@ export default function Products() {
                           </div>
                         </TableCell>
                         <TableCell colSpan={groupByCategory ? 4 : 5} className="py-2">
-                          <div className="flex items-center justify-end gap-6">
+                          <div className="flex items-center justify-end gap-6 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                             <div className="flex flex-col items-end">
-                              <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Total Stock</span>
-                              <span className="text-[10px] font-bold text-slate-700">{totalStock}</span>
+                              <span className="text-[8px]">Total Stock</span>
+                              <span className="text-slate-700">{totalStock}</span>
                             </div>
                             <div className="flex flex-col items-end">
-                              <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Total Value</span>
-                              <span className="text-[10px] font-bold text-[#237227]">₹{totalValue.toLocaleString()}</span>
+                              <span className="text-[8px]">Total Value</span>
+                              <span className="text-[#237227]">₹{totalValue.toLocaleString()}</span>
                             </div>
                           </div>
                         </TableCell>
                         <TableCell />
                       </TableRow>
                     )}
-                    {itemsInGroup.map((item) => (
+                    {!isCollapsed && itemsInGroup.map((item) => (
                       <TableRow key={item.id} className={cn(selectedIds.includes(item.id) && "bg-slate-50")}>
                         <TableCell>
                           <Checkbox 

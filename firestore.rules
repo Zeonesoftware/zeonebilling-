@@ -95,7 +95,7 @@ service cloud.firestore {
       allow update: if isBilling() && (
         incoming().invoiceNumber == existing().invoiceNumber || isAdmin()
       );
-      allow delete: if isAdmin();
+      allow delete: if isBilling();
     }
 
     match /clients/{clientId} {

@@ -209,8 +209,13 @@ export default function Invoices() {
         comparison = aValue.localeCompare(bValue);
       } else if (typeof aValue === 'number' && typeof bValue === 'number') {
         comparison = aValue - bValue;
-      } else if (sortKey === 'date' || sortKey === 'dueDate') {
+      } else if (sortKey === 'date' || sortKey === 'dueDate' || sortKey === 'createdAt' || sortKey === 'updatedAt') {
         comparison = new Date(aValue as string).getTime() - new Date(bValue as string).getTime();
+        
+        // Fallback to createdAt for items on the same day for more precise sorting
+        if (comparison === 0 && a.createdAt && b.createdAt) {
+          comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        }
       }
 
       return sortOrder === 'asc' ? comparison : -comparison;

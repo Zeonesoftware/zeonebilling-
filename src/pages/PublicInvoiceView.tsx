@@ -292,7 +292,7 @@ export default function PublicInvoiceView() {
                       ))}
                       {/* Empty rows to fill height */}
                       {Array.from({ length: 8 }).map((_, i) => (
-                         <tr key={`empty-${i}`} className="divide-x divide-slate-300 h-8">
+                         <tr key={`empty-${i}`} className="divide-x-slate-300 h-8">
                             {Array.from({ length: 9 }).map((__, j) => <td key={j}></td>)}
                          </tr>
                       ))}
@@ -365,6 +365,125 @@ export default function PublicInvoiceView() {
                 <div className="p-4 bg-slate-50/50 text-[9px] text-slate-500 italic text-left">
                    <div className="font-bold uppercase text-[8px] mb-1 opacity-60">Terms & Conditions:</div>
                    <div className="whitespace-pre-wrap leading-relaxed">{settings.terms}</div>
+                </div>
+              </div>
+            ) : invoice.pdfStyle === 'Simple' ? (
+              <div className="flex flex-col text-[10px] text-black bg-white border-2 border-black m-2">
+                {/* Image-style Header */}
+                <div className="p-4 border-b-2 border-black">
+                  <div className="flex justify-between items-start text-[9px] font-bold text-left">
+                    <div className="space-y-0.5">
+                      <div>GSTIN:{settings.gstin}</div>
+                      <div>FASSAI NO:{settings.fssai || 'N/A'}</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-xs font-black uppercase tracking-widest border-b border-black pb-0.5 mb-1 px-4">TAX INVOICE</div>
+                    </div>
+                    <div>MOBILE:{settings.phone}</div>
+                  </div>
+                  
+                  <div className="text-center mt-2 space-y-1">
+                    <h1 className="text-2xl font-black tracking-tighter uppercase">{settings.companyName}</h1>
+                    <div className="text-[9px] font-bold uppercase">{settings.address}</div>
+                  </div>
+                </div>
+
+                {/* Sub-Header bar - Invoice No & Date */}
+                <div className="border-b-2 border-black flex divide-x-2 divide-black font-bold uppercase text-[10px]">
+                  <div className="flex-1 p-1 px-2 text-left">Invoice No:{invoice.invoiceNumber}</div>
+                  <div className="flex-1 p-1 px-2 text-right">DATE: {format(new Date(invoice.date), 'dd-MM-yyyy')}</div>
+                </div>
+
+                {/* Info Grid - Bill To & State info */}
+                <div className="grid grid-cols-2 divide-x-2 divide-black border-b-2 border-black text-left">
+                  <div className="p-2 space-y-1">
+                    <div className="grid grid-cols-[80px,1fr] gap-x-2">
+                      <span className="font-bold uppercase">BILL TO</span>
+                      <span className="font-black">:{invoice.clientName}</span>
+                      <span className="font-bold uppercase">ADDRESS</span>
+                      <span className="font-bold uppercase leading-tight line-clamp-2">:{invoice.clientAddress}</span>
+                      <span className="mt-1 font-bold uppercase">MOBILE</span>
+                      <span className="mt-1 font-black">:{invoice.clientPhone || '-'}</span>
+                    </div>
+                  </div>
+                  <div className="p-2 space-y-1">
+                    <div className="grid grid-cols-[100px,1fr] gap-x-2">
+                      <span className="font-bold uppercase">STATE & CODE</span>
+                      <span className="font-black uppercase">{invoice.clientState} : {invoice.clientStateCode}</span>
+                      <span className="font-bold uppercase">GST</span>
+                      <span className="font-black uppercase">:{invoice.clientGstin || '-'}</span>
+                      <span className="mt-1 font-bold uppercase">SMAN</span>
+                      <span className="mt-1 font-black">:{invoice.salesmanName || 'karthi'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Table with Detailed GST Breakdown */}
+                <div className="border-b-2 border-black min-h-[300px]">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-white text-[8px] font-black uppercase divide-x-2 divide-black border-b-2 border-black text-center">
+                        <th className="w-8 py-1">SI.NO</th>
+                        <th className="text-left px-2 py-1">PARTICULARS</th>
+                        <th className="w-16 py-1">HSN CODE</th>
+                        <th className="w-14 py-1">QTY</th>
+                        <th className="w-16 py-1">RATE</th>
+                        <th className="w-12 py-1">CGST</th>
+                        <th className="w-16 py-1">CGST (amt)</th>
+                        <th className="w-12 py-1">SGST</th>
+                        <th className="w-16 py-1">SGST (amt)</th>
+                        <th className="w-20 py-1">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y-2 divide-black">
+                      {invoice.items.map((item, idx) => (
+                        <tr key={idx} className="divide-x-2 divide-black text-[9px] font-bold align-top h-8 uppercase">
+                          <td className="text-center py-1">{idx + 1}</td>
+                          <td className="px-2 py-1 text-left font-black">{item.name}</td>
+                          <td className="text-center py-1">{item.hsn}</td>
+                          <td className="text-center py-1">{item.quantity}{item.unit || 'PCS'}</td>
+                          <td className="text-right px-1 py-1 font-mono">{item.price.toFixed(2)}</td>
+                          <td className="text-center py-1">{item.gstRate / 2}%</td>
+                          <td className="text-right px-1 py-1 font-mono">{(item.cgst || (item.igst / 2) || 0).toFixed(2)}</td>
+                          <td className="text-center py-1">{item.gstRate / 2}%</td>
+                          <td className="text-right px-1 py-1 font-mono">{(item.sgst || (item.igst / 2) || 0).toFixed(2)}</td>
+                          <td className="text-right px-2 py-1 font-black">{(item.total || 0).toFixed(2)}</td>
+                        </tr>
+                      ))}
+                      {/* Fill empty space */}
+                      {Array.from({ length: Math.max(0, 10 - invoice.items.length) }).map((_, i) => (
+                        <tr key={`empty-${i}`} className="divide-x-2 divide-black h-8">
+                          {Array.from({ length: 10 }).map((__, j) => <td key={j}></td>)}
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot className="border-t-2 border-black font-black bg-white uppercase text-[9px]">
+                      {/* Totals row breakdown matches the image row above footer */}
+                      <tr className="divide-x-2 divide-black h-6 border-t-2 border-black text-center">
+                        <td colSpan={4}></td>
+                        <td className="px-1 text-right">{invoice.subtotal.toFixed(2)}</td>
+                        <td colSpan={2} className="px-1 text-right">{(invoice.totalCgst || (invoice.totalIgst / 2) || 0).toFixed(2)}</td>
+                        <td colSpan={2} className="px-1 text-right">{(invoice.totalSgst || (invoice.totalIgst / 2) || 0).toFixed(2)}</td>
+                        <td className="px-2 text-right">{invoice.totalAmount.toFixed(2)}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+
+                {/* Amount In Words Row */}
+                <div className="border-b-2 border-black p-1 px-8 flex gap-4 items-center text-left">
+                  <span className="font-bold italic uppercase text-[9px]">Amount In Words:</span>
+                  <span className="font-black uppercase text-[10px]">Rupees {amountToWords(invoice.totalAmount, invoice.currency)} Only</span>
+                </div>
+
+                {/* Boxed Footer with Bank Details */}
+                <div className="p-1 px-4 flex justify-between items-center text-[9px] font-bold uppercase divide-x-2 divide-black -mx-px">
+                  <div className="flex-1 flex gap-4 text-left">
+                    <span>Ac No:{settings.accountNumber}</span>
+                    <span>Ifsc:{settings.ifscCode}</span>
+                    <span>{settings.bankName}</span>
+                  </div>
+                  <div className="px-8 font-black text-right">For {settings.companyName.toUpperCase()}</div>
                 </div>
               </div>
             ) : (

@@ -62,6 +62,7 @@ export function InvoiceForm({ onSave, onCancel, settings, invoices, initialData 
   const [pdfStyle, setPdfStyle] = useState<Invoice['pdfStyle']>(settings.defaultPdfStyle || 'Standard');
   const [isTaxInclusive, setIsTaxInclusive] = useState(false);
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
+  const [salesmanName, setSalesmanName] = useState('');
 
   // E-Way Bill State
   const [ewayBillNo, setEwayBillNo] = useState('');
@@ -90,6 +91,7 @@ export function InvoiceForm({ onSave, onCancel, settings, invoices, initialData 
       if (initialData.currency) setCurrency(initialData.currency);
       if (initialData.status) setStatus(initialData.status);
       if (initialData.pdfStyle) setPdfStyle(initialData.pdfStyle);
+      if (initialData.salesmanName) setSalesmanName(initialData.salesmanName);
       
       // E-Way Bill initialization
       if (initialData.ewayBillNo) setEwayBillNo(initialData.ewayBillNo);
@@ -262,6 +264,7 @@ export function InvoiceForm({ onSave, onCancel, settings, invoices, initialData 
     internalNotes,
     extraPages,
     pdfStyle,
+    salesmanName,
     ewayBillNo,
     ewayBillStatus,
     transporterName,
@@ -302,6 +305,7 @@ export function InvoiceForm({ onSave, onCancel, settings, invoices, initialData 
       internalNotes: internalNotes || '',
       extraPages: extraPages || '',
       pdfStyle: pdfStyle || 'Standard',
+      salesmanName: salesmanName || '',
       ewayBillNo: ewayBillNo || '',
       ewayBillStatus: ewayBillStatus || 'Pending',
       transporterName: transporterName || '',
@@ -466,6 +470,15 @@ export function InvoiceForm({ onSave, onCancel, settings, invoices, initialData 
                     type="date" 
                     value={date} 
                     onChange={e => setDate(e.target.value)}
+                    className="h-9 border-slate-200 text-xs"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold text-slate-500 uppercase">Salesman / Agent</Label>
+                  <Input 
+                    value={salesmanName} 
+                    onChange={(e) => setSalesmanName(e.target.value)}
+                    placeholder="e.g. Karthi"
                     className="h-9 border-slate-200 text-xs"
                   />
                 </div>

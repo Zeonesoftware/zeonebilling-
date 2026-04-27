@@ -30,6 +30,7 @@ export interface Client {
   name: string;
   gstin: string;
   stateCode: string; // Add state code for IGST vs CGST/SGST
+  state?: string;
   email: string;
   phone: string;
   address: string;
@@ -60,6 +61,7 @@ export interface InvoiceItem {
   cgst: number;
   sgst: number;
   igst: number; // Added for inter-state
+  unit?: string;
   total: number;
 }
 
@@ -75,6 +77,7 @@ export interface Invoice {
   clientGstin: string;
   clientAddress: string;
   clientStateCode: string;
+  clientState?: string;
   clientPhone?: string;
   currency: string;
   items: InvoiceItem[];
@@ -95,6 +98,7 @@ export interface Invoice {
   extraPages?: string; // Rich text extra content
   pdfStyle?: 'Standard' | 'Professional' | 'Classic' | 'Modern' | 'Simple' | 'Creative' | 'Detailed' | 'Thermal';
   paymentMethod?: string;
+  salesmanName?: string;
   // E-Invoice Fields
   ackNo?: string;
   ackDate?: string;
@@ -113,6 +117,8 @@ export interface Invoice {
   vehicleNo?: string;
   distance?: number;
   transportMode?: 'Road' | 'Rail' | 'Air' | 'Ship';
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Expense {
