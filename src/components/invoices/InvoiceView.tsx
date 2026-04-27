@@ -42,7 +42,9 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
   const [isEmailing, setIsEmailing] = useState(false);
   const [isEWayBillModalOpen, setIsEWayBillModalOpen] = useState(false);
   const [isEInvoiceModalOpen, setIsEInvoiceModalOpen] = useState(false);
-  const [currentStyle, setCurrentStyle] = useState<Invoice['pdfStyle'] | 'Thermal'>(initialStyle || invoice.pdfStyle || 'Professional');
+  const [currentStyle, setCurrentStyle] = useState<Invoice['pdfStyle'] | 'Thermal'>(
+    initialStyle || invoice.pdfStyle || settings.defaultPdfStyle || 'Professional'
+  );
 
   const handlePrint = () => {
     const content = (currentStyle === 'Thermal' ? thermalRef : printRef).current;

@@ -6,6 +6,7 @@ import {
   CheckCircle2, 
   AlertCircle, 
   ArrowRight,
+  ArrowDownRight,
   ExternalLink,
   ChevronDown,
   LayoutDashboard,
@@ -17,7 +18,8 @@ import {
   Zap,
   IndianRupee,
   Calendar,
-  Filter
+  Filter,
+  Settings
 } from 'lucide-react';
 import { useData, useSettings } from '@/hooks/useData';
 import { Invoice, BusinessSettings } from '@/types';
@@ -52,6 +54,7 @@ export default function GSTReturns() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [activeTab, setActiveTab] = useState('gstr-1');
+  const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
 
   // --- Calculations ---
   
@@ -81,6 +84,55 @@ export default function GSTReturns() {
   }, [filteredInvoices]);
 
   const b2bInvoices = useMemo(() => filteredInvoices.filter(inv => inv.clientGstin), [filteredInvoices]);
+  
+  const sortedB2BInvoices = useMemo(() => {
+    let sortableItems = [...b2bInvoices];
+    if (sortConfig !== null) {
+      sortableItems.sort((a, b) => {
+        let aValue: any;
+        let bValue: any;
+
+        switch (sortConfig.key) {
+          case 'invoiceNumber':
+            aValue = a.invoiceNumber;
+            bValue = b.invoiceNumber;
+            break;
+          case 'date':
+            aValue = new Date(a.date).getTime();
+            bValue = new Date(b.date).getTime();
+            break;
+          case 'taxable':
+            aValue = a.subtotal;
+            bValue = b.subtotal;
+            break;
+          case 'total':
+            aValue = a.totalAmount;
+            bValue = b.totalAmount;
+            break;
+          default:
+            return 0;
+        }
+
+        if (aValue < bValue) {
+          return sortConfig.direction === 'asc' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === 'asc' ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [b2bInvoices, sortConfig]);
+
+  const requestSort = (key: string) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
   const b2cInvoices = useMemo(() => filteredInvoices.filter(inv => !inv.clientGstin), [filteredInvoices]);
 
   const hsnSummary = useMemo(() => {
@@ -286,11 +338,15 @@ export default function GSTReturns() {
     window.open('https://services.gst.gov.in/services/login', '_blank');
   };
 
-  const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
   const months = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
+
+  const financialYears = Array.from({ length: 5 }, (_, i) => {
+    const year = new Date().getFullYear() - i;
+    return `${year}-${(year + 1).toString().slice(-2)}`;
+  });
 
   if (loading) return <div>Loading GST Data...</div>;
 
@@ -335,15 +391,18 @@ export default function GSTReturns() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm" className="h-10 px-4 rounded-xl font-bold gap-2">
-                    {selectedYear} <ChevronDown className="w-4 h-4 opacity-50" />
+                    FY {selectedYear}-{ (selectedYear + 1).toString().slice(-2) } <ChevronDown className="w-4 h-4 opacity-50" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="p-2 rounded-xl">
-                  {years.map(y => (
-                    <DropdownMenuItem key={y} onClick={() => setSelectedYear(y)} className="font-bold text-xs uppercase tracking-wider">
-                      {y}
-                    </DropdownMenuItem>
-                  ))}
+                  {financialYears.map(fy => {
+                    const year = parseInt(fy.split('-')[0]);
+                    return (
+                      <DropdownMenuItem key={fy} onClick={() => setSelectedYear(year)} className="font-bold text-xs uppercase tracking-wider">
+                        FY {fy}
+                      </DropdownMenuItem>
+                    );
+                  })}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -354,9 +413,17 @@ export default function GSTReturns() {
             </div>
           </div>
         </div>
-        <Button onClick={handleGSTPortal} className="bg-[#1D4ED8] hover:bg-blue-800 text-white font-black px-8 h-12 rounded-xl shadow-lg flex gap-2 items-center">
-          <ExternalLink className="w-4 h-4" /> GST Portal
-        </Button>
+        <div className="flex gap-3">
+          <Button variant="outline" className="h-12 px-6 rounded-xl font-bold gap-2 border-slate-200 text-slate-600 hover:bg-slate-50 cursor-not-allowed opacity-60">
+            <CheckSquare className="w-4 h-4" /> Team Access
+          </Button>
+          <Button variant="outline" className="h-12 px-6 rounded-xl font-bold gap-2 border-slate-200 text-slate-600 hover:bg-slate-50 cursor-not-allowed opacity-60">
+            <Settings className="w-4 h-4" /> System Config
+          </Button>
+          <Button onClick={handleGSTPortal} className="bg-[#1D4ED8] hover:bg-blue-800 text-white font-black px-8 h-12 rounded-xl shadow-lg flex gap-2 items-center">
+            <ExternalLink className="w-4 h-4" /> GST Portal
+          </Button>
+        </div>
       </div>
 
       {/* Warnings & Alerts */}
@@ -449,18 +516,33 @@ export default function GSTReturns() {
                   <tr>
                     <th className="px-6 py-4">GSTIN</th>
                     <th className="px-6 py-4">Client</th>
-                    <th className="px-6 py-4">Invoice No</th>
-                    <th className="px-6 py-4">Date</th>
+                    <th className="px-6 py-4 cursor-pointer hover:text-slate-900 transition-colors group" onClick={() => requestSort('invoiceNumber')}>
+                      <div className="flex items-center gap-1">
+                        Invoice No
+                        <ArrowDownRight className={cn("w-3 h-3 transition-transform", sortConfig?.key === 'invoiceNumber' && sortConfig.direction === 'desc' ? "rotate-0" : "rotate-180 opacity-0 group-hover:opacity-100")} />
+                      </div>
+                    </th>
+                    <th className="px-6 py-4 cursor-pointer hover:text-slate-900 transition-colors group" onClick={() => requestSort('date')}>
+                      <div className="flex items-center gap-1">
+                        Date
+                        <ArrowDownRight className={cn("w-3 h-3 transition-transform", sortConfig?.key === 'date' && sortConfig.direction === 'desc' ? "rotate-0" : "rotate-180 opacity-0 group-hover:opacity-100")} />
+                      </div>
+                    </th>
                     <th className="px-6 py-4">POS</th>
                     <th className="px-6 py-4">Type</th>
-                    <th className="px-6 py-4 text-right">Taxable</th>
+                    <th className="px-6 py-4 text-right cursor-pointer hover:text-slate-900 transition-colors group" onClick={() => requestSort('taxable')}>
+                      <div className="flex items-center justify-end gap-1">
+                        Taxable
+                        <ArrowDownRight className={cn("w-3 h-3 transition-transform", sortConfig?.key === 'taxable' && sortConfig.direction === 'desc' ? "rotate-0" : "rotate-180 opacity-0 group-hover:opacity-100")} />
+                      </div>
+                    </th>
                     <th className="px-6 py-4 text-right">CGST</th>
                     <th className="px-6 py-4 text-right">SGST</th>
                     <th className="px-6 py-4 text-right">IGST</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {b2bInvoices.map((inv, idx) => (
+                  {sortedB2BInvoices.map((inv, idx) => (
                     <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
                       <td className="px-6 py-4 font-mono text-blue-600 font-bold">{inv.clientGstin}</td>
                       <td className="px-6 py-4 font-black uppercase tracking-tight">{inv.clientName}</td>
@@ -754,12 +836,49 @@ export default function GSTReturns() {
                   <HelpCircle className="w-6 h-6 text-blue-600" />
                   How to File GSTR-1
                 </h3>
-                <div className="space-y-8">
+                <div className="grid md:grid-cols-2 gap-8 mb-10">
+                  <div className="space-y-4">
+                    <h4 className="text-xs font-black uppercase tracking-widest text-slate-400">Key Components</h4>
+                    <div className="space-y-3">
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 italic text-[11px]">
+                        <strong>B2B Invoices:</strong> Supplies to registered persons (Table 4A, 4B, 4C, 6B, 6C)
+                      </div>
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 italic text-[11px]">
+                        <strong>B2C Data:</strong> Supplies to unregistered persons (Table 7)
+                      </div>
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 italic text-[11px]">
+                        <strong>HSN Summary:</strong> Classification of goods/services (Table 12)
+                      </div>
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 italic text-[11px]">
+                        <strong>Document Summary:</strong> List of invoices issued and cancelled (Table 13)
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <h4 className="text-xs font-black uppercase tracking-widest text-slate-400">Preparation Steps</h4>
+                    <div className="space-y-4">
+                      {[
+                        { step: 1, title: 'Download JSON', desc: 'Click on "JSON Export" button in GSTR-1 tab to get your data in NIC format.' },
+                        { step: 2, title: 'Login to GST Portal', desc: 'Visit services.gst.gov.in and login.' },
+                        { step: 3, title: 'Upload JSON', desc: 'Navigate to Returns Dashboard > GSTR-1 > Prepare Offline and upload file.' },
+                      ].map((s, i) => (
+                        <div key={i} className="flex gap-3">
+                           <div className="w-6 h-6 rounded-lg bg-blue-50 flex items-center justify-center shrink-0 font-black text-blue-600 text-[10px]">
+                             {s.step}
+                           </div>
+                           <div className="pt-0.5">
+                             <div className="text-[11px] font-black text-slate-800 mb-0.5">{s.title}</div>
+                             <p className="text-[10px] text-slate-500 font-medium leading-relaxed">{s.desc}</p>
+                           </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-8 border-t border-slate-100 pt-8">
                    {[
-                     { step: 1, title: 'Download JSON', desc: 'Click on "JSON Export" button in GSTR-1 tab to get yours data in government format.' },
-                     { step: 2, title: 'Login to GST Portal', desc: 'Visit services.gst.gov.in and login with your credentials.' },
-                     { step: 3, title: 'Navigate to Returns', desc: 'Go to Services > Returns > Returns Dashboard. Select Financial Year and Month.' },
-                     { step: 4, title: 'GSTR-1 Offline Tool', desc: 'Choose GSTR-1 (Prepare Offline) and upload the downloaded JSON file.' },
+                     { step: 4, title: 'Check Returns Dashboard', desc: 'Go to Services > Returns > Returns Dashboard. Select Financial Year and Month.' },
                      { step: 5, title: 'Generate Summary', desc: 'Wait for 2-5 minutes, then generate summary and verify totals with Zeone data.' },
                      { step: 6, title: 'File with EVC/DSC', desc: 'Proceed to file with EVC (Aadhar OTP) or DSC.' },
                    ].map((s, i) => (
@@ -785,7 +904,7 @@ export default function GSTReturns() {
                      <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">SMS Format</div>
                    </div>
                    <div className="text-lg font-mono font-black text-slate-800 tracking-wider text-center py-4 bg-slate-50 rounded-xl mb-4 border-2 border-dashed border-slate-200">
-                     NIL R1 27XXXXXXXXXXXXZ 042024
+                     NIL R1 27XXXXXXXXXXXXZ 042026
                    </div>
                    <p className="text-[10px] text-slate-400 text-center font-bold uppercase">Send to 14409 from registered mobile number</p>
                 </div>
@@ -822,9 +941,9 @@ export default function GSTReturns() {
                  <h3 className="text-lg font-black text-slate-900 mb-6">Upcoming Deadlines</h3>
                  <div className="space-y-6">
                     {[
-                      { type: 'GSTR-1', date: '11th May 2024', status: 'Upcoming' },
-                      { type: 'IFF (QRMP)', date: '13th May 2024', status: 'Optional' },
-                      { type: 'GSTR-3B', date: '20th May 2024', status: 'Important' },
+                      { type: 'GSTR-1', date: '11th May 2026', status: 'Upcoming' },
+                      { type: 'IFF (QRMP)', date: '13th May 2026', status: 'Optional' },
+                      { type: 'GSTR-3B', date: '20th May 2026', status: 'Important' },
                     ].map((d, i) => (
                       <div key={i} className="flex justify-between items-start">
                         <div>

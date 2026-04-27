@@ -53,7 +53,7 @@ export function Shell() {
     { icon: Package, label: t('products'), path: '/products', permission: 'inventory' },
     { icon: Users, label: t('clients'), path: '/clients', permission: 'clients' },
     { icon: ReceiptIndianRupee, label: t('expenses'), path: '/expenses', permission: 'expenses' },
-    { icon: Globe, label: 'GST Returns', path: '/gst-returns', permission: 'reports' },
+    { icon: Globe, label: 'GST Returns', path: '/gst-returns', permission: 'gst_returns' },
     { icon: Dna, label: 'Reconciliation', path: '/reconciliation', permission: 'reconciliation' },
     { icon: TrendingUp, label: t('reports'), path: '/reports', permission: 'reports' },
     { icon: SettingsIcon, label: t('settings'), path: '/settings' },
@@ -107,7 +107,6 @@ export function Shell() {
             <Logo className="w-10 h-10" />
             <div className="flex flex-col">
               <h1 className="text-xl font-black text-white tracking-tighter leading-none">ZEONE</h1>
-              <p className="text-[9px] text-white/40 font-mono uppercase tracking-widest mt-1">v1.4.0 • ACTIVE</p>
             </div>
           </div>
         </div>

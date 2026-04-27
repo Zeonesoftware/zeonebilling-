@@ -59,7 +59,7 @@ export function InvoiceForm({ onSave, onCancel, settings, invoices, initialData 
   const [status, setStatus] = useState<Invoice['status']>('Pending');
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
-  const [pdfStyle, setPdfStyle] = useState<Invoice['pdfStyle']>('Standard');
+  const [pdfStyle, setPdfStyle] = useState<Invoice['pdfStyle']>(settings.defaultPdfStyle || 'Standard');
   const [isTaxInclusive, setIsTaxInclusive] = useState(false);
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
 

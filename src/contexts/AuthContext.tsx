@@ -89,7 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               displayName: firebaseUser.displayName || 'User',
               photoURL: firebaseUser.photoURL || '',
               role: isOwner ? 'admin' : 'billing',
-              permissions: isOwner ? ['pos', 'invoices', 'inventory', 'purchases', 'clients', 'expenses', 'reconciliation', 'reports', 'quick_actions'] : [],
+              permissions: isOwner ? ['pos', 'invoices', 'inventory', 'purchases', 'clients', 'expenses', 'reconciliation', 'reports', 'quick_actions', 'gst_returns'] : [],
               phoneNumber: firebaseUser.phoneNumber || ''
             };
             

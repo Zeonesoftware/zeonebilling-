@@ -22,6 +22,7 @@ export interface BusinessSettings {
   invoiceSeparator: string;
   invoicePadding: number;
   lowStockThreshold: number;
+  defaultPdfStyle?: 'Standard' | 'Professional' | 'Classic' | 'Modern' | 'Simple' | 'Creative' | 'Detailed' | 'Thermal';
 }
 
 export interface Client {

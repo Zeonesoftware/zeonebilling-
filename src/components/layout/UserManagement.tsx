@@ -45,6 +45,7 @@ export function UserManagement() {
     { id: 'expenses', name: 'Expenses' },
     { id: 'reconciliation', name: 'Reconciliation' },
     { id: 'reports', name: 'Reports' },
+    { id: 'gst_returns', name: 'GST Returns' },
     { id: 'quick_actions', name: 'Quick Actions' },
   ];
 

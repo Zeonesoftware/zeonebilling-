@@ -444,6 +444,19 @@ export default function Settings() {
                   <Label className="text-xs uppercase font-bold text-[#666666]">Zero Padding</Label>
                   <Input type="number" value={formData.invoicePadding} onChange={e => setFormData({ ...formData, invoicePadding: Number(e.target.value) })} />
                 </div>
+                <div className="space-y-2">
+                  <Label className="text-xs uppercase font-bold text-[#666666]">Default PDF Style</Label>
+                  <Select value={formData.defaultPdfStyle || "Standard"} onValueChange={v => setFormData({ ...formData, defaultPdfStyle: v })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {['Standard', 'Professional', 'Classic', 'Modern', 'Simple', 'Creative', 'Detailed', 'Thermal'].map(s => (
+                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </CardContent>
           </Card>

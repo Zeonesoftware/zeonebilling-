@@ -66,7 +66,7 @@ export default function Invoices() {
   const location = useLocation();
   const navigate = useNavigate();
   const { profile } = useRBAC();
-  const { canCreate, canEdit, canDelete } = useRBAC();
+  const { canCreate, canEdit, canDelete, isBilling } = useRBAC();
   const { data: invoices, loading, addItem, updateItem, deleteItem } = useData<Invoice>('invoices');
   const { data: items, updateItem: updateProduct } = useData<Item>('items');
   const { settings } = useSettings();
@@ -768,7 +768,7 @@ export default function Invoices() {
                           <FileEdit className="w-4 h-4 text-yellow-500" /> Edit Revision
                         </DropdownMenuItem>
                       )}
-                      {canDelete && (
+                      {(canDelete || isBilling) && (
                         <DropdownMenuItem className="gap-3 py-2.5 cursor-pointer font-bold text-xs uppercase tracking-wider text-red-600 focus:text-red-600 focus:bg-red-50" onClick={() => deleteItem(inv.id)}>
                           <Trash2 className="w-4 h-4" /> Delete Permanently
                         </DropdownMenuItem>
