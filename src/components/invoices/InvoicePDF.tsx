@@ -14,40 +14,89 @@ Font.register({
   ],
 });
 
+
+interface InvoicePDFProps {
+  invoice: Invoice;
+  settings: BusinessSettings;
+  pdfStyle?: string;
+}
+
 const styles = StyleSheet.create({
   page: {
-    padding: 40,
+    padding: 30,
     fontFamily: 'Inter',
     fontSize: 9,
     color: '#1f2937',
-    lineHeight: 1.5,
+    lineHeight: 1.4,
   },
-  header: {
+  // Simple Style (GST / Boxed)
+  simpleContainer: {
+    border: 1,
+    borderColor: '#000',
+  },
+  simpleHeader: {
+    padding: 10,
+    borderBottom: 1,
+    borderColor: '#000',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 20,
-    borderBottom: 1,
-    borderBottomColor: '#f3f4f6',
-    paddingBottom: 20,
   },
-  logoContainer: {
-    width: 150,
-  },
-  titleContainer: {
-    alignItems: 'flex-end',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 700,
-    color: '#111827',
-    marginBottom: 4,
-    letterSpacing: -0.5,
-  },
-  companyName: {
+  simpleHeadline: {
     fontSize: 16,
     fontWeight: 700,
-    color: '#111827',
-    marginBottom: 4,
+    textAlign: 'center',
+    marginBottom: 5,
+    textTransform: 'uppercase',
+  },
+  simpleGrid: {
+    flexDirection: 'row',
+    borderBottom: 1,
+    borderColor: '#000',
+  },
+  simpleGridCol: {
+    flex: 1,
+    padding: 8,
+    borderRight: 1,
+    borderColor: '#000',
+  },
+  simpleTable: {
+    width: '100%',
+  },
+  simpleTableHeader: {
+    flexDirection: 'row',
+    borderBottom: 1,
+    borderColor: '#000',
+    backgroundColor: '#f3f4f6',
+    fontWeight: 700,
+  },
+  simpleTableRow: {
+    flexDirection: 'row',
+    borderBottom: 1,
+    borderColor: '#000',
+    minHeight: 25,
+  },
+  simpleCol: {
+    padding: 4,
+    borderRight: 1,
+    borderColor: '#000',
+    justifyContent: 'center',
+  },
+
+  // Professional Style (Current modern look)
+  modernHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 30,
+    backgroundColor: '#237227',
+    padding: 30,
+    marginHorizontal: -30,
+    marginTop: -30,
+    color: '#fff',
+  },
+  modernTitle: {
+    fontSize: 28,
+    fontWeight: 700,
+    color: '#fff',
   },
   infoSection: {
     flexDirection: 'row',
@@ -57,258 +106,255 @@ const styles = StyleSheet.create({
   infoBlock: {
     width: '45%',
   },
-  infoLabel: {
+  label: {
     fontSize: 8,
-    fontWeight: 600,
     color: '#6b7280',
     textTransform: 'uppercase',
     marginBottom: 4,
-    letterSpacing: 0.5,
+    fontWeight: 700,
   },
-  infoValue: {
+  value: {
     fontSize: 10,
-    fontWeight: 400,
     marginBottom: 2,
-  },
-  infoValueBold: {
-    fontSize: 11,
-    fontWeight: 600,
-    marginBottom: 2,
-    color: '#111827',
-  },
-  table: {
-    marginTop: 20,
-    width: '100%',
   },
   tableHeader: {
     flexDirection: 'row',
-    backgroundColor: '#f9fafb',
-    borderBottom: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottom: 2,
+    borderBottomColor: '#237227',
     paddingVertical: 8,
-    paddingHorizontal: 4,
+    backgroundColor: 'transparent',
   },
   tableRow: {
     flexDirection: 'row',
     borderBottom: 1,
     borderBottomColor: '#f3f4f6',
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-    minHeight: 30,
-  },
-  col1: { width: '5%', textAlign: 'center' },
-  col2: { width: '45%', textAlign: 'left' },
-  col3: { width: '10%', textAlign: 'center' },
-  col4: { width: '10%', textAlign: 'center' },
-  col5: { width: '15%', textAlign: 'right' },
-  col6: { width: '15%', textAlign: 'right' },
-  tableHeaderText: {
-    fontSize: 8,
-    fontWeight: 700,
-    color: '#4b5563',
-    textTransform: 'uppercase',
-  },
-  tableRowText: {
-    fontSize: 9,
-    color: '#374151',
-  },
-  summarySection: {
-    marginTop: 30,
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-  },
-  summaryTable: {
-    width: '40%',
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 4,
-  },
-  summaryLabel: {
-    fontSize: 9,
-    color: '#6b7280',
-  },
-  summaryValue: {
-    fontSize: 9,
-    fontWeight: 600,
-    color: '#111827',
-  },
-  totalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    borderTop: 1,
-    borderTopColor: '#e5e7eb',
-    marginTop: 4,
-  },
-  totalLabel: {
-    fontSize: 12,
-    fontWeight: 700,
-    color: '#111827',
-  },
-  totalValue: {
-    fontSize: 14,
-    fontWeight: 700,
-    color: '#111827',
+    paddingVertical: 10,
   },
   footer: {
-    marginTop: 50,
+    marginTop: 'auto',
+    paddingTop: 20,
     borderTop: 1,
     borderTopColor: '#f3f4f6',
-    paddingTop: 20,
-  },
-  notesTitle: {
-    fontSize: 8,
-    fontWeight: 600,
-    color: '#6b7280',
-    textTransform: 'uppercase',
-    marginBottom: 4,
-  },
-  notesContent: {
-    fontSize: 8,
-    color: '#9ca3af',
-  },
-  bankDetails: {
-    marginTop: 20,
-    fontSize: 8,
-    color: '#6b7280',
-  },
-  amountInWords: {
-    marginTop: 10,
-    fontSize: 9,
-    fontWeight: 700,
-    color: '#4b5563',
   }
 });
 
-interface InvoicePDFProps {
-  invoice: Invoice;
-  settings: BusinessSettings;
-}
-
-export const InvoicePDFPage = ({ invoice, settings }: { invoice: Invoice; settings: BusinessSettings }) => (
-  <Page size="A4" style={styles.page}>
-    {/* Header */}
-    <View style={styles.header}>
-      <View style={styles.logoContainer}>
-        {settings.logoUrl ? (
-          <Image src={settings.logoUrl} style={{ width: 60, height: 60, objectFit: 'contain' }} />
-        ) : (
-          <Text style={styles.companyName}>{settings.companyName}</Text>
-        )}
-        <Text style={{ fontSize: 8, color: '#6b7280', marginTop: 4 }}>{settings.address}</Text>
-        <Text style={{ fontSize: 8, color: '#6b7280' }}>GSTIN: {settings.gstin}</Text>
+const SimpleLayout = ({ invoice, settings }: { invoice: Invoice, settings: BusinessSettings }) => (
+  <View style={styles.simpleContainer}>
+    <View style={styles.simpleHeader}>
+      <View>
+        <Text style={{ fontSize: 8 }}>GSTIN: {settings.gstin}</Text>
+        <Text style={{ fontSize: 8 }}>FSSAI: {settings.fssai || 'N/A'}</Text>
       </View>
-      <View style={styles.titleContainer}>
-        <Text style={styles.title}>INVOICE</Text>
-        <Text style={{ color: '#6b7280' }}>#{invoice.invoiceNumber}</Text>
-        <Text style={{ color: '#6b7280', marginTop: 4 }}>
-          Date: {format(new Date(invoice.date), 'dd MMM yyyy')}
-        </Text>
+      <View style={{ alignItems: 'center' }}>
+        <Text style={{ fontSize: 10, fontWeight: 700, borderBottom: 1, marginBottom: 2 }}>TAX INVOICE</Text>
+        <Text style={{ fontSize: 18, fontWeight: 700 }}>{settings.companyName.toUpperCase()}</Text>
+        <Text style={{ fontSize: 8 }}>{settings.address}</Text>
+      </View>
+      <View style={{ alignItems: 'flex-end' }}>
+        <Text style={{ fontSize: 8 }}>MOBILE: {settings.phone}</Text>
       </View>
     </View>
 
-    {/* Info Section */}
-    <View style={styles.infoSection}>
-      <View style={styles.infoBlock}>
-        <Text style={styles.infoLabel}>Bill To</Text>
-        <Text style={styles.infoValueBold}>{invoice.clientName}</Text>
-        <Text style={styles.infoValue}>{invoice.clientAddress}</Text>
-        <Text style={styles.infoValue}>{invoice.clientPhone}</Text>
-        <Text style={styles.infoValue}>GSTIN: {invoice.clientGstin}</Text>
+    <View style={styles.simpleGrid}>
+      <View style={styles.simpleGridCol}>
+        <Text style={styles.label}>Invoice No</Text>
+        <Text style={{ fontWeight: 700 }}>{invoice.invoiceNumber}</Text>
       </View>
-      <View style={styles.infoBlock}>
-        <Text style={{ ...styles.infoLabel, textAlign: 'right' }}>Business Details</Text>
-        <Text style={{ ...styles.infoValue, textAlign: 'right' }}>Phone: {settings.phone}</Text>
-        <Text style={{ ...styles.infoValue, textAlign: 'right' }}>Email: {settings.email}</Text>
-        {settings.fssai && <Text style={{ ...styles.infoValue, textAlign: 'right' }}>FSSAI: {settings.fssai}</Text>}
+      <View style={{ ...styles.simpleGridCol, borderRight: 0 }}>
+        <Text style={styles.label}>Date</Text>
+        <Text style={{ fontWeight: 700 }}>{format(new Date(invoice.date), 'dd-MM-yyyy')}</Text>
       </View>
     </View>
 
-    {/* Table */}
-    <View style={styles.table}>
-      <View style={styles.tableHeader}>
-        <View style={styles.col1}><Text style={styles.tableHeaderText}>#</Text></View>
-        <View style={styles.col2}><Text style={styles.tableHeaderText}>Items</Text></View>
-        <View style={styles.col3}><Text style={styles.tableHeaderText}>HSN</Text></View>
-        <View style={styles.col4}><Text style={styles.tableHeaderText}>Qty</Text></View>
-        <View style={styles.col5}><Text style={styles.tableHeaderText}>Rate</Text></View>
-        <View style={styles.col6}><Text style={styles.tableHeaderText}>Total</Text></View>
+    <View style={styles.simpleGrid}>
+      <View style={styles.simpleGridCol}>
+        <Text style={styles.label}>Bill To</Text>
+        <Text style={{ fontWeight: 700 }}>{invoice.clientName}</Text>
+        <Text style={{ fontSize: 8 }}>{invoice.clientAddress}</Text>
+        <Text style={{ fontSize: 8 }}>GSTIN: {invoice.clientGstin}</Text>
+      </View>
+      <View style={{ ...styles.simpleGridCol, borderRight: 0 }}>
+        <Text style={styles.label}>State Details</Text>
+        <Text style={{ fontSize: 9 }}>State: {invoice.clientState}</Text>
+        <Text style={{ fontSize: 9 }}>Code: {invoice.clientStateCode}</Text>
+        <Text style={{ fontSize: 9 }}>Salesman: {invoice.salesmanName || 'N/A'}</Text>
+      </View>
+    </View>
+
+    <View style={styles.simpleTable}>
+      <View style={styles.simpleTableHeader}>
+        <View style={{ ...styles.simpleCol, width: '5%' }}><Text style={{ fontWeight: 700 }}>#</Text></View>
+        <View style={{ ...styles.simpleCol, width: '40%' }}><Text style={{ fontWeight: 700 }}>Particulars</Text></View>
+        <View style={{ ...styles.simpleCol, width: '10%' }}><Text style={{ fontWeight: 700 }}>HSN</Text></View>
+        <View style={{ ...styles.simpleCol, width: '10%' }}><Text style={{ fontWeight: 700 }}>Qty</Text></View>
+        <View style={{ ...styles.simpleCol, width: '10%' }}><Text style={{ fontWeight: 700 }}>Rate</Text></View>
+        <View style={{ ...styles.simpleCol, width: '10%' }}><Text style={{ fontWeight: 700 }}>GST %</Text></View>
+        <View style={{ ...styles.simpleCol, width: '15%', borderRight: 0 }}><Text style={{ fontWeight: 700 }}>Total</Text></View>
+      </View>
+
+      {invoice.items.map((item, idx) => (
+        <View key={idx} style={styles.simpleTableRow}>
+          <View style={{ ...styles.simpleCol, width: '5%' }}><Text>{idx + 1}</Text></View>
+          <View style={{ ...styles.simpleCol, width: '40%' }}><Text>{item.name}</Text></View>
+          <View style={{ ...styles.simpleCol, width: '10%' }}><Text>{item.hsn}</Text></View>
+          <View style={{ ...styles.simpleCol, width: '10%' }}><Text>{item.quantity}</Text></View>
+          <View style={{ ...styles.simpleCol, width: '10%' }}><Text>{item.price.toFixed(2)}</Text></View>
+          <View style={{ ...styles.simpleCol, width: '10%' }}><Text>{item.gstRate}%</Text></View>
+          <View style={{ ...styles.simpleCol, width: '15%', borderRight: 0, textAlign: 'right' }}><Text>{item.total.toFixed(2)}</Text></View>
+        </View>
+      ))}
+
+      {/* Summary Row */}
+      <View style={{ ...styles.simpleTableRow, backgroundColor: '#f9fafb' }}>
+        <View style={{ ...styles.simpleCol, width: '75%', alignItems: 'flex-end' }}>
+          <Text style={{ fontWeight: 700 }}>TOTAL AMOUNT</Text>
+        </View>
+        <View style={{ ...styles.simpleCol, width: '25%', borderRight: 0, textAlign: 'right' }}>
+          <Text style={{ fontWeight: 700 }}>{formatCurrency(invoice.totalAmount, invoice.currency)}</Text>
+        </View>
+      </View>
+    </View>
+
+    <View style={{ padding: 10 }}>
+      <Text style={{ fontSize: 9, fontWeight: 700 }}>Amount in words: {amountToWords(invoice.totalAmount, invoice.currency)} Only</Text>
+      
+      <View style={{ flexDirection: 'row', marginTop: 20, justifyContent: 'space-between' }}>
+        <View style={{ width: '60%' }}>
+          <Text style={styles.label}>Bank Details</Text>
+          <Text style={{ fontSize: 8 }}>{settings.bankName} | A/c: {settings.accountNumber}</Text>
+          <Text style={{ fontSize: 8 }}>IFSC: {settings.ifscCode} | UPI: {settings.upiId}</Text>
+        </View>
+        <View style={{ width: '30%', alignItems: 'center' }}>
+          <Text style={{ fontSize: 8, marginBottom: 30 }}>For {settings.companyName.toUpperCase()}</Text>
+          <View style={{ borderTop: 1, width: '100%', textAlign: 'center' }}>
+            <Text style={{ fontSize: 7, marginTop: 2 }}>Authorised Signatory</Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  </View>
+);
+
+const ModernLayout = ({ invoice, settings, currentStyle = 'Professional' }: { invoice: Invoice, settings: BusinessSettings, currentStyle?: string }) => {
+  const isProfessional = currentStyle === 'Professional';
+  const accentColor = isProfessional ? '#237227' : '#1f2937';
+  const headerBg = isProfessional ? '#237227' : '#f9fafb';
+  const headerColor = isProfessional ? '#fff' : '#1f2937';
+
+  return (
+    <>
+      <View style={{
+        ...styles.modernHeader,
+        backgroundColor: headerBg,
+        color: headerColor,
+        borderBottom: isProfessional ? 0 : 1,
+        borderColor: '#e5e7eb',
+      }}>
+        <View>
+          {settings.logoUrl ? (
+            <Image src={settings.logoUrl} style={{ width: 60, height: 60, objectFit: 'contain' }} />
+          ) : (
+            <Text style={{ fontSize: 24, fontWeight: 700 }}>{settings.companyName}</Text>
+          )}
+          <Text style={{ fontSize: 10, marginTop: 10 }}>{settings.address}</Text>
+          <Text style={{ fontSize: 9, opacity: 0.8 }}>GSTIN: {settings.gstin}</Text>
+        </View>
+        <View style={{ alignItems: 'flex-end' }}>
+          <Text style={{ ...styles.modernTitle, color: headerColor }}>INVOICE</Text>
+          <Text style={{ fontSize: 14 }}>#{invoice.invoiceNumber}</Text>
+          <Text style={{ fontSize: 10 }}>Date: {format(new Date(invoice.date), 'dd MMM yyyy')}</Text>
+        </View>
+      </View>
+
+      <View style={styles.infoSection}>
+        <View style={styles.infoBlock}>
+          <Text style={styles.label}>Bill To</Text>
+          <Text style={{ fontSize: 12, fontWeight: 700, color: '#111827' }}>{invoice.clientName}</Text>
+          <Text style={styles.value}>{invoice.clientAddress}</Text>
+          <Text style={styles.value}>GSTIN: {invoice.clientGstin}</Text>
+        </View>
+        <View style={{ ...styles.infoBlock, alignItems: 'flex-end' }}>
+          <Text style={styles.label}>Payment Method</Text>
+          <Text style={{ fontSize: 10 }}>{invoice.paymentMethod || 'Wire Transfer'}</Text>
+        </View>
+      </View>
+
+      <View style={{ ...styles.tableHeader, borderBottomColor: accentColor }}>
+        <View style={{ width: '50%' }}><Text style={{ fontWeight: 700 }}>Description</Text></View>
+        <View style={{ width: '15%', textAlign: 'center' }}><Text style={{ fontWeight: 700 }}>Qty</Text></View>
+        <View style={{ width: '15%', textAlign: 'right' }}><Text style={{ fontWeight: 700 }}>Price</Text></View>
+        <View style={{ width: '20%', textAlign: 'right' }}><Text style={{ fontWeight: 700 }}>Total</Text></View>
       </View>
 
       {invoice.items.map((item, index) => (
         <View key={index} style={styles.tableRow}>
-          <View style={styles.col1}><Text style={styles.tableRowText}>{index + 1}</Text></View>
-          <View style={styles.col2}><Text style={styles.tableRowText}>{item.name}</Text></View>
-          <View style={styles.col3}><Text style={styles.tableRowText}>{item.hsn}</Text></View>
-          <View style={styles.col4}><Text style={styles.tableRowText}>{item.quantity}</Text></View>
-          <View style={styles.col5}><Text style={styles.tableRowText}>{formatCurrency(item.price, invoice.currency)}</Text></View>
-          <View style={styles.col6}><Text style={styles.tableRowText}>{formatCurrency(item.total, invoice.currency)}</Text></View>
+          <View style={{ width: '50%' }}><Text>{item.name}</Text></View>
+          <View style={{ width: '15%', textAlign: 'center' }}><Text>{item.quantity}</Text></View>
+          <View style={{ width: '15%', textAlign: 'right' }}><Text>{formatCurrency(item.price, invoice.currency)}</Text></View>
+          <View style={{ width: '20%', textAlign: 'right' }}><Text style={{ fontWeight: 700 }}>{formatCurrency(item.total, invoice.currency)}</Text></View>
         </View>
       ))}
-    </View>
 
-    {/* Summary */}
-    <View style={styles.summarySection}>
-      <View style={styles.summaryTable}>
-        <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>Subtotal</Text>
-          <Text style={styles.summaryValue}>{formatCurrency(invoice.subtotal, invoice.currency)}</Text>
-        </View>
-        <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>CGST ({(invoice.items[0]?.gstRate || 0) / 2}%)</Text>
-          <Text style={styles.summaryValue}>{formatCurrency(invoice.totalCgst, invoice.currency)}</Text>
-        </View>
-        <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>SGST ({(invoice.items[0]?.gstRate || 0) / 2}%)</Text>
-          <Text style={styles.summaryValue}>{formatCurrency(invoice.totalSgst, invoice.currency)}</Text>
-        </View>
-        <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>Total</Text>
-          <Text style={styles.totalValue}>{formatCurrency(invoice.totalAmount, invoice.currency)}</Text>
-        </View>
-      </View>
-    </View>
-
-    <Text style={styles.amountInWords}>
-      Amount in words: {amountToWords(invoice.totalAmount, invoice.currency)} Only
-    </Text>
-
-    {/* Footer */}
-    <View style={styles.footer}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-        <View style={{ width: '60%' }}>
-          <Text style={styles.notesTitle}>Payment Information</Text>
-          <View style={styles.bankDetails}>
-            <Text>Bank: {settings.bankName}</Text>
-            <Text>Account Number: {settings.accountNumber}</Text>
-            <Text>IFSC Code: {settings.ifscCode}</Text>
-            <Text>UPI ID: {settings.upiId}</Text>
+      <View style={{ marginTop: 30, alignItems: 'flex-end' }}>
+        <View style={{ width: '40%' }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}>
+            <Text style={styles.label}>Subtotal</Text>
+            <Text>{formatCurrency(invoice.subtotal, invoice.currency)}</Text>
+          </View>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}>
+            <Text style={styles.label}>Tax ({invoice.items[0]?.gstRate}%)</Text>
+            <Text>{formatCurrency(invoice.totalCgst + invoice.totalSgst + invoice.totalIgst, invoice.currency)}</Text>
+          </View>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10, borderTop: 1, borderColor: '#e5e7eb', marginTop: 10 }}>
+            <Text style={{ fontWeight: 700 }}>Total</Text>
+            <Text style={{ fontWeight: 700, fontSize: 16, color: accentColor }}>{formatCurrency(invoice.totalAmount, invoice.currency)}</Text>
           </View>
         </View>
-        <View style={{ width: '30%', alignItems: 'center' }}>
-          <Text style={{ ...styles.notesTitle, marginBottom: 40 }}>Authorised Signatory</Text>
-          {settings.signatureUrl && (
-            <Image src={settings.signatureUrl} style={{ width: 80, height: 40, objectFit: 'contain', position: 'absolute', top: 15 }} />
-          )}
-          <View style={{ borderTop: 1, borderTopColor: '#000', width: '100%', marginTop: 10 }} />
-          <Text style={{ fontSize: 7, marginTop: 4 }}>{settings.companyName.toUpperCase()}</Text>
+      </View>
+
+      <View style={styles.footer}>
+        <Text style={{ fontSize: 10, fontWeight: 700 }}>{amountToWords(invoice.totalAmount, invoice.currency)} Only</Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 30 }}>
+          <View>
+            <Text style={styles.label}>Terms</Text>
+            <Text style={{ fontSize: 8, color: '#6b7280' }}>Please pay within 15 days of receiving this invoice.</Text>
+          </View>
+          <View style={{ alignItems: 'flex-end' }}>
+            {settings.signatureUrl ? (
+               <Image src={settings.signatureUrl} style={{ width: 80, height: 40, objectFit: 'contain' }} />
+            ) : <View style={{ borderTop: 1, width: 100, marginTop: 30 }} />}
+            <Text style={{ fontSize: 9, fontWeight: 700 }}>{settings.companyName}</Text>
+          </View>
         </View>
       </View>
-      
-      <View style={{ marginTop: 30, alignItems: 'center' }}>
-        <Text style={styles.notesContent}>Certified that the particulars given above are true and correct.</Text>
-        <Text style={{ ...styles.notesContent, marginTop: 4 }}>Powered by Zeone Software</Text>
-      </View>
-    </View>
-  </Page>
-);
+    </>
+  );
+};
 
-export const InvoicePDF = ({ invoice, settings }: InvoicePDFProps) => {
+interface InvoicePDFProps {
+  invoice: Invoice;
+  settings: BusinessSettings;
+  pdfStyle?: string;
+}
+
+export const InvoicePDFPage = ({ invoice, settings, pdfStyle }: { invoice: Invoice; settings: BusinessSettings; pdfStyle?: string }) => {
+  const currentStyle = pdfStyle || invoice.pdfStyle || settings.defaultPdfStyle || 'Professional';
+  
+  return (
+    <Page size="A4" style={styles.page}>
+      {currentStyle === 'Simple' ? (
+        <SimpleLayout invoice={invoice} settings={settings} />
+      ) : (
+        <ModernLayout invoice={invoice} settings={settings} currentStyle={currentStyle} />
+      )}
+    </Page>
+  );
+};
+
+export const InvoicePDF = ({ invoice, settings, pdfStyle }: InvoicePDFProps) => {
   return (
     <Document>
-      <InvoicePDFPage invoice={invoice} settings={settings} />
+      <InvoicePDFPage invoice={invoice} settings={settings} pdfStyle={pdfStyle} />
     </Document>
   );
 };

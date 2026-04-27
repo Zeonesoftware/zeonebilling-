@@ -50,7 +50,7 @@ export default function PublicInvoiceView() {
   const handleDownloadPDF = async () => {
     try {
       setIsExporting(true);
-      const blob = await pdf(<InvoicePDF invoice={invoice} settings={settings} />).toBlob();
+      const blob = await pdf(<InvoicePDF invoice={invoice} settings={settings} pdfStyle={invoice.pdfStyle} />).toBlob();
       
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');

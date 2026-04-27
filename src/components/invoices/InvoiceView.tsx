@@ -135,7 +135,7 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
 
   const generatePDFAsBase64 = async () => {
     try {
-      const blob = await pdf(<InvoicePDF invoice={invoice} settings={settings} />).toBlob();
+      const blob = await pdf(<InvoicePDF invoice={invoice} settings={settings} pdfStyle={currentStyle} />).toBlob();
       return new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onloadend = () => {
@@ -198,7 +198,7 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
   const handleDownloadPDF = async () => {
     try {
       setIsExporting(true);
-      const blob = await pdf(<InvoicePDF invoice={invoice} settings={settings} />).toBlob();
+      const blob = await pdf(<InvoicePDF invoice={invoice} settings={settings} pdfStyle={currentStyle} />).toBlob();
       
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
