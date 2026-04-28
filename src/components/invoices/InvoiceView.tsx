@@ -42,7 +42,7 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
   const [currentStyle, setCurrentStyle] = useState<Invoice['pdfStyle'] | 'Thermal'>(
     initialStyle || invoice.pdfStyle || settings.defaultPdfStyle || 'Professional'
   );
-  const [paperSize, setPaperSize] = useState<'A4' | 'A5'>(initialStyle === 'Simple' ? 'A5' : 'A4');
+  const [paperSize, setPaperSize] = useState<'A4' | 'A5'>(initialStyle === 'Simple' ? 'A4' : 'A4');
 
   const handlePrint = () => {
     const content = (currentStyle === 'Thermal' ? thermalRef : printRef).current;
@@ -76,16 +76,17 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                 size: ${currentStyle === 'Thermal' ? '58mm auto' : selectedPaperSize}; 
                 margin: 0 !important; 
               }
-              body { margin: 0 !important; padding: 0 !important; background: white !important; }
+              body { margin: 0 !important; padding: 0 !important; background: white !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
               #invoice-print-area { 
                 width: ${selectedPaperSize === 'A5' ? '148mm' : '210mm'} !important;
-                height: ${selectedPaperSize === 'A5' ? '210mm' : '296mm'} !important;
-                min-height: ${selectedPaperSize === 'A5' ? '210mm' : '296mm'} !important;
+                height: ${selectedPaperSize === 'A5' ? '210mm' : '297mm'} !important;
+                min-height: ${selectedPaperSize === 'A5' ? '210mm' : '297mm'} !important;
                 box-shadow: none !important;
                 margin: 0 !important;
                 padding: 0 !important;
                 border: none !important;
                 position: relative !important;
+                overflow: hidden !important;
               }
               #thermal-receipt {
                 width: 100% !important;
@@ -326,7 +327,7 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
               value={currentStyle || ""} 
               onValueChange={(v: any) => {
                 setCurrentStyle(v);
-                if (v === 'Simple') setPaperSize('A5');
+                if (v === 'Simple') setPaperSize('A4');
                 else if (v !== 'Thermal') setPaperSize('A4');
               }}
             >
@@ -424,12 +425,12 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
               ref={printRef} 
               id="invoice-print-area"
               className={cn(
-                "bg-white shadow-2xl w-full min-w-[794px] md:min-w-0 md:w-[210mm] min-h-[297mm] flex flex-col transition-all duration-500",
+                "bg-white shadow-2xl w-full min-w-[794px] md:min-w-0 md:w-[210mm] h-[297mm] flex flex-col transition-all duration-500 overflow-hidden",
                 style.font
               )}
             >
             {currentStyle === 'Standard' ? (
-              <div className="flex flex-col text-[11px] text-black bg-white border-[3px] border-black m-0 md:m-2">
+              <div className="flex flex-col text-[11px] text-black bg-white border-[3px] border-black m-0 md:m-1 h-full">
                 <div className="p-8 pb-6 flex justify-between items-start border-b-[3px] border-black">
                   <div className="space-y-4">
                     <h1 className="text-4xl md:text-5xl font-black text-[#003366] tracking-tight uppercase leading-none">
@@ -542,39 +543,37 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                 </div>
 
                 {/* Items Table */}
-                <div className="border-b-[3px] border-black overflow-hidden flex-1">
-                  <table className="w-full border-collapse">
+                <div className="border-b-[3px] border-black overflow-hidden flex-1 bg-white flex flex-col">
+                  <table className="w-full border-collapse table-fixed h-full">
                     <thead>
                       <tr className="bg-slate-900 text-[10px] font-black uppercase tracking-[0.1em] text-white divide-x-2 divide-white/20 border-b-[3px] border-black text-center h-12">
-                        <th className="w-12">Sr.</th>
-                        <th className="text-left px-6">Description of Goods</th>
-                        <th className="w-24">HSN/SAC</th>
-                        <th className="w-20">Quantity</th>
-                        <th className="w-32 text-right px-4">Rate</th>
-                        <th className="w-32 text-right px-4">Net Amount</th>
-                        <th className="text-center w-16" colSpan={1}>GST %</th>
-                        <th className="w-32 text-right px-4">Final</th>
+                        <th className="w-10">Sr.</th>
+                        <th className="text-left px-4">Description of Goods</th>
+                        <th className="w-20">HSN</th>
+                        <th className="w-16">Qty</th>
+                        <th className="w-24 text-right px-3">Rate</th>
+                        <th className="w-24 text-right px-3">Taxable</th>
+                        <th className="w-14 text-center">GST%</th>
+                        <th className="w-28 text-right px-4">Total</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-black/10">
+                    <tbody className="divide-y divide-black/10 flex-1">
                       {invoice.items.map((item, idx) => (
-                        <tr key={idx} className="divide-x-2 divide-black text-[11px] font-black align-middle h-11 uppercase text-black">
+                        <tr key={idx} className="divide-x-2 divide-black text-[11px] font-black align-middle h-10 uppercase text-black">
                           <td className="text-center bg-slate-50">{idx + 1}</td>
-                          <td className="px-6 text-left font-black text-[13px]">{item.name}</td>
-                          <td className="text-center font-mono opacity-60">{item.hsn}</td>
-                          <td className="text-center text-sm">{item.quantity} <span className="text-[10px] opacity-40">{item.unit || 'PCS'}</span></td>
-                          <td className="text-right px-4 font-mono text-sm">₹{item.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                          <td className="text-right px-4 font-mono text-sm bg-slate-50/50">₹{((item.total - (item.cgst + item.sgst + (item.igst || 0)))).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                          <td className="px-4 text-left font-black text-[12px] truncate">{item.name}</td>
+                          <td className="text-center font-mono opacity-60 text-[10px]">{item.hsn}</td>
+                          <td className="text-center">{item.quantity} <span className="text-[9px] opacity-40">{item.unit || 'PCS'}</span></td>
+                          <td className="text-right px-3 font-mono text-[11px]">₹{item.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                          <td className="text-right px-3 font-mono text-[11px] bg-slate-50/50">₹{((item.total - (item.cgst + item.sgst + (item.igst || 0)))).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                           <td className="text-center font-black bg-slate-100">{item.gstRate}%</td>
-                          <td className="text-right px-4 font-black text-sm bg-slate-50">₹{item.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                          <td className="text-right px-4 font-black text-[11px] bg-slate-50">₹{item.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                         </tr>
                       ))}
-                      {/* Empty rows */}
-                      {Array.from({ length: Math.max(0, 12 - invoice.items.length) }).map((_, i) => (
-                        <tr key={`empty-${i}`} className="divide-x-2 divide-black h-11 border-b border-black/5">
-                           <td colSpan={8}></td>
-                        </tr>
-                      ))}
+                      {/* Empty space that expands to fill the page */}
+                      <tr className="divide-x-2 divide-black h-full">
+                         <td colSpan={8} className="h-full"></td>
+                      </tr>
                     </tbody>
                   </table>
                 </div>
@@ -674,7 +673,7 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                 </div>
               </div>
             ) : currentStyle === 'Modern' ? (
-              <div className="flex flex-col h-full text-[11px] text-black border-[3px] border-black m-0 md:m-2">
+              <div className="flex flex-col h-full text-[11px] text-black border-[3px] border-black m-0 md:m-1">
                 {/* Modern / Industrial Header */}
                 <div className="p-6 md:p-8 flex justify-between items-start gap-4 text-left">
                   <div className="flex-1 space-y-4">
@@ -772,7 +771,7 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                 </div>
 
                 {/* Items Table */}
-                <div className="border-b border-slate-300">
+                <div className="border-b border-slate-300 flex-1 flex flex-col bg-white">
                   <table className="w-full h-full border-collapse">
                     <thead>
                       <tr className="bg-slate-50 text-[9px] font-bold uppercase tracking-widest text-slate-600 divide-x divide-slate-300 border-b border-slate-300">
@@ -792,7 +791,7 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                         <th className=""></th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-200">
+                    <tbody className="divide-y divide-slate-200 flex-1">
                       {invoice.items.map((item, idx) => (
                         <tr key={idx} className="divide-x divide-slate-300 text-[10px] align-top">
                           <td className="py-3 px-2 text-center">{idx + 1}</td>
@@ -813,6 +812,10 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                           <td className="py-3 px-2 text-right font-bold font-mono">{formatCurrency(item.total, invoice.currency)}</td>
                         </tr>
                       ))}
+                      {/* Empty space */}
+                      <tr className="h-full">
+                         <td colSpan={9} className="h-full"></td>
+                      </tr>
                     </tbody>
                     <tfoot className="border-t border-slate-300 font-bold bg-slate-50">
                        <tr className="divide-x divide-slate-300 text-[10px]">
@@ -931,8 +934,8 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
             ) : currentStyle === 'Simple' ? (
               <div 
                 className={cn(
-                  "flex flex-col text-[9px] text-black bg-white border-2 border-black m-1",
-                  (paperSize === 'A5' || currentStyle === 'Simple') ? "w-[148mm] min-h-[210mm]" : "w-[210mm] min-h-[297mm]"
+                  "flex flex-col text-[9px] text-black bg-white border-2 border-black m-1 h-full",
+                  "w-[210mm] min-h-[297mm]"
                 )}
               >
                 {/* Image-style Header */}
@@ -985,43 +988,40 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                 </div>
 
                 {/* Table with Detailed GST Breakdown */}
-                <div className="border-b-2 border-black flex-1 min-h-[150px]">
-                  <table className="w-full border-collapse">
+                <div className="border-b-2 border-black flex-1 h-full overflow-hidden flex flex-col">
+                  <table className="w-full border-collapse h-full table-fixed">
                     <thead>
                       <tr className="bg-white text-[7px] font-black uppercase divide-x-2 divide-black border-b-2 border-black text-center">
-                        <th className="w-8 py-1">SI.NO</th>
-                        <th className="text-left px-2 py-1">PARTICULARS</th>
-                        <th className="w-14 py-1">HSN CODE</th>
-                        <th className="w-12 py-1">QTY</th>
+                        <th className="w-6 py-1">SI</th>
+                        <th className="text-left px-1 py-1">PARTICULARS</th>
+                        <th className="w-12 py-1">HSN</th>
+                        <th className="w-10 py-1">QTY</th>
                         <th className="w-14 py-1">RATE</th>
-                        <th className="w-10 py-1">CGST</th>
-                        <th className="w-14 py-1">CGST (amt)</th>
-                        <th className="w-10 py-1">SGST</th>
-                        <th className="w-14 py-1">SGST (amt)</th>
-                        <th className="w-18 py-1">Total</th>
+                        <th className="w-8 py-1">CGST%</th>
+                        <th className="w-12 py-1">AMT</th>
+                        <th className="w-8 py-1">SGST%</th>
+                        <th className="w-12 py-1">AMT</th>
+                        <th className="w-16 py-1">Total</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-black">
                       {invoice.items.map((item, idx) => (
-                        <tr key={idx} className="divide-x-2 divide-black text-[8px] font-bold align-top h-6 uppercase">
-                          <td className="text-center py-1">{idx + 1}</td>
-                          <td className="px-2 py-1 text-left font-black">{item.name}</td>
-                          <td className="text-center py-1">{item.hsn}</td>
-                          <td className="text-center py-1">{item.quantity}{item.unit || 'PCS'}</td>
-                          <td className="text-right px-1 py-1 font-mono">{item.price.toFixed(2)}</td>
-                          <td className="text-center py-1">{item.gstRate / 2}%</td>
-                          <td className="text-right px-1 py-1 font-mono">{(item.cgst || (item.igst / 2) || 0).toFixed(2)}</td>
-                          <td className="text-center py-1">{item.gstRate / 2}%</td>
-                          <td className="text-right px-1 py-1 font-mono">{(item.sgst || (item.igst / 2) || 0).toFixed(2)}</td>
-                          <td className="text-right px-2 py-1 font-black">{(item.total || 0).toFixed(2)}</td>
+                        <tr key={idx} className="divide-x-2 divide-black text-[8px] font-bold align-top h-5 uppercase">
+                          <td className="text-center py-0.5">{idx + 1}</td>
+                          <td className="px-1 py-0.5 text-left font-black truncate">{item.name}</td>
+                          <td className="text-center py-0.5 text-[7px]">{item.hsn}</td>
+                          <td className="text-center py-0.5">{item.quantity}{item.unit || 'P'}</td>
+                          <td className="text-right px-0.5 py-0.5 font-mono text-[7px]">{item.price.toFixed(2)}</td>
+                          <td className="text-center py-0.5 text-[7px]">{item.gstRate / 2}%</td>
+                          <td className="text-right px-0.5 py-0.5 font-mono text-[7px]">{(item.cgst || (item.igst / 2) || 0).toFixed(2)}</td>
+                          <td className="text-center py-0.5 text-[7px]">{item.gstRate / 2}%</td>
+                          <td className="text-right px-0.5 py-0.5 font-mono text-[7px]">{(item.sgst || (item.igst / 2) || 0).toFixed(2)}</td>
+                          <td className="text-right px-1 py-0.5 font-black text-[7px]">{(item.total || 0).toFixed(2)}</td>
                         </tr>
                       ))}
-                      {/* Remove empty items to increase print area for real content as per user request */}
-                      {invoice.items.length < 3 && Array.from({ length: 3 - invoice.items.length }).map((_, i) => (
-                        <tr key={`empty-${i}`} className="divide-x-2 divide-black h-6">
-                          {Array.from({ length: 10 }).map((__, j) => <td key={j}></td>)}
-                        </tr>
-                      ))}
+                      <tr className="divide-x-2 divide-black h-full">
+                        {Array.from({ length: 10 }).map((__, j) => <td key={j} className="h-full"></td>)}
+                      </tr>
                     </tbody>
                     <tfoot className="border-t-2 border-black font-black bg-white uppercase text-[8px]">
                       <tr className="divide-x-2 divide-black h-5">
@@ -1059,7 +1059,7 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col text-[11px] text-black bg-white border-[3px] border-black m-0 md:m-2 min-h-full">
+              <div className="flex flex-col text-[11px] text-black bg-white border-[3px] border-black m-0 md:m-1 h-full">
                  {/* Standard Header */}
                  <div className={style.header}>
                   <div className="flex justify-between items-start">
@@ -1122,30 +1122,33 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                     )}
                   </div>
 
-                  {/* Items Table */}
-                  <div className="flex-1">
-                    <table className="w-full">
+                  <div className="flex-1 bg-white flex flex-col">
+                    <table className="w-full table-fixed h-full">
                       <thead>
                         <tr className={cn("text-[10px] font-black uppercase tracking-widest", style.tableHeader)}>
-                          <th className="py-5 text-left pr-4">Line Items / Services</th>
-                          <th className="py-5 text-center px-4">HSN/SAC</th>
+                          <th className="py-5 text-left pr-4 w-1/2">Line Items / Services</th>
+                          <th className="py-5 text-center px-4">HSN</th>
                           <th className="py-5 text-center px-4">Qty</th>
-                          <th className="py-5 text-right px-4">Unit Rate</th>
+                          <th className="py-5 text-right px-4">Rate</th>
                           <th className="py-5 text-right pl-4">Total</th>
                         </tr>
                       </thead>
-                      <tbody className={cn("divide-y", style.border)}>
+                      <tbody className={cn("divide-y flex-1", style.border)}>
                         {invoice.items.map((item, idx) => (
-                          <tr key={idx} className="">
-                            <td className="py-6 pr-4">
-                              <div className="font-bold text-sm text-[#0f172a]">{item.name}</div>
+                          <tr key={idx} className="h-12 text-left">
+                            <td className="py-3 pr-4">
+                              <div className="font-bold text-sm text-[#0f172a] truncate">{item.name}</div>
                             </td>
-                            <td className="py-6 text-center px-4 text-[10px] font-mono text-[#94a3b8] font-bold">{item.hsn}</td>
-                            <td className="py-6 text-center px-4 text-sm font-bold font-mono">{item.quantity}</td>
-                            <td className="py-6 text-right px-4 text-sm font-bold font-mono">{formatCurrency(item.price, invoice.currency)}</td>
-                            <td className="py-6 text-right pl-4 font-black text-sm font-mono text-[#0f172a]">{formatCurrency(item.total, invoice.currency)}</td>
+                            <td className="py-3 text-center px-4 text-[10px] font-mono text-[#94a3b8] font-bold">{item.hsn}</td>
+                            <td className="py-3 text-center px-4 text-sm font-bold font-mono">{item.quantity}</td>
+                            <td className="py-3 text-right px-4 text-sm font-bold font-mono">{formatCurrency(item.price, invoice.currency)}</td>
+                            <td className="py-3 text-right pl-4 font-black text-sm font-mono text-[#0f172a]">{formatCurrency(item.total, invoice.currency)}</td>
                           </tr>
                         ))}
+                        {/* Fill empty space */}
+                        <tr className="h-full">
+                           <td colSpan={5} className="h-full"></td>
+                        </tr>
                       </tbody>
                     </table>
                   </div>
