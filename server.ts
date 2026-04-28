@@ -5,6 +5,7 @@ import fs from "fs/promises";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import dotenv from "dotenv";
 import Stripe from "stripe";
+import puppeteer from "puppeteer";
 
 dotenv.config();
 
@@ -75,7 +76,8 @@ async function initDb() {
 // AI Service
 const genAI = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null;
 
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Helper for file operations
 const readJson = async (file: string) => JSON.parse(await fs.readFile(path.join(DATA_DIR, file), "utf-8"));
@@ -395,6 +397,69 @@ app.post("/api/ewaybill/generate", async (req, res) => {
   }
 });
 
+// PDF Generation using Puppeteer
+app.post("/api/pdf/generate", async (req, res) => {
+  const { html, filename } = req.body;
+  
+  if (!html) {
+    return res.status(400).json({ error: "HTML content is required" });
+  }
+
+  let browser;
+  try {
+    console.log("Generating PDF with Puppeteer...");
+    browser = await puppeteer.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--font-render-hinting=none',
+        '--force-color-profile=srgb',
+      ],
+    });
+    
+    const page = await browser.newPage();
+    
+    // Set viewport to a common desktop size to ensure layout is correct
+    await page.setViewport({ width: 1200, height: 1600 });
+    
+    // Set content and wait for network idle to ensure all styles/fonts/images are loaded
+    await page.setContent(html, { waitUntil: 'networkidle2' });
+
+    const pdf = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: {
+        top: '20px',
+        right: '20px',
+        bottom: '20px',
+        left: '20px'
+      }
+    });
+
+    const buffer = Buffer.from(pdf);
+    console.log(`PDF Generated. Size: ${buffer.length} bytes`);
+
+    res.writeHead(200, {
+      'Content-Type': 'application/pdf',
+      'Content-Length': buffer.length,
+      'Content-Disposition': `attachment; filename="${filename || 'invoice.pdf'}"`
+    });
+    res.end(buffer);
+  } catch (err) {
+    console.error("Puppeteer PDF Error:", err);
+    res.status(500).json({ 
+      error: "Failed to generate PDF",
+      details: err instanceof Error ? err.message : String(err)
+    });
+  } finally {
+    if (browser) {
+      await browser.close();
+    }
+  }
+});
+
 async function startServer() {
   await initDb();
 
@@ -411,6 +476,15 @@ async function startServer() {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
+  
+  // Global Error Handler
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error('Global Error:', err);
+    res.status(err.status || 500).json({
+      error: err.message || "Internal Server Error",
+      details: err.stack
+    });
+  });
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);

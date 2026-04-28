@@ -6,8 +6,6 @@ import { format } from 'date-fns';
 import { amountToWords, generateUPIUrl, formatCurrency } from '@/lib/invoice-utils';
 import { Button } from '@/components/ui/button';
 import { Download, Printer, CreditCard, Loader2, Truck } from 'lucide-react';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 import { toast } from 'sonner';
 import { Logo } from '@/components/Logo';
 
@@ -56,111 +54,103 @@ export default function PublicInvoiceView() {
 
     try {
       setIsExporting(true);
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-        windowWidth: 1200,
-        onclone: (clonedDoc) => {
-          // Remove dark mode class from the cloned document to avoid oklch/oklab issues
-          const html = clonedDoc.documentElement;
-          html.classList.remove('dark');
-          clonedDoc.body.classList.remove('dark');
+      
+      // Get all styles to include in Puppeteer
+      const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+        .map(el => el.outerHTML)
+        .join('\n');
+      
+      // Clone the element to manipulate it for printing without affecting the UI
+      const clone = element.cloneNode(true) as HTMLElement;
+      clone.classList.remove('dark');
+      
+      const baseUrl = window.location.origin;
 
-          // Force width for capture consistency
-          const captureEl = clonedDoc.getElementById('invoice-print-area');
-          if (captureEl) {
-            captureEl.style.width = '210mm';
-            captureEl.style.minWidth = '210mm';
-            captureEl.style.margin = '0';
-            captureEl.style.padding = '0';
-          }
+      // Create a full HTML document for Puppeteer
+      const fullHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <base href="${baseUrl}">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          ${styles}
+          <style>
+             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+             
+             :root {
+               --background: #ffffff !important;
+               --foreground: #000000 !important;
+               --primary: #0077C2 !important;
+               --primary-foreground: #ffffff !important;
+               --card: #ffffff !important;
+               --card-foreground: #1e293b !important;
+               --border: #e2e8f0 !important;
+               --muted: #f1f5f9 !important;
+               --muted-foreground: #64748b !important;
+             }
 
-          // Aggressively replace oklch and oklab in all stylesheets and inline styles
-          const sanitizeStyle = (css: string) => css.replace(/(oklch|oklab)\s*\([^)]+\)/g, '#000000');
-          
-          clonedDoc.querySelectorAll('style').forEach(styleTag => {
-            styleTag.innerHTML = sanitizeStyle(styleTag.innerHTML);
-          });
-          
-          clonedDoc.querySelectorAll('[style]').forEach(el => {
-            const style = el.getAttribute('style');
-            if (style) el.setAttribute('style', sanitizeStyle(style));
-          });
-
-          // Iterate through stylesheets and try to remove problematic rules
-          try {
-            Array.from(clonedDoc.styleSheets).forEach(sheet => {
-              try {
-                const rules = sheet.cssRules || sheet.rules;
-                if (!rules) return;
-                for (let i = rules.length - 1; i >= 0; i--) {
-                  if (rules[i].cssText.includes('oklch') || rules[i].cssText.includes('oklab')) {
-                    sheet.deleteRule(i);
-                  }
-                }
-              } catch (e) {
-                // Some sheets might be cross-origin
-              }
-            });
-          } catch (e) {}
-
-          const style = clonedDoc.createElement('style');
-          style.innerHTML = `
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-            :root, .dark {
-              --background: #ffffff !important;
-              --foreground: #000000 !important;
-              --primary: #000000 !important;
-              --primary-foreground: #ffffff !important;
-              --card: #ffffff !important;
-              --card-foreground: #000000 !important;
-              --border: #000000 !important;
-              --border-width: 1px !important;
-              --input: #000000 !important;
-              --ring: #000000 !important;
-              --secondary: #f1f5f9 !important;
-              --secondary-foreground: #000000 !important;
-              --muted: #f1f5f9 !important;
-              --muted-foreground: #64748b !important;
-              --accent: #f1f5f9 !important;
-              --accent-foreground: #000000 !important;
-              --tw-ring-color: #000000 !important;
-              --tw-border-color: #000000 !important;
-              --tw-ring-offset-color: #ffffff !important;
-            }
-            * {
-               color-scheme: light !important;
+             body { 
+               background: white !important; 
+               color: black !important;
+               margin: 0; 
+               padding: 20px; 
                -webkit-print-color-adjust: exact !important;
+               print-color-adjust: exact !important;
                font-family: 'Inter', sans-serif !important;
-            }
-            .font-mono { font-family: monospace !important; }
-          `;
-          clonedDoc.head.appendChild(style);
-        }
-      });
-      
-      const imgData = canvas.toDataURL('image/png');
-      if (imgData === 'data:,') throw new Error('Failed to capture image');
+             }
+             
+             #invoice-render-wrapper { 
+               width: 210mm; 
+               margin: 0 auto; 
+               box-shadow: none !important;
+               background: white !important;
+             }
 
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
+             .no-print { display: none !important; }
+             
+             @page {
+               size: A4;
+               margin: 0;
+             }
+          </style>
+        </head>
+        <body>
+          <div id="invoice-render-wrapper">
+             ${clone.outerHTML}
+          </div>
+        </body>
+        </html>
+      `;
+
+      const response = await fetch('/api/pdf/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          html: fullHtml,
+          filename: `Invoice-${invoice.invoiceNumber}.pdf`
+        })
       });
 
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const imgProps = pdf.getImageProperties(imgData);
-      const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
-      
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, imgHeight);
-      pdf.save(`Invoice-${invoice.invoiceNumber}.pdf`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'PDF generation failed');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Invoice-${invoice.invoiceNumber}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
       
       toast.success('Professional PDF Downloaded');
     } catch (err) {
       console.error('PDF Generation Error:', err);
-      toast.error('Failed to generate PDF');
+      toast.error(err instanceof Error ? err.message : 'Failed to generate PDF');
     } finally {
       setIsExporting(false);
     }
