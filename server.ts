@@ -76,6 +76,11 @@ async function initDb() {
 // AI Service
 const genAI = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null;
 
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url}`);
+  next();
+});
+
 app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
@@ -86,9 +91,21 @@ const writeJson = async (file: string, data: any) => fs.writeFile(path.join(DATA
 // API Routes
 app.get("/api/data/:file", async (req, res) => {
   try {
-    const data = await readJson(`${req.params.file}.json`);
+    const file = `${req.params.file}.json`;
+    const filePath = path.join(DATA_DIR, file);
+    
+    // Check if file exists
+    try {
+      await fs.access(filePath);
+    } catch {
+      console.warn(`Data file not found: ${file}. Returning empty array.`);
+      return res.json([]);
+    }
+
+    const data = await readJson(file);
     res.json(data);
   } catch (err) {
+    console.error(`Error reading ${req.params.file}:`, err);
     res.status(500).json({ error: "Failed to read data" });
   }
 });
@@ -472,6 +489,15 @@ app.post("/api/pdf/generate", async (req, res) => {
 
 async function startServer() {
   await initDb();
+
+  // Connect API routes BEFORE Vite middleware
+  // ... (API routes are already there)
+
+  // Catch-all for undefined API routes to prevent Vite from serving index.html (causing JSON parse errors)
+  app.all("/api/*", (req, res) => {
+    console.warn(`Unmatched API route: ${req.method} ${req.url}`);
+    res.status(404).json({ error: `API route ${req.method} ${req.url} not found` });
+  });
 
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

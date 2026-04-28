@@ -298,9 +298,9 @@ export default function POS() {
               </Button>
               <Button 
                 className="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-black uppercase text-[10px] tracking-widest rounded-xl h-12 shadow-lg shadow-orange-100 gap-2"
-                onClick={() => {
+                onClick={async () => {
                   // Trigger JSON download directly
-                  const { generateEInvoiceJSON } = require('@/lib/einvoice-generator');
+                  const { generateEInvoiceJSON } = await import('@/lib/einvoice-generator');
                   const json = generateEInvoiceJSON(ewayPromptInvoice, settings);
                   const blob = new Blob([JSON.stringify(json, null, 2)], { type: 'application/json' });
                   const url = URL.createObjectURL(blob);

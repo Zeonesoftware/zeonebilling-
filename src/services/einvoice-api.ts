@@ -55,8 +55,13 @@ export class EInvoiceService {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to register with GSTN');
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to register with GSTN');
+        } else {
+          throw new Error(`GST Server Error (${response.status}): ${response.statusText}`);
+        }
       }
 
       const result = await response.json();
@@ -106,8 +111,13 @@ export class EInvoiceService {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to cancel E-Invoice');
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to cancel E-Invoice');
+        } else {
+          throw new Error(`GST Server Error (${response.status}): ${response.statusText}`);
+        }
       }
 
       return { success: true };
