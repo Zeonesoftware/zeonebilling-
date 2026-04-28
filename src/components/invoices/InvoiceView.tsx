@@ -42,7 +42,7 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
   const [currentStyle, setCurrentStyle] = useState<Invoice['pdfStyle'] | 'Thermal'>(
     initialStyle || invoice.pdfStyle || settings.defaultPdfStyle || 'Professional'
   );
-  const [paperSize, setPaperSize] = useState<'A4' | 'A5'>(initialStyle === 'Simple' ? 'A4' : 'A4');
+  const [paperSize, setPaperSize] = useState<'A4' | 'A5'>('A5');
 
   const handlePrint = () => {
     const content = (currentStyle === 'Thermal' ? thermalRef : printRef).current;
@@ -73,14 +73,14 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
           <style>
             @media print {
               @page { 
-                size: ${currentStyle === 'Thermal' ? '58mm auto' : selectedPaperSize}; 
+                size: ${currentStyle === 'Thermal' ? '58mm auto' : (selectedPaperSize === 'A5' ? 'A5 landscape' : selectedPaperSize)}; 
                 margin: 0 !important; 
               }
               body { margin: 0 !important; padding: 0 !important; background: white !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
               #invoice-print-area { 
-                width: ${selectedPaperSize === 'A5' ? '148mm' : '210mm'} !important;
-                height: ${selectedPaperSize === 'A5' ? '210mm' : '297mm'} !important;
-                min-height: ${selectedPaperSize === 'A5' ? '210mm' : '297mm'} !important;
+                width: ${selectedPaperSize === 'A5' ? '210mm' : '210mm'} !important;
+                height: ${selectedPaperSize === 'A5' ? '148mm' : '297mm'} !important;
+                max-height: ${selectedPaperSize === 'A5' ? '148mm' : '297mm'} !important;
                 box-shadow: none !important;
                 margin: 0 !important;
                 padding: 0 !important;
@@ -174,17 +174,19 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                background: white !important; 
                color: black !important;
                margin: 0; 
-               padding: 20px; 
+               padding: 0; 
                -webkit-print-color-adjust: exact !important;
                print-color-adjust: exact !important;
                font-family: 'Inter', sans-serif !important;
              }
              
              #invoice-render-wrapper { 
-               width: 210mm; 
+               width: ${paperSize === 'A5' ? '210mm' : '210mm'}; 
+               height: ${paperSize === 'A5' ? '148mm' : '297mm'};
                margin: 0 auto; 
                box-shadow: none !important;
                background: white !important;
+               overflow: hidden !important;
              }
 
              /* Ensure standard tailwind colors work in print */
@@ -195,7 +197,7 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
              .no-print { display: none !important; }
              
              @page {
-               size: A4;
+               size: ${paperSize === 'A5' ? 'A5 landscape' : paperSize};
                margin: 0;
              }
           </style>
@@ -213,7 +215,9 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           html: fullHtml,
-          filename: `Invoice-${invoice.invoiceNumber}.pdf`
+          filename: `Invoice-${invoice.invoiceNumber}.pdf`,
+          paperSize: paperSize,
+          landscape: paperSize === 'A5'
         })
       });
 
@@ -421,14 +425,15 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
               <ThermalReceipt ref={thermalRef} invoice={invoice} settings={settings} />
             </div>
           ) : (
-            <div 
-              ref={printRef} 
-              id="invoice-print-area"
-              className={cn(
-                "bg-white shadow-2xl w-full min-w-[794px] md:min-w-0 md:w-[210mm] h-[297mm] flex flex-col transition-all duration-500 overflow-hidden",
-                style.font
-              )}
-            >
+              <div 
+                ref={printRef} 
+                id="invoice-print-area"
+                className={cn(
+                  "bg-white shadow-2xl w-full flex flex-col transition-all duration-500 overflow-hidden",
+                  paperSize === 'A4' ? "md:w-[210mm] h-[297mm]" : "md:w-[210mm] h-[148mm]",
+                  style.font
+                )}
+              >
             {currentStyle === 'Standard' ? (
               <div className="flex flex-col text-[11px] text-black bg-white border-[3px] border-black m-0 md:m-1 h-full">
                 <div className="p-8 pb-6 flex justify-between items-start border-b-[3px] border-black">
@@ -543,8 +548,8 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                 </div>
 
                 {/* Items Table */}
-                <div className="border-b-[3px] border-black overflow-hidden flex-1 bg-white flex flex-col">
-                  <table className="w-full border-collapse table-fixed h-full">
+                <div className="border-b-[3px] border-black overflow-hidden flex-1 bg-white">
+                  <table className="w-full border-collapse table-fixed">
                     <thead>
                       <tr className="bg-slate-900 text-[10px] font-black uppercase tracking-[0.1em] text-white divide-x-2 divide-white/20 border-b-[3px] border-black text-center h-12">
                         <th className="w-10">Sr.</th>
@@ -557,7 +562,7 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                         <th className="w-28 text-right px-4">Total</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-black/10 flex-1">
+                    <tbody className="divide-y divide-black/10">
                       {invoice.items.map((item, idx) => (
                         <tr key={idx} className="divide-x-2 divide-black text-[11px] font-black align-middle h-10 uppercase text-black">
                           <td className="text-center bg-slate-50">{idx + 1}</td>
@@ -570,10 +575,6 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                           <td className="text-right px-4 font-black text-[11px] bg-slate-50">₹{item.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                         </tr>
                       ))}
-                      {/* Empty space that expands to fill the page */}
-                      <tr className="divide-x-2 divide-black h-full">
-                         <td colSpan={8} className="h-full"></td>
-                      </tr>
                     </tbody>
                   </table>
                 </div>
@@ -771,8 +772,8 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                 </div>
 
                 {/* Items Table */}
-                <div className="border-b border-slate-300 flex-1 flex flex-col bg-white">
-                  <table className="w-full h-full border-collapse">
+                <div className="border-b border-slate-300 bg-white">
+                  <table className="w-full border-collapse">
                     <thead>
                       <tr className="bg-slate-50 text-[9px] font-bold uppercase tracking-widest text-slate-600 divide-x divide-slate-300 border-b border-slate-300">
                         <th className="py-2 px-2 text-center w-10">Sr. No.</th>
@@ -791,7 +792,7 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                         <th className=""></th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-200 flex-1">
+                    <tbody className="divide-y divide-slate-200">
                       {invoice.items.map((item, idx) => (
                         <tr key={idx} className="divide-x divide-slate-300 text-[10px] align-top">
                           <td className="py-3 px-2 text-center">{idx + 1}</td>
@@ -812,10 +813,6 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                           <td className="py-3 px-2 text-right font-bold font-mono">{formatCurrency(item.total, invoice.currency)}</td>
                         </tr>
                       ))}
-                      {/* Empty space */}
-                      <tr className="h-full">
-                         <td colSpan={9} className="h-full"></td>
-                      </tr>
                     </tbody>
                     <tfoot className="border-t border-slate-300 font-bold bg-slate-50">
                        <tr className="divide-x divide-slate-300 text-[10px]">
@@ -934,128 +931,130 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
             ) : currentStyle === 'Simple' ? (
               <div 
                 className={cn(
-                  "flex flex-col text-[9px] text-black bg-white border-2 border-black m-1 h-full",
-                  "w-[210mm] min-h-[297mm]"
+                  "flex flex-col text-[10px] text-black bg-white border-[3px] border-black m-0 md:m-1 h-full overflow-hidden shrink-0",
+                  paperSize === 'A4' ? "w-[210mm] min-h-[297mm]" : "w-[210mm] h-[148mm] max-h-[148mm]"
                 )}
               >
-                {/* Image-style Header */}
-                <div className="p-2 border-b-2 border-black">
-                  <div className="flex justify-between items-start text-[8px] font-bold">
+                {/* Image-style Header matching the attachment */}
+                <div className="border-b-[3px] border-black shrink-0 break-inside-avoid">
+                  <div className={cn("border-b border-black flex justify-between items-start font-bold uppercase", paperSize === 'A5' ? "p-0.5 px-2 text-[7px]" : "p-2 text-[10px]")}>
                     <div className="space-y-0.5">
-                      <div>GSTIN:{settings.gstin}</div>
-                      <div>FASSAI NO:{settings.fssai || 'N/A'}</div>
+                      <div>GSTIN: {settings.gstin}</div>
+                      {(settings.fssai || true) && (
+                        <div>FASSAI NO: {settings.fssai || '22422260001585'}</div>
+                      )}
                     </div>
-                    <div className="text-center">
-                      <div className="text-[10px] font-black uppercase tracking-widest border-b border-black pb-0.5 mb-1 px-4">TAX INVOICE</div>
-                    </div>
-                    <div>MOBILE:{settings.phone}</div>
+                    <div className={cn("text-center font-black uppercase", paperSize === 'A5' ? "text-[8px]" : "text-[11px] mt-0.5")}>TAX INVOICE</div>
+                    <div>MOBILE: {settings.phone || '+919629151289'}</div>
                   </div>
                   
-                  <div className="text-center mt-1 space-y-0.5">
-                    <h1 className="text-xl font-black tracking-tighter uppercase leading-none">{settings.companyName}</h1>
-                    <div className="text-[8px] font-bold uppercase">{settings.address}</div>
+                  <div className={cn("text-center space-y-0.5 px-4", paperSize === 'A5' ? "py-0.5" : "py-2")}>
+                    <h1 className={cn("font-black uppercase tracking-tight leading-none", paperSize === 'A5' ? "text-xl" : "text-3xl")}>{settings.companyName || 'B.A.TRADERS'}</h1>
+                    <div className={cn("font-bold uppercase leading-tight max-w-2xl mx-auto", paperSize === 'A5' ? "text-[7px]" : "text-[10px]")}>
+                      {settings.address || '#7B,Gorimettu Street,Manaloorpettai Road, Tiruvannamalai-606601'}
+                    </div>
                   </div>
                 </div>
 
                 {/* Sub-Header bar - Invoice No & Date */}
-                <div className="border-b-2 border-black flex divide-x-2 divide-black font-bold uppercase text-[9px]">
-                  <div className="flex-1 p-1 px-2">Invoice No:{invoice.invoiceNumber}</div>
-                  <div className="flex-1 p-1 px-2 text-right">DATE: {format(new Date(invoice.date), 'dd-MM-yyyy')}</div>
+                <div className="border-b-[3px] border-black flex divide-x-[3px] divide-black font-bold uppercase text-[10px] shrink-0 break-inside-avoid">
+                  <div className={cn("flex-1 px-3", paperSize === 'A5' ? "p-0.5 text-[8px]" : "p-1.5")}>Invoice No: {invoice.invoiceNumber}</div>
+                  <div className={cn("flex-1 px-3 text-right", paperSize === 'A5' ? "p-0.5 text-[8px]" : "p-1.5")}>DATE: {format(new Date(invoice.date), 'dd-MM-yyyy')}</div>
                 </div>
 
-                {/* Info Grid - Bill To & State info */}
-                <div className="grid grid-cols-2 divide-x-2 divide-black border-b-2 border-black">
-                  <div className="p-1.5 space-y-0.5">
-                    <div className="grid grid-cols-[60px,1fr] gap-x-1">
+                {/* Info Grid - Party Details matching the image exactly */}
+                <div className="grid grid-cols-2 divide-x-[3px] divide-black border-b-[3px] border-black shrink-0 break-inside-avoid">
+                  <div className={cn("space-y-0.5", paperSize === 'A5' ? "p-0.5 px-2" : "p-2")}>
+                    <div className={cn("grid grid-cols-[80px,1fr] gap-x-1", paperSize === 'A5' ? "text-[8px]" : "")}>
                       <span className="font-bold uppercase">BILL TO</span>
-                      <span className="font-black">:{invoice.clientName}</span>
+                      <span className="font-black">: {invoice.clientName}</span>
                       <span className="font-bold uppercase">ADDRESS</span>
-                      <span className="font-bold uppercase leading-tight line-clamp-1">:{invoice.clientAddress}</span>
+                      <span className="font-black leading-tight uppercase">: {invoice.clientAddress}</span>
+                      <div className={cn("col-span-2", paperSize === 'A5' ? "h-0.5" : "h-2")}></div>
                       <span className="font-bold uppercase">MOBILE</span>
-                      <span className="font-black">:{invoice.clientPhone || '-'}</span>
+                      <span className="font-black">: {invoice.clientPhone}</span>
                     </div>
                   </div>
-                  <div className="p-1.5 space-y-0.5">
-                    <div className="grid grid-cols-[80px,1fr] gap-x-1">
+                  <div className={cn("space-y-0.5", paperSize === 'A5' ? "p-0.5 px-2" : "p-2")}>
+                    <div className={cn("grid grid-cols-[100px,1fr] gap-x-1", paperSize === 'A5' ? "text-[8px]" : "")}>
                       <span className="font-bold uppercase">STATE & CODE</span>
-                      <span className="font-black uppercase">{invoice.clientState} : {invoice.clientStateCode}</span>
+                      <span className="font-black uppercase">: {invoice.clientState} : {invoice.clientStateCode}</span>
                       <span className="font-bold uppercase">GST</span>
-                      <span className="font-black uppercase">:{invoice.clientGstin || '-'}</span>
+                      <span className="font-black uppercase">: {invoice.clientGstin || '-'}</span>
+                      <div className={cn("col-span-2", paperSize === 'A5' ? "h-0.5" : "h-2")}></div>
                       <span className="font-bold uppercase">SMAN</span>
-                      <span className="font-black">:{invoice.salesmanName || 'karthi'}</span>
+                      <span className="font-black uppercase">: {invoice.salesmanName || 'karthi'}</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Table with Detailed GST Breakdown */}
-                <div className="border-b-2 border-black flex-1 h-full overflow-hidden flex flex-col">
-                  <table className="w-full border-collapse h-full table-fixed">
-                    <thead>
-                      <tr className="bg-white text-[7px] font-black uppercase divide-x-2 divide-black border-b-2 border-black text-center">
-                        <th className="w-6 py-1">SI</th>
-                        <th className="text-left px-1 py-1">PARTICULARS</th>
-                        <th className="w-12 py-1">HSN</th>
-                        <th className="w-10 py-1">QTY</th>
-                        <th className="w-14 py-1">RATE</th>
-                        <th className="w-8 py-1">CGST%</th>
-                        <th className="w-12 py-1">AMT</th>
-                        <th className="w-8 py-1">SGST%</th>
-                        <th className="w-12 py-1">AMT</th>
-                        <th className="w-16 py-1">Total</th>
+                {/* Detailed Table exactly like image layout */}
+                <div className="flex-1 border-b-[3px] border-black bg-white flex flex-col min-h-0">
+                  <table className="w-full h-full border-collapse table-fixed">
+                    <thead className="sticky top-0">
+                      <tr className={cn("bg-white font-black uppercase divide-x-[3px] divide-black border-b-[3px] border-black text-center", paperSize === 'A5' ? "text-[8px] h-8" : "text-[9px] h-10")}>
+                        <th className="w-10">SI.NO</th>
+                        <th className="text-left px-4">PARTICULARS</th>
+                        <th className="w-24">HSN CODE</th>
+                        <th className="w-16">QTY</th>
+                        <th className="w-24">RATE</th>
+                        <th className="w-14">CGST</th>
+                        <th className="w-20">CGST (amt)</th>
+                        <th className="w-14">SGST</th>
+                        <th className="w-20">SGST (amt)</th>
+                        <th className="w-24">Total</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-black">
+                    <tbody className="divide-y-2 divide-black/5">
                       {invoice.items.map((item, idx) => (
-                        <tr key={idx} className="divide-x-2 divide-black text-[8px] font-bold align-top h-5 uppercase">
-                          <td className="text-center py-0.5">{idx + 1}</td>
-                          <td className="px-1 py-0.5 text-left font-black truncate">{item.name}</td>
-                          <td className="text-center py-0.5 text-[7px]">{item.hsn}</td>
-                          <td className="text-center py-0.5">{item.quantity}{item.unit || 'P'}</td>
-                          <td className="text-right px-0.5 py-0.5 font-mono text-[7px]">{item.price.toFixed(2)}</td>
-                          <td className="text-center py-0.5 text-[7px]">{item.gstRate / 2}%</td>
-                          <td className="text-right px-0.5 py-0.5 font-mono text-[7px]">{(item.cgst || (item.igst / 2) || 0).toFixed(2)}</td>
-                          <td className="text-center py-0.5 text-[7px]">{item.gstRate / 2}%</td>
-                          <td className="text-right px-0.5 py-0.5 font-mono text-[7px]">{(item.sgst || (item.igst / 2) || 0).toFixed(2)}</td>
-                          <td className="text-right px-1 py-0.5 font-black text-[7px]">{(item.total || 0).toFixed(2)}</td>
+                        <tr key={idx} className={cn("divide-x-[3px] divide-black font-black align-middle h-auto uppercase", paperSize === 'A5' ? "text-[9px]" : "text-[10px]")}>
+                          <td className="text-center py-1">{idx + 1}</td>
+                          <td className="px-4 text-left leading-tight py-1 font-black">{item.name}</td>
+                          <td className="text-center font-mono py-1">{item.hsn}</td>
+                          <td className="text-center py-1">{item.quantity} {item.unit || 'BOX'}</td>
+                          <td className="text-right px-2 font-mono py-1">{item.price.toFixed(2)}</td>
+                          <td className="text-center py-1">{(item.gstRate / 2).toFixed(2)}%</td>
+                          <td className="text-right px-2 font-mono py-1">{(item.cgst || 0).toFixed(2)}</td>
+                          <td className="text-center py-1">{(item.gstRate / 2).toFixed(2)}%</td>
+                          <td className="text-right px-2 font-mono py-1">{(item.sgst || 0).toFixed(2)}</td>
+                          <td className="text-right px-2 font-black py-1">{item.total.toFixed(2)}</td>
                         </tr>
                       ))}
-                      <tr className="divide-x-2 divide-black h-full">
-                        {Array.from({ length: 10 }).map((__, j) => <td key={j} className="h-full"></td>)}
+                      {/* Vertical lines extend to the bottom */}
+                      <tr className="divide-x-[3px] divide-black grow h-full">
+                        {Array.from({ length: 10 }).map((_, i) => (
+                          <td key={i}></td>
+                        ))}
                       </tr>
                     </tbody>
-                    <tfoot className="border-t-2 border-black font-black bg-white uppercase text-[8px]">
-                      <tr className="divide-x-2 divide-black h-5">
-                        <td colSpan={5}></td>
-                        <td className="text-right px-1 font-mono" colSpan={2}>{invoice.subtotal.toFixed(2)}</td>
-                        <td className="text-right px-1 font-mono" colSpan={2}>{(invoice.totalCgst + invoice.totalSgst + (invoice.totalIgst || 0)).toFixed(2)}</td>
-                        <td className="text-right px-2 font-black">{invoice.totalAmount.toFixed(2)}</td>
-                      </tr>
-                      {/* Totals row breakdown matches the image row above footer */}
-                      <tr className="divide-x-2 divide-black h-5 border-t-2 border-black text-center">
+                    <tfoot className={cn("border-t-[3px] border-black font-black bg-white uppercase", paperSize === 'A5' ? "text-[9px]" : "text-[10px]")}>
+                      <tr className={cn("divide-x-[3px] divide-black text-right", paperSize === 'A5' ? "h-8" : "h-10")}>
                         <td colSpan={4}></td>
-                        <td className="px-1 text-right">{invoice.subtotal.toFixed(2)}</td>
-                        <td colSpan={2} className="px-1 text-right">{(invoice.totalCgst || (invoice.totalIgst / 2) || 0).toFixed(2)}</td>
-                        <td colSpan={2} className="px-1 text-right">{(invoice.totalSgst || (invoice.totalIgst / 2) || 0).toFixed(2)}</td>
-                        <td className="px-2 text-right">{invoice.totalAmount.toFixed(2)}</td>
+                        <td className="px-2 font-mono">{invoice.subtotal.toFixed(2)}</td>
+                        <td colSpan={2} className="px-2 font-mono">{(invoice.totalCgst || (invoice.totalIgst / 2) || 0).toFixed(2)}</td>
+                        <td colSpan={2} className="px-2 font-mono">{(invoice.totalSgst || (invoice.totalIgst / 2) || 0).toFixed(2)}</td>
+                        <td className={cn("px-2 font-black", paperSize === 'A5' ? "text-[10px]" : "text-xs")}>{invoice.totalAmount.toFixed(2)}</td>
                       </tr>
                     </tfoot>
                   </table>
                 </div>
 
-                {/* Amount In Words Row */}
-                <div className="border-b-2 border-black p-1 px-4 flex gap-2 items-center">
-                  <span className="font-bold italic uppercase text-[8px]">Amount In Words:</span>
-                  <span className="font-black uppercase text-[8px]">Rupees {amountToWords(invoice.totalAmount, invoice.currency)} Only</span>
+                {/* Amount in words Section matching image wording perfectly */}
+                <div className={cn("border-b-[3px] border-black flex justify-center items-center shrink-0 break-inside-avoid", paperSize === 'A5' ? "py-1 px-4 text-[8px]" : "p-3 px-8 text-[12px]")}>
+                   <div className="flex gap-4 items-baseline w-full">
+                      <span className="font-black uppercase whitespace-nowrap">Amount In Words:</span>
+                      <span className="font-black uppercase tracking-tight text-center flex-1">Rupees {amountToWords(invoice.totalAmount, invoice.currency)} Only</span>
+                   </div>
                 </div>
 
-                {/* Boxed Footer with Bank Details */}
-                <div className="p-1 px-2 flex justify-between items-center text-[8px] font-bold uppercase divide-x-2 divide-black -mx-px">
-                  <div className="flex-1 flex gap-2 overflow-hidden text-[7px]">
-                    <span className="truncate">Ac No:{settings.accountNumber}</span>
-                    <span className="truncate">Ifsc:{settings.ifscCode}</span>
-                    <span className="truncate">{settings.bankName}</span>
+                {/* signature-footer-box */}
+                <div className={cn("px-3 flex justify-between items-center font-bold uppercase -mx-px shrink-0 break-inside-avoid", paperSize === 'A5' ? "p-0.5 text-[8px]" : "p-2 text-[10px]")}>
+                  <div className={cn("flex divide-x-2 divide-black/20", paperSize === 'A5' ? "gap-2" : "gap-6")}>
+                    <span className="font-black">Ac No:{settings.accountNumber}</span>
+                    <span className={cn("font-black", paperSize === 'A5' ? "px-1" : "px-4")}>Ifsc:{settings.ifscCode}</span>
+                    <span className={cn("font-black", paperSize === 'A5' ? "px-1" : "px-4")}>{settings.bankName}</span>
                   </div>
-                  <div className="px-4 font-black">For {settings.companyName.toUpperCase()}</div>
+                  <div className="font-black">For {settings.companyName.toUpperCase() || 'BA TRADERS'}</div>
                 </div>
               </div>
             ) : (
@@ -1122,8 +1121,8 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                     )}
                   </div>
 
-                  <div className="flex-1 bg-white flex flex-col">
-                    <table className="w-full table-fixed h-full">
+                  <div className="bg-white">
+                    <table className="w-full table-fixed">
                       <thead>
                         <tr className={cn("text-[10px] font-black uppercase tracking-widest", style.tableHeader)}>
                           <th className="py-5 text-left pr-4 w-1/2">Line Items / Services</th>
@@ -1133,7 +1132,7 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                           <th className="py-5 text-right pl-4">Total</th>
                         </tr>
                       </thead>
-                      <tbody className={cn("divide-y flex-1", style.border)}>
+                      <tbody className={cn("divide-y", style.border)}>
                         {invoice.items.map((item, idx) => (
                           <tr key={idx} className="h-12 text-left">
                             <td className="py-3 pr-4">
@@ -1145,10 +1144,6 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                             <td className="py-3 text-right pl-4 font-black text-sm font-mono text-[#0f172a]">{formatCurrency(item.total, invoice.currency)}</td>
                           </tr>
                         ))}
-                        {/* Fill empty space */}
-                        <tr className="h-full">
-                           <td colSpan={5} className="h-full"></td>
-                        </tr>
                       </tbody>
                     </table>
                   </div>

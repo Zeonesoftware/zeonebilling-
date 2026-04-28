@@ -288,23 +288,25 @@ async function startServer() {
 
   // PDF Generation using Puppeteer
   app.post("/api/pdf/generate", async (req, res) => {
-    const { html, filename } = req.body;
+    const { html, filename, paperSize = 'A4', landscape = false } = req.body;
     if (!html) return res.status(400).json({ error: "HTML content is required" });
 
     let browser;
     try {
-      console.log(`Generating PDF: ${filename}`);
+      console.log(`Generating PDF: ${filename} (Size: ${paperSize}, Landscape: ${landscape})`);
       browser = await puppeteer.launch({
         headless: true,
         args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
       });
       const page = await browser.newPage();
-      await page.setViewport({ width: 1200, height: 1600 });
+      await page.setViewport({ width: 1600, height: 1200 });
       await page.setContent(html, { waitUntil: 'networkidle2', timeout: 30000 });
       const pdf = await page.pdf({
-        format: 'A4',
+        format: (paperSize as any) || 'A4',
+        landscape: landscape,
         printBackground: true,
-        margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' }
+        preferCSSPageSize: true,
+        margin: { top: '0px', right: '0px', bottom: '0px', left: '0px' }
       });
       const buffer = Buffer.from(pdf);
       res.writeHead(200, {
