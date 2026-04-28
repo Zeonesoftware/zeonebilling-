@@ -193,8 +193,8 @@ export function InvoiceForm({ onSave, onCancel, settings, invoices, initialData 
 
   const handleGenerateEwayBill = async () => {
     if (!selectedClient) return toast.error('Please select a client first');
-    if (totalAmount < 50000 && invoiceType === 'Tax Invoice') {
-      toast.info('Note: E-Way Bill is usually voluntary for amounts under 50,000');
+    if (totalAmount < 100000 && invoiceType === 'Tax Invoice') {
+      toast.info('Note: E-Way Bill is usually voluntary for amounts under 1,00,000');
     }
 
     if (!transporterId && !vehicleNo) {
@@ -681,8 +681,8 @@ export function InvoiceForm({ onSave, onCancel, settings, invoices, initialData 
            <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">E-Way Bill Details</Label>
-                {totalAmount >= 50000 && !ewayBillNo && (
-                   <Badge className="bg-orange-100 text-orange-700 font-bold text-[8px] animate-pulse">Required (&gt;50K)</Badge>
+                {totalAmount >= 100000 && !ewayBillNo && (
+                   <Badge className="bg-orange-100 text-orange-700 font-bold text-[8px] animate-pulse">Required (&gt;100K)</Badge>
                 )}
               </div>
               

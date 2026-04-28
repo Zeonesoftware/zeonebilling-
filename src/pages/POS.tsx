@@ -213,7 +213,7 @@ export default function POS() {
       });
 
       // E-Way Bill Prompt
-      if (invoice.totalAmount && invoice.totalAmount > 50000) {
+      if (invoice.totalAmount && invoice.totalAmount > 100000) {
         setEwayPromptInvoice(newInvoice as Invoice);
       } else {
         setShowQuickDialog(true);
@@ -267,7 +267,7 @@ export default function POS() {
               </div>
               <DialogTitle className="text-xl font-black uppercase tracking-tighter">Large Order: E-Way Bill?</DialogTitle>
               <DialogDescription className="text-orange-50 font-bold text-center">
-                This POS order exceeds ₹50,000 threshold.
+                This POS order exceeds ₹1,00,000 threshold.
               </DialogDescription>
             </div>
             <div className="p-6 space-y-4">
@@ -278,11 +278,11 @@ export default function POS() {
                 </div>
                 <div className="flex justify-between items-center text-[10px] font-black text-slate-400 uppercase tracking-widest">
                   <span>E-Way Threshold</span>
-                  <span className="text-orange-600">₹50,000</span>
+                  <span className="text-orange-600">₹1,00,000</span>
                 </div>
               </div>
               <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                As per regulation, inter-state movement of goods above ₹50k requires an E-Way Bill. Do you want to generate the JSON for portal upload now?
+                As per regulation, inter-state movement of goods above ₹1,00,000 requires an E-Way Bill. Do you want to generate the JSON for portal upload now?
               </p>
             </div>
             <DialogFooter className="p-6 pt-0 flex flex-col sm:flex-row gap-2">

@@ -276,7 +276,7 @@ export default function Invoices() {
         toast.success('Invoice created and stock updated');
 
         // Check for E-Way Bill requirement
-        if (fullInvoiceData.totalAmount > 50000 && fullInvoiceData.type === 'Tax Invoice') {
+        if (fullInvoiceData.totalAmount > 100000 && fullInvoiceData.type === 'Tax Invoice') {
           setEwayPromptInvoice(newInvoice as Invoice);
         }
       }
@@ -385,7 +385,7 @@ export default function Invoices() {
               </div>
               <DialogTitle className="text-xl font-black uppercase tracking-tighter">E-Way Bill Required?</DialogTitle>
               <DialogDescription className="text-orange-50 font-bold text-center">
-                This Tax Invoice exceeds ₹50,000 threshold.
+                This Tax Invoice exceeds ₹1,00,000 threshold.
               </DialogDescription>
             </div>
             <div className="p-6 space-y-4">
@@ -396,11 +396,11 @@ export default function Invoices() {
                 </div>
                 <div className="flex justify-between items-center text-[10px] font-black text-slate-400 uppercase tracking-widest">
                   <span>GST Threshold</span>
-                  <span className="text-orange-600">₹50,000</span>
+                  <span className="text-orange-600">₹1,00,000</span>
                 </div>
               </div>
               <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                As per GST rules, an E-Way bill is mandatory for interstate movement of goods exceeding ₹50,000. Would you like to generate the GePP JSON now?
+                As per GST rules, an E-Way bill is mandatory for interstate movement of goods exceeding ₹1,00,000. Would you like to generate the GePP JSON now?
               </p>
             </div>
             <DialogFooter className="p-6 pt-0 flex flex-col sm:flex-row gap-2">
