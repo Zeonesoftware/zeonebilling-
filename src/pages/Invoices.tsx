@@ -722,7 +722,21 @@ export default function Invoices() {
                     )}
                   </Button>
                 </TableCell>
-                <TableCell className="font-mono font-bold text-slate-900 border-l-4 border-transparent group-hover:border-[#237227] transition-all text-xs sm:text-sm">{inv.invoiceNumber}</TableCell>
+                <TableCell className="font-mono font-bold text-slate-900 border-l-4 border-transparent group-hover:border-[#237227] transition-all text-xs sm:text-sm">
+                  <div className="flex items-center gap-2">
+                    {inv.invoiceNumber}
+                    {inv.ewayBillNo && (
+                      <span title={`EWB: ${inv.ewayBillNo}`}>
+                        <Truck className="w-3 h-3 text-blue-600" />
+                      </span>
+                    )}
+                    {inv.irn && (
+                      <span title="E-Invoice Registered">
+                        <FileCheck2 className="w-3 h-3 text-indigo-600" />
+                      </span>
+                    )}
+                  </div>
+                </TableCell>
                 <TableCell>
                   <div className="font-black text-slate-900 text-xs sm:text-sm truncate max-w-[100px] sm:max-w-none">{inv.clientName}</div>
                   <div className="hidden sm:block text-[10px] font-mono text-slate-400 font-bold uppercase truncate max-w-[150px]">{inv.clientGstin || 'NO GSTIN'}</div>

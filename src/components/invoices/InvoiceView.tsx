@@ -359,13 +359,24 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
               <Printer className="w-4 h-4" /> Print
             </Button>
             
-            {invoice.id !== 'draft' && invoice.status !== 'Draft' && !invoice.ewayBillNo && (
+            {invoice.id !== 'draft' && invoice.status !== 'Draft' && !invoice.ewayBillNo && invoice.totalAmount >= 100000 && (
               <Button 
                 onClick={() => setIsEWayBillModalOpen(true)}
                 className="bg-blue-600 hover:bg-blue-700 text-white gap-2 rounded-full px-6 flex-shrink-0 shadow-lg shadow-blue-100"
               >
                 <Truck className="w-4 h-4" /> Generate E-Way Bill
               </Button>
+            )}
+
+            {invoice.ewayBillNo && (
+              <div className="flex items-center gap-2 bg-blue-50 border border-blue-100 px-3 py-1.5 rounded-full flex-shrink-0">
+                <Badge className="bg-blue-600 text-white font-black uppercase text-[10px] px-2 py-0.5 rounded-md flex items-center gap-1.5 ring-2 ring-blue-100">
+                  <Truck className="w-3 h-3" /> EWB: {invoice.ewayBillNo}
+                </Badge>
+                <span className="text-[10px] font-black uppercase text-blue-700 opacity-60">
+                  {invoice.ewayBillStatus || 'Generated'}
+                </span>
+              </div>
             )}
 
             {invoice.id !== 'draft' && invoice.status !== 'Draft' && !invoice.irn && (
@@ -501,9 +512,16 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                              <span className="font-black text-[13px] leading-none">{invoice.challanNo || '-'}</span>
                           </div>
                           <div className="flex flex-col gap-1 border-l-4 border-black/40 pl-3">
-                             <span className="opacity-40 text-[9px] font-black uppercase tracking-widest leading-none">E-Way Bill</span>
-                             <span className="font-black text-[13px] leading-none">{invoice.ewayBillNo || '-'}</span>
-                          </div>
+                              <span className="opacity-40 text-[9px] font-black uppercase tracking-widest leading-none">E-Way Bill / Status</span>
+                              <div className="flex items-center gap-2">
+                                <span className="font-black text-[13px] leading-none">{invoice.ewayBillNo || '-'}</span>
+                                {invoice.ewayBillNo && (
+                                  <span className="text-[8px] font-black uppercase px-1.5 py-0.5 bg-slate-200 rounded tracking-tighter">
+                                    {invoice.ewayBillStatus || 'Generated'}
+                                  </span>
+                                )}
+                              </div>
+                           </div>
                        </div>
                        <div className="space-y-5">
                           <div className="flex flex-col gap-1 border-l-4 border-black pl-3">
@@ -1156,9 +1174,14 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                         <div className={cn("p-4 md:p-5 rounded-2xl border w-full space-y-3", style.border, "bg-white text-left")}>
                            <div className="flex items-center justify-between">
                              <div className="text-[10px] font-black uppercase tracking-widest text-[#0f172a] flex items-center gap-2">
-                               <Truck className="w-3 h-3" /> E-Way Bill Details
+                               <Truck className="w-3 h-3" /> E-Way Bill
                              </div>
-                             <Badge className="bg-green-100 text-green-700 font-bold text-[8px] uppercase tracking-tighter ring-0 border-none">Valid</Badge>
+                             <Badge className={cn(
+                               "font-bold text-[8px] uppercase tracking-tighter ring-0 border-none",
+                               invoice.ewayBillStatus === 'Cancelled' ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"
+                             )}>
+                               {invoice.ewayBillStatus || 'Generated'}
+                             </Badge>
                            </div>
                            <div className="grid grid-cols-2 gap-4">
                               <div className="space-y-1">
