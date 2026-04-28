@@ -76,8 +76,8 @@ async function initDb() {
 // AI Service
 const genAI = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null;
 
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(express.json({ limit: '100mb' }));
+app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
 // Helper for file operations
 const readJson = async (file: string) => JSON.parse(await fs.readFile(path.join(DATA_DIR, file), "utf-8"));
@@ -402,9 +402,11 @@ app.post("/api/pdf/generate", async (req, res) => {
   const { html, filename } = req.body;
   
   if (!html) {
+    console.error("PDF Generate Error: HTML content is missing in request body");
     return res.status(400).json({ error: "HTML content is required" });
   }
 
+  console.log(`PDF Request: filename=${filename}, htmlSize=${html.length} characters`);
   let browser;
   try {
     console.log("Generating PDF with Puppeteer...");
@@ -421,15 +423,23 @@ app.post("/api/pdf/generate", async (req, res) => {
     
     const page = await browser.newPage();
     
+    // Set a timeout for the entire generation process
+    page.setDefaultNavigationTimeout(30000);
+    page.setDefaultTimeout(30000);
+    
     // Set viewport to a common desktop size to ensure layout is correct
     await page.setViewport({ width: 1200, height: 1600 });
     
     // Set content and wait for network idle to ensure all styles/fonts/images are loaded
-    await page.setContent(html, { waitUntil: 'networkidle2' });
+    await page.setContent(html, { 
+      waitUntil: 'networkidle2',
+      timeout: 30000 
+    });
 
     const pdf = await page.pdf({
       format: 'A4',
       printBackground: true,
+      timeout: 30000,
       margin: {
         top: '20px',
         right: '20px',
