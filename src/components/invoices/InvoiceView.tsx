@@ -185,7 +185,9 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
         }
       });
       
-      const imgData = canvas.toDataURL('image/jpeg', 1.0);
+      const imgData = canvas.toDataURL('image/png');
+      if (imgData === 'data:,') throw new Error('Failed to capture image');
+      
       const pdf = new jsPDF({
         orientation: paperSize === 'A5' ? 'landscape' : 'portrait',
         unit: 'mm',
@@ -196,7 +198,7 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
       
-      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
       const pdfBase64 = pdf.output('datauristring').split(',')[1];
       return pdfBase64;
     } catch (error) {
@@ -305,7 +307,9 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
         }
       });
       
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      const imgData = canvas.toDataURL('image/png');
+      if (imgData === 'data:,') throw new Error('Failed to capture image');
+
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
@@ -318,7 +322,7 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
       const imgProps = pdf.getImageProperties(imgData);
       const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
       
-      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, imgHeight);
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, imgHeight);
       pdf.save(`Invoice-${invoice.invoiceNumber}.pdf`);
       
       toast.success('PDF Downloaded successfully');
