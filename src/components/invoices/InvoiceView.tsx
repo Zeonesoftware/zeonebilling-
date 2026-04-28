@@ -20,8 +20,9 @@ import { QRCodeCanvas } from 'qrcode.react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { pdf } from '@react-pdf/renderer';
-import { InvoicePDF } from './InvoicePDF';
+import QRCode from 'qrcode';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import { ThermalReceipt } from './ThermalReceipt';
 import { EWayBillForm } from './EWayBillForm';
 import { EInvoiceManager } from './EInvoiceManager';
@@ -134,20 +135,73 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
   };
 
   const generatePDFAsBase64 = async () => {
+    const element = printRef.current;
+    if (!element) throw new Error('Preview element not found');
+
     try {
-      const blob = await pdf(<InvoicePDF invoice={invoice} settings={settings} pdfStyle={currentStyle} />).toBlob();
-      return new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const base64data = reader.result as string;
-          resolve(base64data.split(',')[1]);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        onclone: (clonedDoc) => {
+          // Remove dark mode class from the cloned document to avoid oklch issues
+          const html = clonedDoc.documentElement;
+          html.classList.remove('dark');
+          clonedDoc.body.classList.remove('dark');
+
+          // Aggressively replace oklch in all stylesheets
+          clonedDoc.querySelectorAll('style').forEach(styleTag => {
+            if (styleTag.innerHTML.includes('oklch')) {
+              styleTag.innerHTML = styleTag.innerHTML.replace(/oklch\([^)]+\)/g, '#000000');
+            }
+          });
+
+          const style = clonedDoc.createElement('style');
+          style.innerHTML = `
+            :root, .dark {
+              --background: #ffffff !important;
+              --foreground: #020617 !important;
+              --primary: #0f172a !important;
+              --primary-foreground: #ffffff !important;
+              --card: #ffffff !important;
+              --card-foreground: #020617 !important;
+              --border: #e2e8f0 !important;
+              --input: #e2e8f0 !important;
+              --ring: #020617 !important;
+              --secondary: #f1f5f9 !important;
+              --secondary-foreground: #0f172a !important;
+              --muted: #f1f5f9 !important;
+              --muted-foreground: #64748b !important;
+              --accent: #f1f5f9 !important;
+              --accent-foreground: #0f172a !important;
+            }
+            * {
+               color-scheme: light !important;
+               -webkit-print-color-adjust: exact !important;
+            }
+          `;
+          clonedDoc.head.appendChild(style);
+        }
       });
+      
+      const imgData = canvas.toDataURL('image/jpeg', 1.0);
+      const pdf = new jsPDF({
+        orientation: paperSize === 'A5' ? 'landscape' : 'portrait',
+        unit: 'mm',
+        format: paperSize.toLowerCase()
+      });
+
+      const imgProps = pdf.getImageProperties(imgData);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+      
+      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+      const pdfBase64 = pdf.output('datauristring').split(',')[1];
+      return pdfBase64;
     } catch (error) {
       console.error('PDF Generation Error:', error);
-      throw new Error('Failed to generate professional PDF');
+      throw new Error('Failed to generate PDF');
     }
   };
 
@@ -196,23 +250,81 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
   };
 
   const handleDownloadPDF = async () => {
+    const element = printRef.current;
+    if (!element) {
+      toast.error('Preview not ready');
+      return;
+    }
+
     try {
       setIsExporting(true);
-      const blob = await pdf(<InvoicePDF invoice={invoice} settings={settings} pdfStyle={currentStyle} />).toBlob();
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        windowWidth: 1200, // Ensure we capture with a consistent width
+        onclone: (clonedDoc) => {
+          // Remove dark mode class from the cloned document to avoid oklch issues
+          const html = clonedDoc.documentElement;
+          html.classList.remove('dark');
+          clonedDoc.body.classList.remove('dark');
+
+          // Aggressively replace oklch in all stylesheets
+          clonedDoc.querySelectorAll('style').forEach(styleTag => {
+            if (styleTag.innerHTML.includes('oklch')) {
+              styleTag.innerHTML = styleTag.innerHTML.replace(/oklch\([^)]+\)/g, '#000000');
+            }
+          });
+
+          const style = clonedDoc.createElement('style');
+          style.innerHTML = `
+            :root, .dark {
+              --background: #ffffff !important;
+              --foreground: #020617 !important;
+              --primary: #0f172a !important;
+              --primary-foreground: #ffffff !important;
+              --card: #ffffff !important;
+              --card-foreground: #020617 !important;
+              --border: #e2e8f0 !important;
+              --input: #e2e8f0 !important;
+              --ring: #020617 !important;
+              --secondary: #f1f5f9 !important;
+              --secondary-foreground: #0f172a !important;
+              --muted: #f1f5f9 !important;
+              --muted-foreground: #64748b !important;
+              --accent: #f1f5f9 !important;
+              --accent-foreground: #0f172a !important;
+            }
+            * {
+               color-scheme: light !important;
+               -webkit-print-color-adjust: exact !important;
+            }
+          `;
+          clonedDoc.head.appendChild(style);
+        }
+      });
       
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `Invoice-${invoice.invoiceNumber}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: paperSize.toLowerCase()
+      });
+
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
       
-      toast.success('Professional PDF Downloaded');
+      const imgProps = pdf.getImageProperties(imgData);
+      const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
+      
+      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, imgHeight);
+      pdf.save(`Invoice-${invoice.invoiceNumber}.pdf`);
+      
+      toast.success('PDF Downloaded successfully');
     } catch (err) {
       console.error('PDF Generation Error:', err);
-      toast.error('Failed to generate professional PDF.');
+      toast.error('Failed to generate PDF.');
     } finally {
       setIsExporting(false);
     }
