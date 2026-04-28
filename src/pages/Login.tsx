@@ -226,7 +226,7 @@ export default function LoginPage() {
             <ReceiptIndianRupee className="w-8 h-8 text-white" />
           </div>
           
-          <h1 className="text-2xl font-black tracking-tight mb-1 relative z-10">Zeone Billing</h1>
+          <h1 className="text-2xl font-black tracking-tight mb-1 relative z-10">Zeone GST Billing</h1>
           <p className="text-white/70 font-medium text-sm relative z-10">Professional GST Invoicing System</p>
         </div>
         

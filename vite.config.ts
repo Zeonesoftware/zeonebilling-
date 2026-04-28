@@ -17,7 +17,7 @@ export default defineConfig(({mode}) => {
           maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
         },
         manifest: {
-          name: 'Zeone Billing Software',
+          name: 'Zeone GST Billing',
           short_name: 'Zeone Billing',
           description: 'Advanced Billing & Inventory Management Software',
           theme_color: '#0077C2',

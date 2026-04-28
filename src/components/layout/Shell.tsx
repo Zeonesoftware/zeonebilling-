@@ -141,7 +141,7 @@ export function Shell() {
 
         <div className="p-6 mt-auto border-t border-white/10 flex items-center justify-between">
            <div className="text-[10px] uppercase tracking-widest opacity-50 text-white">
-             Zeone Billing
+             Zeone GST Billing
            </div>
            {profile?.role === 'admin' && <ShieldCheck className="w-3 h-3 text-[#FFAA00]" />}
         </div>
@@ -161,7 +161,7 @@ export function Shell() {
             </Button>
             <div className="flex items-center gap-2 sm:gap-4 truncate">
               <Logo className="w-6 h-6 hidden sm:block" />
-              <h2 className="text-sm sm:text-lg font-semibold tracking-tight truncate">Zeone Billing</h2>
+              <h2 className="text-sm sm:text-lg font-semibold tracking-tight truncate">Zeone GST Billing</h2>
               <div className="hidden sm:flex items-center gap-2 text-[12px] text-[#10b981] font-medium">
                 <div className="w-2 h-2 rounded-full bg-[#10b981]" />
                 Cloud Real-time

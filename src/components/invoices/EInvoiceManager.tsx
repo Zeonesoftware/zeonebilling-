@@ -14,6 +14,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BusinessSettings, Invoice } from '@/types';
 import { generateEInvoiceJSON } from '@/lib/einvoice-generator';
 import { EInvoiceService } from '@/services/einvoice-api';
@@ -32,7 +33,10 @@ interface EInvoiceManagerProps {
 export function EInvoiceManager({ invoice, settings, onUpdate, onClose }: EInvoiceManagerProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [cancelReason, setCancelReason] = useState('2'); // Default to Data Entry Error
+  const [cancelRemarks, setCancelRemarks] = useState('');
 
   const handleDownloadJSON = () => {
     try {
@@ -82,6 +86,49 @@ export function EInvoiceManager({ invoice, settings, onUpdate, onClose }: EInvoi
     }
   };
 
+  const handleCancelInvoice = async () => {
+    if (!invoice.irn) {
+      toast.error('IRN is missing for cancellation');
+      return;
+    }
+
+    if (!cancelRemarks && cancelReason === '4') {
+      toast.error('Remarks are required for reason "Others"');
+      return;
+    }
+
+    setIsCancelling(true);
+    try {
+      const response = await EInvoiceService.cancelInvoice(
+        invoice.irn,
+        cancelReason,
+        cancelRemarks || 'Cancelled by user'
+      );
+
+      if (response.success) {
+        const updates: Partial<Invoice> = {
+          einvoiceStatus: 'Cancelled',
+          irn: '', // Clear IRN on cancellation as it's no longer valid
+          signedQrCode: '',
+          ackNo: '',
+          ackDate: ''
+        };
+
+        await updateDoc(doc(db, 'invoices', invoice.id), updates);
+        onUpdate({ ...invoice, ...updates });
+        toast.success('E-Invoice cancelled successfully');
+        onClose();
+      } else {
+        throw new Error(response.error || 'Cancellation failed');
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || 'API Cancellation failed');
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -125,77 +172,135 @@ export function EInvoiceManager({ invoice, settings, onUpdate, onClose }: EInvoi
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-indigo-900">
               <ShieldCheck className="w-6 h-6 text-indigo-600" />
-              GST E-Invoice System
+              {invoice.irn ? 'Cancel GST E-Invoice' : 'GST E-Invoice System'}
             </CardTitle>
             <Button variant="ghost" size="icon" onClick={onClose}>
               <X className="w-4 h-4" />
             </Button>
           </div>
           <CardDescription>
-            Register invoice {invoice.invoiceNumber} with the GST Network (v1.1)
+            {invoice.irn 
+              ? `Cancel IRN for invoice ${invoice.invoiceNumber}`
+              : `Register invoice ${invoice.invoiceNumber} with the GST Network (v1.1)`}
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6 space-y-6">
-          {/* API Method - Recommended */}
-          <div className="p-5 bg-indigo-50/50 rounded-2xl border border-indigo-100 space-y-4">
-            <div className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0 text-indigo-600">
-                <Zap className="w-5 h-5 fill-current" />
-              </div>
-              <div className="flex-1">
-                <h4 className="font-bold text-indigo-900">Automated API Registration</h4>
-                <p className="text-xs text-indigo-700/70 mt-1 leading-relaxed">
-                  Recommended: Instantly register your invoice and generate IRN/QR code via the direct GST channel.
+          {invoice.irn ? (
+            <div className="space-y-4">
+              <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl space-y-4">
+                <div className="flex items-center gap-2 text-rose-700 font-bold">
+                  <AlertCircle className="w-5 h-5" />
+                  Request IRN Cancellation
+                </div>
+                <p className="text-xs text-rose-600 leading-relaxed font-medium">
+                  Important: IRN can only be cancelled within 24 hours of generation. Once cancelled, this invoice number cannot be used again for e-invoicing.
                 </p>
-              </div>
-            </div>
-            <Button 
-              onClick={handleApiRegistration} 
-              disabled={isRegistering}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-11 rounded-xl shadow-lg shadow-indigo-100"
-            >
-              {isRegistering ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Connecting to GSTN...
-                </>
-              ) : (
-                'Push to GST Network & Generate IRN'
-              )}
-            </Button>
-          </div>
 
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-dashed" /></div>
-            <div className="relative flex justify-center text-[10px] uppercase font-black tracking-widest text-slate-400 bg-white px-2">OR MANUAL METHOD</div>
-          </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Reason</label>
+                  <Select value={cancelReason} onValueChange={setCancelReason}>
+                    <SelectTrigger className="w-full h-11 bg-white rounded-xl border-slate-200">
+                      <SelectValue placeholder="Select reason" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">Duplicate</SelectItem>
+                      <SelectItem value="2">Data Entry Error</SelectItem>
+                      <SelectItem value="3">Order Cancelled</SelectItem>
+                      <SelectItem value="4">Others</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-          {/* Manual Method */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="p-4 bg-slate-50 rounded-xl border border-dashed border-slate-200 flex flex-col items-center text-center">
-              <Download className="w-6 h-6 text-slate-400 mb-2" />
-              <h5 className="text-[10px] font-black uppercase tracking-widest mb-2">Step 1</h5>
-              <Button variant="outline" size="sm" onClick={handleDownloadJSON} className="w-full text-[10px] h-8">
-                Download JSON
-              </Button>
-            </div>
-            <div className="p-4 bg-slate-50 rounded-xl border border-dashed border-slate-200 flex flex-col items-center text-center">
-              <Upload className="w-6 h-6 text-slate-400 mb-2" />
-              <h5 className="text-[10px] font-black uppercase tracking-widest mb-2">Step 2</h5>
-              <div className="w-full">
-                <input type="file" accept=".json" onChange={handleFileUpload} className="hidden" id="portal-upload-manual" />
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Remarks</label>
+                  <textarea 
+                    className="w-full h-24 p-3 text-sm border border-slate-200 rounded-xl resize-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all"
+                    placeholder="Provide a detailed reason for cancellation..."
+                    value={cancelRemarks}
+                    onChange={(e) => setCancelRemarks(e.target.value)}
+                  />
+                </div>
+
                 <Button 
-                  onClick={() => document.getElementById('portal-upload-manual')?.click()}
-                  variant="outline" 
-                  size="sm" 
-                  className="w-full text-[10px] h-8"
-                  disabled={isUploading}
+                  onClick={handleCancelInvoice}
+                  disabled={isCancelling}
+                  className="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold h-12 rounded-xl shadow-lg shadow-rose-100 mt-2"
                 >
-                  {isUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Upload Signed'}
+                  {isCancelling ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Cancelling with GSTN...
+                    </>
+                  ) : (
+                    'Confirm IRN Cancellation'
+                  )}
                 </Button>
               </div>
             </div>
-          </div>
+          ) : (
+            <>
+              {/* API Method - Recommended */}
+              <div className="p-5 bg-indigo-50/50 rounded-2xl border border-indigo-100 space-y-4">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0 text-indigo-600">
+                    <Zap className="w-5 h-5 fill-current" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-bold text-indigo-900">Automated API Registration</h4>
+                    <p className="text-xs text-indigo-700/70 mt-1 leading-relaxed">
+                      Recommended: Instantly register your invoice and generate IRN/QR code via the direct GST channel.
+                    </p>
+                  </div>
+                </div>
+                <Button 
+                  onClick={handleApiRegistration} 
+                  disabled={isRegistering}
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-11 rounded-xl shadow-lg shadow-indigo-100"
+                >
+                  {isRegistering ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Connecting to GSTN...
+                    </>
+                  ) : (
+                    'Push to GST Network & Generate IRN'
+                  )}
+                </Button>
+              </div>
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-dashed" /></div>
+                <div className="relative flex justify-center text-[10px] uppercase font-black tracking-widest text-slate-400 bg-white px-2">OR MANUAL METHOD</div>
+              </div>
+
+              {/* Manual Method */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 bg-slate-50 rounded-xl border border-dashed border-slate-200 flex flex-col items-center text-center">
+                  <Download className="w-6 h-6 text-slate-400 mb-2" />
+                  <h5 className="text-[10px] font-black uppercase tracking-widest mb-2">Step 1</h5>
+                  <Button variant="outline" size="sm" onClick={handleDownloadJSON} className="w-full text-[10px] h-8">
+                    Download JSON
+                  </Button>
+                </div>
+                <div className="p-4 bg-slate-50 rounded-xl border border-dashed border-slate-200 flex flex-col items-center text-center">
+                  <Upload className="w-6 h-6 text-slate-400 mb-2" />
+                  <h5 className="text-[10px] font-black uppercase tracking-widest mb-2">Step 2</h5>
+                  <div className="w-full">
+                    <input type="file" accept=".json" onChange={handleFileUpload} className="hidden" id="portal-upload-manual" />
+                    <Button 
+                      onClick={() => document.getElementById('portal-upload-manual')?.click()}
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full text-[10px] h-8"
+                      disabled={isUploading}
+                    >
+                      {isUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Upload Signed'}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
 
           {uploadError && (
             <div className="flex items-center gap-2 p-3 bg-red-50 text-red-700 rounded-lg text-xs font-medium">

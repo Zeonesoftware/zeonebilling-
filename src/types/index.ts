@@ -5,6 +5,7 @@ export interface BusinessSettings {
   stateCode: string; // Add state code for GST calculation
   phone: string;
   email: string;
+  tagline?: string;
   logoUrl?: string;
   bankName: string;
   bankBranch?: string; // Added for detailed invoice
@@ -110,6 +111,7 @@ export interface Invoice {
   einvoiceStatus?: 'Generated' | 'Pending' | 'Cancelled';
   challanNo?: string;
   challanDate?: string;
+  orderRef?: string;
   // E-Way Bill Fields
   ewayBillNo?: string;
   ewayBillDate?: string;

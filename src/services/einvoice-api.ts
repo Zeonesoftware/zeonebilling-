@@ -75,6 +75,50 @@ export class EInvoiceService {
     }
   }
 
+  /**
+   * Cancels a registered E-Invoice
+   */
+  static async cancelInvoice(irn: string, reason: string, remarks: string): Promise<{ success: boolean; error?: string }> {
+    // If no credentials, simulate success
+    if (!this.CLIENT_ID) {
+      console.warn('GST API Credentials missing. Running in Simulation Mode.');
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          resolve({ success: true });
+        }, 1500);
+      });
+    }
+
+    try {
+      const response = await fetch(`${this.API_ENDPOINT}/cancel`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'client-id': this.CLIENT_ID,
+          'client-secret': this.CLIENT_SECRET,
+          'Authorization': `Bearer ${await this.getAuthToken()}`
+        },
+        body: JSON.stringify({
+          Irn: irn,
+          CnlRsn: reason, 
+          CnlRem: remarks
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to cancel E-Invoice');
+      }
+
+      return { success: true };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Connection to GST network failed'
+      };
+    }
+  }
+
   private static async getAuthToken(): Promise<string> {
     // Placeholder for OAuth/Session logic
     return 'SESSION_TOKEN';
