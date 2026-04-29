@@ -210,7 +210,7 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
         </html>
       `;
 
-      const response = await fetch('/api/pdf/generate', {
+      const response = await fetch('/api/pdf-render', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

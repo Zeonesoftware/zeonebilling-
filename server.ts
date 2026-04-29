@@ -96,24 +96,23 @@ async function startServer() {
   app.use(express.json({ limit: '100mb' }));
   app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
-  // --- API Routes ---
-  
-  app.get("/api/health", (req, res) => {
-    res.json({ 
-      status: "ok", 
-      timestamp: new Date().toISOString(),
-      service: "Zeone GST Billing API"
-    });
+  // Diagnostic logging for all /api requests
+  app.use("/api", (req, res, next) => {
+    console.log(`[API REQUEST] ${req.method} ${req.originalUrl}`);
+    next();
   });
 
-  // PDF Generation using Puppeteer (MOVED HIGHER TO AVOID CATCH-ALLS)
-  app.post("/api/pdf/generate", async (req, res) => {
+  // PDF Generation using Puppeteer (Standard Route)
+  app.post(["/api/pdf-render", "/api/pdf-render/"], async (req, res) => {
     const { html, filename, paperSize = 'A4', landscape = false } = req.body;
-    if (!html) return res.status(400).json({ error: "HTML content is required" });
+    if (!html) {
+      console.log("[PDF GEN ERROR] Missing HTML content");
+      return res.status(400).json({ error: "HTML content is required" });
+    }
 
     let browser;
     try {
-      console.log(`Generating PDF request received: ${filename} (Size: ${paperSize}, Landscape: ${landscape})`);
+      console.log(`[PDF GEN START] filename=${filename} size=${paperSize} landscape=${landscape}`);
       
       const isLocal = process.env.NODE_ENV !== 'production';
       
@@ -124,19 +123,15 @@ async function startServer() {
         headless: isLocal ? true : (chromium as any).headless,
       };
 
-      console.log('Launching browser with options:', JSON.stringify({ ...launchOptions, executablePath: !!launchOptions.executablePath }));
-
       browser = await puppeteer.launch(launchOptions);
       const page = await browser.newPage();
       await page.setViewport({ width: 1600, height: 1200 });
       
-      // Set content and wait for it to be ready
       await page.setContent(html, { 
         waitUntil: ['load', 'networkidle0'], 
         timeout: 60000 
       });
 
-      // Give extra time for any remaining animations or fonts
       await new Promise(r => setTimeout(r, 1000));
 
       const pdf = await page.pdf({
@@ -149,8 +144,8 @@ async function startServer() {
       });
 
       const buffer = Buffer.from(pdf);
-      console.log(`PDF generated successfully, size: ${buffer.length} bytes`);
-      
+      console.log(`[PDF GEN SUCCESS] size=${buffer.length} bytes`);
+
       res.writeHead(200, {
         'Content-Type': 'application/pdf',
         'Content-Length': buffer.length,
@@ -158,8 +153,7 @@ async function startServer() {
       });
       res.end(buffer);
     } catch (err: any) {
-      console.error("PDF Error Detail:", err);
-      // Ensure we always return JSON in case of error
+      console.error("[PDF GEN FATAL ERROR]", err);
       if (!res.headersSent) {
         res.status(500).json({ 
           error: "Failed to generate PDF", 
@@ -171,12 +165,21 @@ async function startServer() {
       if (browser) {
         try {
           await browser.close();
-          console.log('Browser closed successfully');
         } catch (closeErr) {
-          console.error('Error closing browser:', closeErr);
+          console.error('[PDF GEN] Browser close error:', closeErr);
         }
       }
     }
+  });
+
+  // --- API Routes ---
+  
+  app.get("/api/health", (req, res) => {
+    res.json({ 
+      status: "ok", 
+      timestamp: new Date().toISOString(),
+      service: "Zeone GST Billing API"
+    });
   });
 
   // Mock E-Way Bill Generation (was missing and causing 404)
