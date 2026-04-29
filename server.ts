@@ -96,27 +96,11 @@ async function startServer() {
   app.use(express.json({ limit: '100mb' }));
   app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
-  // --- API Routes ---
-  const apiRouter = express.Router();
-
-  // Logging for API Router
-  apiRouter.use((req, res, next) => {
-    console.log(`[API ROUTER] ${req.method} ${req.url}`);
-    next();
-  });
-
-  apiRouter.get("/health", (req, res) => {
-    res.json({ 
-      status: "ok", 
-      timestamp: new Date().toISOString(),
-      service: "Zeone GST Billing API"
-    });
-  });
-
-  // PDF Generation using Puppeteer
-  apiRouter.post(["/pdf", "/pdf/"], async (req, res) => {
-    console.log(`[PDF GEN] Request received: ${req.method} ${req.url} - body size: ${JSON.stringify(req.body).length}`);
+  // PDF Generation Handler
+  const handlePdfGen = async (req: express.Request, res: express.Response) => {
+    console.log(`[PDF GEN] Request received: ${req.method} ${req.url} (original: ${req.originalUrl}) - body size: ${JSON.stringify(req.body).length}`);
     const { html, filename, paperSize = 'A4', landscape = false } = req.body;
+    
     if (!html) {
       console.log("[PDF GEN ERROR] Missing HTML content");
       return res.status(400).json({ error: "HTML content is required" });
@@ -182,10 +166,24 @@ async function startServer() {
         }
       }
     }
+  };
+
+  // Register PDF route in multiple places to be absolutely sure
+  app.post(["/api/pdf", "/api/pdf/", "/render-invoice-pdf", "/render-invoice-pdf/"], handlePdfGen);
+
+  // --- API Routes ---
+
+  // Health check
+  app.get("/api/health", (req, res) => {
+    res.json({ 
+      status: "ok", 
+      timestamp: new Date().toISOString(),
+      service: "Zeone GST Billing API"
+    });
   });
 
   // Mock E-Way Bill Generation
-  apiRouter.post("/ewaybill/generate", async (req, res) => {
+  app.post("/api/ewaybill/generate", async (req, res) => {
     try {
       const { invoiceId } = req.body;
       const mockResult = {
@@ -200,7 +198,7 @@ async function startServer() {
     }
   });
 
-  apiRouter.get("/data/:file", async (req, res) => {
+  app.get("/api/data/:file", async (req, res) => {
     try {
       const file = `${req.params.file}.json`;
       const data = await readJson(file);
@@ -210,7 +208,7 @@ async function startServer() {
     }
   });
 
-  apiRouter.post("/data/:file", async (req, res) => {
+  app.post("/api/data/:file", async (req, res) => {
     try {
       const file = `${req.params.file}.json`;
       const data = await readJson(file);
@@ -223,7 +221,7 @@ async function startServer() {
     }
   });
 
-  apiRouter.post("/data/:file/bulk", async (req, res) => {
+  app.post("/api/data/:file/bulk", async (req, res) => {
     try {
       const file = `${req.params.file}.json`;
       const data = req.body;
@@ -237,7 +235,7 @@ async function startServer() {
     }
   });
 
-  apiRouter.put("/data/:file/:id", async (req, res) => {
+  app.put("/api/data/:file/:id", async (req, res) => {
     try {
       const file = `${req.params.file}.json`;
       let data = await readJson(file);
@@ -249,7 +247,7 @@ async function startServer() {
     }
   });
 
-  apiRouter.delete("/data/:file/:id", async (req, res) => {
+  app.delete("/api/data/:file/:id", async (req, res) => {
     try {
       const file = `${req.params.file}.json`;
       let data = await readJson(file);
@@ -261,7 +259,7 @@ async function startServer() {
     }
   });
 
-  apiRouter.post("/ai/categorize", async (req, res) => {
+  app.post("/api/ai/categorize", async (req, res) => {
     if (!genAI) return res.status(503).json({ error: "Gemini API key not configured" });
     try {
       const { description } = req.body;
@@ -275,7 +273,7 @@ async function startServer() {
     }
   });
 
-  apiRouter.get("/auth/google/url", (req, res) => {
+  app.get("/api/auth/google/url", (req, res) => {
     const rootUrl = "https://accounts.google.com/o/oauth2/v2/auth";
     const options = {
       redirect_uri: process.env.GOOGLE_REDIRECT_URL || `${req.protocol}://${req.get('host')}/auth/google/callback`,
@@ -294,7 +292,32 @@ async function startServer() {
     res.json({ url: `${rootUrl}?${qs.toString()}` });
   });
 
-  apiRouter.post("/gmail/send", async (req, res) => {
+  app.get("/auth/google/callback", async (req, res) => {
+    const code = req.query.code as string;
+    const rootUrl = "https://oauth2.googleapis.com/token";
+    const options = {
+      code,
+      client_id: process.env.GOOGLE_CLIENT_ID!,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+      redirect_uri: process.env.GOOGLE_REDIRECT_URL || `${req.protocol}://${req.get('host')}/auth/google/callback`,
+      grant_type: "authorization_code",
+    };
+
+    try {
+      const response = await fetch(rootUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams(options),
+      });
+      const tokens = await response.json();
+      googleTokens = tokens;
+      res.send(`<html><body><script>window.opener.postMessage({ type: 'GOOGLE_AUTH_SUCCESS', tokens: ${JSON.stringify(tokens)} }, '*');window.close();</script></body></html>`);
+    } catch (err) {
+      res.status(500).send("Auth failed");
+    }
+  });
+
+  app.post("/api/gmail/send", async (req, res) => {
     const { to, subject, body, fileName, content, accessToken } = req.body;
     try {
       const boundary = "boundary_" + Date.now();
@@ -330,7 +353,7 @@ async function startServer() {
     }
   });
 
-  apiRouter.post("/create-checkout-session", async (req, res) => {
+  app.post("/api/create-checkout-session", async (req, res) => {
     const stripe = getStripe();
     if (!stripe) return res.status(503).json({ error: "Stripe not configured" });
     try {
@@ -356,22 +379,14 @@ async function startServer() {
     }
   });
 
-  // Router-level catch-all for undefined API routes
-  apiRouter.all("*", (req, res) => {
-    console.log(`[API 404] No route matched for ${req.method} /api${req.url}`);
+  // Catch-all for undefined API routes
+  app.all("/api/*", (req, res) => {
+    console.log(`[API 404] No route matched for ${req.method} ${req.url}`);
     res.status(404).json({ 
-      error: `API route ${req.method} /api${req.url} not found`
+      error: `API route ${req.method} ${req.url} not found`
     });
   });
 
-  // Mount the API Router
-  app.use("/api", apiRouter);
-
-  // Still support legacy top-level path just in case
-  app.post(["/render-invoice-pdf", "/render-invoice-pdf/"], async (req, res) => {
-    req.url = "/pdf";
-    apiRouter(req, res, () => {});
-  });
 
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
