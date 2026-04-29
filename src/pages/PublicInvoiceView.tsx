@@ -123,7 +123,7 @@ export default function PublicInvoiceView() {
         </html>
       `;
 
-      const response = await fetch('/api/pdf-render', {
+      const response = await fetch('/render-invoice-pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

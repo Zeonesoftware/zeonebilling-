@@ -98,12 +98,14 @@ async function startServer() {
 
   // Diagnostic logging for all /api requests
   app.use("/api", (req, res, next) => {
-    console.log(`[API REQUEST] ${req.method} ${req.originalUrl}`);
+    console.log(`[API DEBUG] ${req.method} ${req.url} (originalUrl: ${req.originalUrl})`);
     next();
   });
 
   // PDF Generation using Puppeteer (Standard Route)
-  app.post(["/api/pdf-render", "/api/pdf-render/"], async (req, res) => {
+  // Use a unique path to avoid any potential interference
+  app.post(["/render-invoice-pdf", "/render-invoice-pdf/"], async (req, res) => {
+    console.log(`[PDF ROUTE REACHED] ${req.method} ${req.url}`);
     const { html, filename, paperSize = 'A4', landscape = false } = req.body;
     if (!html) {
       console.log("[PDF GEN ERROR] Missing HTML content");
@@ -387,7 +389,12 @@ async function startServer() {
 
   // Catch-all for undefined API routes
   app.all("/api/*", (req, res) => {
-    res.status(404).json({ error: `API route ${req.method} ${req.url} not found` });
+    console.log(`[API 404] No route matched for ${req.method} ${req.url}`);
+    res.status(404).json({ 
+      error: `API route ${req.method} ${req.url} not found`,
+      method: req.method,
+      path: req.path
+    });
   });
 
   if (process.env.NODE_ENV !== "production") {
