@@ -6,6 +6,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import dotenv from "dotenv";
 import Stripe from "stripe";
 import puppeteer from "puppeteer";
+import chromium from "@sparticuz/chromium-min";
 
 dotenv.config();
 
@@ -294,21 +295,43 @@ async function startServer() {
     let browser;
     try {
       console.log(`Generating PDF: ${filename} (Size: ${paperSize}, Landscape: ${landscape})`);
-      browser = await puppeteer.launch({
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-      });
+      
+      const isLocal = process.env.NODE_ENV !== 'production';
+      
+      const launchOptions = {
+        args: isLocal ? ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'] : (chromium as any).args,
+        defaultViewport: (chromium as any).defaultViewport,
+        executablePath: isLocal ? undefined : await (chromium as any).executablePath(),
+        headless: isLocal ? true : (chromium as any).headless,
+      };
+
+      console.log('Launching browser with options:', JSON.stringify({ ...launchOptions, executablePath: launchOptions.executablePath }));
+
+      browser = await puppeteer.launch(launchOptions);
       const page = await browser.newPage();
       await page.setViewport({ width: 1600, height: 1200 });
-      await page.setContent(html, { waitUntil: 'networkidle2', timeout: 30000 });
+      
+      // Set content and wait for it to be ready
+      await page.setContent(html, { 
+        waitUntil: ['load', 'networkidle0'], 
+        timeout: 60000 
+      });
+
+      // Give extra time for any remaining animations or fonts
+      await new Promise(r => setTimeout(r, 1000));
+
       const pdf = await page.pdf({
         format: (paperSize as any) || 'A4',
         landscape: landscape,
         printBackground: true,
         preferCSSPageSize: true,
-        margin: { top: '0px', right: '0px', bottom: '0px', left: '0px' }
+        margin: { top: '0px', right: '0px', bottom: '0px', left: '0px' },
+        timeout: 60000
       });
+
       const buffer = Buffer.from(pdf);
+      console.log(`PDF generated successfully, size: ${buffer.length} bytes`);
+      
       res.writeHead(200, {
         'Content-Type': 'application/pdf',
         'Content-Length': buffer.length,
@@ -316,10 +339,24 @@ async function startServer() {
       });
       res.end(buffer);
     } catch (err: any) {
-      console.error("PDF Error:", err);
-      res.status(500).json({ error: "Failed to generate PDF", details: err.message });
+      console.error("PDF Error Detail:", err);
+      // Ensure we always return JSON in case of error
+      if (!res.headersSent) {
+        res.status(500).json({ 
+          error: "Failed to generate PDF", 
+          details: err.message,
+          stack: process.env.NODE_ENV !== 'production' ? err.stack : undefined
+        });
+      }
     } finally {
-      if (browser) await browser.close();
+      if (browser) {
+        try {
+          await browser.close();
+          console.log('Browser closed successfully');
+        } catch (closeErr) {
+          console.error('Error closing browser:', closeErr);
+        }
+      }
     }
   });
 
