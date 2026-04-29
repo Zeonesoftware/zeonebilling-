@@ -106,6 +106,101 @@ async function startServer() {
     });
   });
 
+  // PDF Generation using Puppeteer (MOVED HIGHER TO AVOID CATCH-ALLS)
+  app.post("/api/pdf/generate", async (req, res) => {
+    const { html, filename, paperSize = 'A4', landscape = false } = req.body;
+    if (!html) return res.status(400).json({ error: "HTML content is required" });
+
+    let browser;
+    try {
+      console.log(`Generating PDF request received: ${filename} (Size: ${paperSize}, Landscape: ${landscape})`);
+      
+      const isLocal = process.env.NODE_ENV !== 'production';
+      
+      const launchOptions = {
+        args: isLocal ? ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'] : (chromium as any).args,
+        defaultViewport: (chromium as any).defaultViewport,
+        executablePath: isLocal ? undefined : await (chromium as any).executablePath(),
+        headless: isLocal ? true : (chromium as any).headless,
+      };
+
+      console.log('Launching browser with options:', JSON.stringify({ ...launchOptions, executablePath: !!launchOptions.executablePath }));
+
+      browser = await puppeteer.launch(launchOptions);
+      const page = await browser.newPage();
+      await page.setViewport({ width: 1600, height: 1200 });
+      
+      // Set content and wait for it to be ready
+      await page.setContent(html, { 
+        waitUntil: ['load', 'networkidle0'], 
+        timeout: 60000 
+      });
+
+      // Give extra time for any remaining animations or fonts
+      await new Promise(r => setTimeout(r, 1000));
+
+      const pdf = await page.pdf({
+        format: (paperSize as any) || 'A4',
+        landscape: landscape,
+        printBackground: true,
+        preferCSSPageSize: true,
+        margin: { top: '0px', right: '0px', bottom: '0px', left: '0px' },
+        timeout: 60000
+      });
+
+      const buffer = Buffer.from(pdf);
+      console.log(`PDF generated successfully, size: ${buffer.length} bytes`);
+      
+      res.writeHead(200, {
+        'Content-Type': 'application/pdf',
+        'Content-Length': buffer.length,
+        'Content-Disposition': `attachment; filename="${filename || 'invoice.pdf'}"`
+      });
+      res.end(buffer);
+    } catch (err: any) {
+      console.error("PDF Error Detail:", err);
+      // Ensure we always return JSON in case of error
+      if (!res.headersSent) {
+        res.status(500).json({ 
+          error: "Failed to generate PDF", 
+          details: err.message,
+          stack: process.env.NODE_ENV !== 'production' ? err.stack : undefined
+        });
+      }
+    } finally {
+      if (browser) {
+        try {
+          await browser.close();
+          console.log('Browser closed successfully');
+        } catch (closeErr) {
+          console.error('Error closing browser:', closeErr);
+        }
+      }
+    }
+  });
+
+  // Mock E-Way Bill Generation (was missing and causing 404)
+  app.post("/api/ewaybill/generate", async (req, res) => {
+    try {
+      const { invoiceId, transporterName, vehicleNo } = req.body;
+      console.log(`E-Way Bill generation requested for invoice ${invoiceId}`);
+      
+      // Simulating external API response
+      const mockResult = {
+        ewayBillNo: "EWB" + Math.floor(Math.random() * 1000000000000).toString().padStart(12, '0'),
+        ewayBillDate: new Date().toISOString(),
+        status: "Success"
+      };
+      
+      // Delay to simulate processing
+      await new Promise(r => setTimeout(r, 1000));
+      
+      res.json(mockResult);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to generate E-Way Bill" });
+    }
+  });
+
   app.get("/api/data/:file", async (req, res) => {
     try {
       const file = `${req.params.file}.json`;
@@ -284,79 +379,6 @@ async function startServer() {
       res.json({ url: session.url });
     } catch (err) {
       res.status(500).json({ error: "Failed to create checkout session" });
-    }
-  });
-
-  // PDF Generation using Puppeteer
-  app.post("/api/pdf/generate", async (req, res) => {
-    const { html, filename, paperSize = 'A4', landscape = false } = req.body;
-    if (!html) return res.status(400).json({ error: "HTML content is required" });
-
-    let browser;
-    try {
-      console.log(`Generating PDF: ${filename} (Size: ${paperSize}, Landscape: ${landscape})`);
-      
-      const isLocal = process.env.NODE_ENV !== 'production';
-      
-      const launchOptions = {
-        args: isLocal ? ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'] : (chromium as any).args,
-        defaultViewport: (chromium as any).defaultViewport,
-        executablePath: isLocal ? undefined : await (chromium as any).executablePath(),
-        headless: isLocal ? true : (chromium as any).headless,
-      };
-
-      console.log('Launching browser with options:', JSON.stringify({ ...launchOptions, executablePath: launchOptions.executablePath }));
-
-      browser = await puppeteer.launch(launchOptions);
-      const page = await browser.newPage();
-      await page.setViewport({ width: 1600, height: 1200 });
-      
-      // Set content and wait for it to be ready
-      await page.setContent(html, { 
-        waitUntil: ['load', 'networkidle0'], 
-        timeout: 60000 
-      });
-
-      // Give extra time for any remaining animations or fonts
-      await new Promise(r => setTimeout(r, 1000));
-
-      const pdf = await page.pdf({
-        format: (paperSize as any) || 'A4',
-        landscape: landscape,
-        printBackground: true,
-        preferCSSPageSize: true,
-        margin: { top: '0px', right: '0px', bottom: '0px', left: '0px' },
-        timeout: 60000
-      });
-
-      const buffer = Buffer.from(pdf);
-      console.log(`PDF generated successfully, size: ${buffer.length} bytes`);
-      
-      res.writeHead(200, {
-        'Content-Type': 'application/pdf',
-        'Content-Length': buffer.length,
-        'Content-Disposition': `attachment; filename="${filename || 'invoice.pdf'}"`
-      });
-      res.end(buffer);
-    } catch (err: any) {
-      console.error("PDF Error Detail:", err);
-      // Ensure we always return JSON in case of error
-      if (!res.headersSent) {
-        res.status(500).json({ 
-          error: "Failed to generate PDF", 
-          details: err.message,
-          stack: process.env.NODE_ENV !== 'production' ? err.stack : undefined
-        });
-      }
-    } finally {
-      if (browser) {
-        try {
-          await browser.close();
-          console.log('Browser closed successfully');
-        } catch (closeErr) {
-          console.error('Error closing browser:', closeErr);
-        }
-      }
     }
   });
 
