@@ -96,27 +96,33 @@ async function startServer() {
   app.use(express.json({ limit: '100mb' }));
   app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
-  // Diagnostic logging for all /api requests
   app.use("/api", (req, res, next) => {
     console.log(`[API DEBUG] ${req.method} ${req.url} (originalUrl: ${req.originalUrl})`);
     next();
   });
 
-  // PDF Generation using Puppeteer (Standard Route)
-  // Use a unique path to avoid any potential interference
-  app.post(["/render-invoice-pdf", "/render-invoice-pdf/"], async (req, res) => {
-    console.log(`[PDF ROUTE REACHED] ${req.method} ${req.url}`);
+  // --- API Routes ---
+  
+  app.get("/api/health", (req, res) => {
+    res.json({ 
+      status: "ok", 
+      timestamp: new Date().toISOString(),
+      service: "Zeone GST Billing API"
+    });
+  });
+
+  // PDF Generation using Puppeteer
+  app.post("/api/pdf", async (req, res) => {
+    console.log(`[PDF ROUTE] POST /api/pdf - body size: ${JSON.stringify(req.body).length}`);
     const { html, filename, paperSize = 'A4', landscape = false } = req.body;
     if (!html) {
-      console.log("[PDF GEN ERROR] Missing HTML content");
       return res.status(400).json({ error: "HTML content is required" });
     }
 
     let browser;
     try {
-      console.log(`[PDF GEN START] filename=${filename} size=${paperSize} landscape=${landscape}`);
-      
       const isLocal = process.env.NODE_ENV !== 'production';
+      console.log(`[PDF GEN] Starting... isLocal=${isLocal}, filename=${filename}`);
       
       const launchOptions = {
         args: isLocal ? ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'] : (chromium as any).args,
@@ -146,7 +152,7 @@ async function startServer() {
       });
 
       const buffer = Buffer.from(pdf);
-      console.log(`[PDF GEN SUCCESS] size=${buffer.length} bytes`);
+      console.log(`[PDF GEN] Success! ${buffer.length} bytes`);
 
       res.writeHead(200, {
         'Content-Type': 'application/pdf',
@@ -155,12 +161,11 @@ async function startServer() {
       });
       res.end(buffer);
     } catch (err: any) {
-      console.error("[PDF GEN FATAL ERROR]", err);
+      console.error("[PDF GEN ERROR]", err);
       if (!res.headersSent) {
         res.status(500).json({ 
           error: "Failed to generate PDF", 
-          details: err.message,
-          stack: process.env.NODE_ENV !== 'production' ? err.stack : undefined
+          details: err.message
         });
       }
     } finally {
@@ -174,32 +179,16 @@ async function startServer() {
     }
   });
 
-  // --- API Routes ---
-  
-  app.get("/api/health", (req, res) => {
-    res.json({ 
-      status: "ok", 
-      timestamp: new Date().toISOString(),
-      service: "Zeone GST Billing API"
-    });
-  });
-
-  // Mock E-Way Bill Generation (was missing and causing 404)
+  // Mock E-Way Bill Generation
   app.post("/api/ewaybill/generate", async (req, res) => {
     try {
-      const { invoiceId, transporterName, vehicleNo } = req.body;
-      console.log(`E-Way Bill generation requested for invoice ${invoiceId}`);
-      
-      // Simulating external API response
+      const { invoiceId } = req.body;
       const mockResult = {
         ewayBillNo: "EWB" + Math.floor(Math.random() * 1000000000000).toString().padStart(12, '0'),
         ewayBillDate: new Date().toISOString(),
         status: "Success"
       };
-      
-      // Delay to simulate processing
       await new Promise(r => setTimeout(r, 1000));
-      
       res.json(mockResult);
     } catch (err) {
       res.status(500).json({ error: "Failed to generate E-Way Bill" });
