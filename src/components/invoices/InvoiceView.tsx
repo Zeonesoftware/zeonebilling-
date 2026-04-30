@@ -292,11 +292,8 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
               <SelectContent>
                 <SelectItem value="Standard">Standard</SelectItem>
                 <SelectItem value="Professional">Professional</SelectItem>
-                <SelectItem value="Classic">Classic</SelectItem>
                 <SelectItem value="Modern">Modern</SelectItem>
                 <SelectItem value="Simple">Simple</SelectItem>
-                <SelectItem value="Creative">Creative</SelectItem>
-                <SelectItem value="Detailed">Detailed</SelectItem>
                 <SelectItem value="Thermal">Thermal Receipt (58mm)</SelectItem>
               </SelectContent>
             </Select>

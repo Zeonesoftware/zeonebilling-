@@ -25,7 +25,7 @@ export interface BusinessSettings {
   useFiscalYear?: boolean;
   fiscalYearFormat?: 'YYYY' | 'YYYY-YY' | 'YY-YY';
   lowStockThreshold: number;
-  defaultPdfStyle?: 'Standard' | 'Professional' | 'Classic' | 'Modern' | 'Simple' | 'Creative' | 'Detailed' | 'Thermal';
+  defaultPdfStyle?: 'Standard' | 'Professional' | 'Modern' | 'Simple' | 'Thermal';
 }
 
 export interface Client {
@@ -99,7 +99,7 @@ export interface Invoice {
   notes?: string;
   internalNotes?: string; // Private
   extraPages?: string; // Rich text extra content
-  pdfStyle?: 'Standard' | 'Professional' | 'Classic' | 'Modern' | 'Simple' | 'Creative' | 'Detailed' | 'Thermal';
+  pdfStyle?: 'Standard' | 'Professional' | 'Modern' | 'Simple' | 'Thermal';
   paymentMethod?: string;
   salesmanName?: string;
   // E-Invoice Fields

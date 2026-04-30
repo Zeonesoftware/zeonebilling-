@@ -478,7 +478,7 @@ export default function Settings() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {['Standard', 'Professional', 'Classic', 'Modern', 'Simple', 'Creative', 'Detailed', 'Thermal'].map(s => (
+                      {['Standard', 'Professional', 'Modern', 'Simple', 'Thermal'].map(s => (
                         <SelectItem key={s} value={s}>{s}</SelectItem>
                       ))}
                     </SelectContent>

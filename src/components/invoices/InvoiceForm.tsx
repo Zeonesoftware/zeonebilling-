@@ -502,11 +502,8 @@ export function InvoiceForm({ onSave, onCancel, settings, invoices, initialData 
                     <SelectContent>
                       <SelectItem value="Standard">Standard</SelectItem>
                       <SelectItem value="Professional">Professional</SelectItem>
-                      <SelectItem value="Classic">Classic</SelectItem>
                       <SelectItem value="Modern">Modern</SelectItem>
                       <SelectItem value="Simple">Simple</SelectItem>
-                      <SelectItem value="Creative">Creative</SelectItem>
-                      <SelectItem value="Detailed">Detailed</SelectItem>
                       <SelectItem value="Thermal">Thermal</SelectItem>
                     </SelectContent>
                   </Select>
