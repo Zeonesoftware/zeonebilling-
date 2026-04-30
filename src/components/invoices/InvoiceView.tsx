@@ -917,7 +917,7 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                 )}
                 style={{ 
                   padding: paperSize === 'A5' ? "4mm 6mm" : "15mm 12mm", 
-                  fontFamily: paperSize === 'A5' ? '"Times New Roman", Times, serif' : 'inherit',
+                  fontFamily: '"Times New Roman", Times, serif',
                   fontSize: paperSize === 'A5' ? '7.5pt' : '10pt'
                 }}
               >
@@ -992,10 +992,10 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                   </div>
 
                   <table className="w-full border-collapse table-fixed relative z-10">
-                    <thead className="sticky top-0 z-20 bg-white">
-                      <tr className={cn("bg-white font-black uppercase divide-x-[1.5px] divide-black border-b-[1.5px] border-black text-center", paperSize === 'A5' ? "text-[6.5pt] h-6" : "text-[8pt] h-10")}>
+                    <thead className="sticky top-0 z-20">
+                      <tr className={cn("font-black uppercase border-b-[1.5px] border-black text-center", paperSize === 'A5' ? "text-[6.5pt] h-6" : "text-[8pt] h-10")}>
                         <th className="w-[6%]">SI.NO</th>
-                        <th className="text-left px-2 md:px-4">PARTICULARS</th>
+                        <th className="text-left px-2 md:px-4 w-[18%]">PARTICULARS</th>
                         <th className="w-[12%]">HSN CODE</th>
                         <th className="w-[8%]">QTY</th>
                         <th className="w-[12%]">RATE</th>
@@ -1003,12 +1003,12 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                         <th className="w-[10%] px-0.5">CGST amt</th>
                         <th className="w-[6%]">SGST</th>
                         <th className="w-[10%] px-0.5">SGST amt</th>
-                        <th className="w-[12%]">Total</th>
+                        <th className="w-[12%]">TOTAL</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y-[1.5px] divide-black/10">
+                    <tbody className="divide-y-[1.5px] border-b-[1.5px] border-black divide-black/10">
                       {invoice.items.map((item, idx) => (
-                        <tr key={idx} className={cn("divide-x-[1.5px] divide-black font-black align-middle h-auto uppercase", paperSize === 'A5' ? "text-[7.5pt]" : "text-[10pt]")}>
+                        <tr key={idx} className={cn("font-black align-middle h-auto uppercase", paperSize === 'A5' ? "text-[7.5pt]" : "text-[10pt]")}>
                           <td className="text-center py-1">{idx + 1}</td>
                           <td className="px-2 md:px-4 text-left py-1 font-black leading-tight">
                             <div>{item.name}</div>
@@ -1029,7 +1029,7 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                   <div className="flex-1 bg-transparent"></div>
                   
                   {/* Footer Row exactly like the others */}
-                  <div className={cn("border-t-[1.5px] border-black font-black bg-white uppercase flex divide-x-[1.5px] divide-black shrink-0", paperSize === 'A5' ? "text-[7.5pt] h-8" : "text-[10pt] h-10")}>
+                  <div className={cn("border-t-[1.5px] border-black font-black uppercase flex shrink-0 relative z-10", paperSize === 'A5' ? "text-[7.5pt] h-8" : "text-[10pt] h-10")}>
                     <div className="w-[6%]"></div>
                     <div className="flex-1"></div>
                     <div className="w-[12%]"></div>
@@ -1039,7 +1039,7 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                     <div className="w-[10%] text-right font-mono flex items-center justify-end px-1 md:px-2">{(invoice.totalCgst || (invoice.totalIgst / 2) || 0).toFixed(2)}</div>
                     <div className="w-[6%]"></div>
                     <div className="w-[10%] text-right font-mono flex items-center justify-end px-1 md:px-2">{(invoice.totalSgst || (invoice.totalIgst / 2) || 0).toFixed(2)}</div>
-                    <div className={cn("w-[12%] text-right font-black flex items-center justify-end px-1 md:px-2 bg-black/5", paperSize === 'A5' ? "text-[8pt]" : "text-xs")}>{invoice.totalAmount.toFixed(2)}</div>
+                    <div className={cn("w-[12%] text-right font-black flex items-center justify-end px-1 md:px-2 bg-black/5 font-black", paperSize === 'A5' ? "text-[8pt]" : "text-xs")}>{invoice.totalAmount.toFixed(2)}</div>
                   </div>
                 </div>
 

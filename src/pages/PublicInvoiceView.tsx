@@ -372,9 +372,9 @@ export default function PublicInvoiceView() {
                 </div>
               </div>
             ) : invoice.pdfStyle === 'Simple' ? (
-              <div className="flex flex-col text-[10px] text-black bg-white border-2 border-black m-2">
+              <div className="flex flex-col text-[10px] text-black bg-white border-[1.5px] border-black m-2" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
                 {/* Image-style Header */}
-                <div className="p-4 border-b-2 border-black">
+                <div className="p-4 border-b-[1.5px] border-black">
                   <div className="flex justify-between items-start text-[9px] font-bold text-left">
                     <div className="space-y-0.5">
                       <div>GSTIN:{settings.gstin}</div>
@@ -423,25 +423,39 @@ export default function PublicInvoiceView() {
                 </div>
 
                 {/* Table with Detailed GST Breakdown */}
-                <div className="border-b-2 border-black min-h-[300px]">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-white text-[8px] font-black uppercase divide-x-2 divide-black border-b-2 border-black text-center">
-                        <th className="w-8 py-1">SI.NO</th>
-                        <th className="text-left px-2 py-1">PARTICULARS</th>
-                        <th className="w-16 py-1">HSN CODE</th>
-                        <th className="w-14 py-1">QTY</th>
-                        <th className="w-16 py-1">RATE</th>
-                        <th className="w-12 py-1">CGST</th>
-                        <th className="w-16 py-1">CGST (amt)</th>
-                        <th className="w-12 py-1">SGST</th>
-                        <th className="w-16 py-1">SGST (amt)</th>
-                        <th className="w-20 py-1">Total</th>
+                <div className="border-b-2 border-black min-h-[300px] relative flex flex-col">
+                  {/* Vertical Lines Background (Full Height) */}
+                  <div className="absolute inset-0 pointer-events-none flex divide-x-[1.5px] divide-black h-full">
+                    <div className="w-[6%]"></div>
+                    <div className="flex-1"></div>
+                    <div className="w-[12%]"></div>
+                    <div className="w-[8%]"></div>
+                    <div className="w-[12%]"></div>
+                    <div className="w-[6%]"></div>
+                    <div className="w-[10%]"></div>
+                    <div className="w-[6%]"></div>
+                    <div className="w-[10%]"></div>
+                    <div className="w-[12%]"></div>
+                  </div>
+
+                  <table className="w-full border-collapse table-fixed relative z-10">
+                    <thead className="sticky top-0 z-20">
+                      <tr className="font-black uppercase border-b-[1.5px] border-black text-center text-[8px]">
+                        <th className="w-[6%] py-1">SI.NO</th>
+                        <th className="text-left px-2 py-1 w-[18%]">PARTICULARS</th>
+                        <th className="w-[12%] py-1">HSN CODE</th>
+                        <th className="w-[8%] py-1">QTY</th>
+                        <th className="w-[12%] py-1">RATE</th>
+                        <th className="w-[6%] py-1">CGST</th>
+                        <th className="w-[10%] py-1">CGST amt</th>
+                        <th className="w-[6%] py-1">SGST</th>
+                        <th className="w-[10%] py-1">SGST amt</th>
+                        <th className="w-[12%] py-1">TOTAL</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y-2 divide-black">
+                    <tbody className="divide-y-[1.5px] border-b-[1.5px] border-black divide-black/50">
                       {invoice.items.map((item, idx) => (
-                        <tr key={idx} className="divide-x-2 divide-black text-[9px] font-bold align-top h-8 uppercase">
+                        <tr key={idx} className="text-[9px] font-bold align-top h-8 uppercase">
                           <td className="text-center py-1">{idx + 1}</td>
                           <td className="px-2 py-1 text-left font-black">{item.name}</td>
                           <td className="text-center py-1">{item.hsn}</td>
@@ -454,24 +468,23 @@ export default function PublicInvoiceView() {
                           <td className="text-right px-2 py-1 font-black">{(item.total || 0).toFixed(2)}</td>
                         </tr>
                       ))}
-                      {/* Fill empty space */}
-                      {Array.from({ length: Math.max(0, 10 - invoice.items.length) }).map((_, i) => (
-                        <tr key={`empty-${i}`} className="divide-x-2 divide-black h-8">
-                          {Array.from({ length: 10 }).map((__, j) => <td key={j}></td>)}
-                        </tr>
-                      ))}
                     </tbody>
-                    <tfoot className="border-t-2 border-black font-black bg-white uppercase text-[9px]">
-                      {/* Totals row breakdown matches the image row above footer */}
-                      <tr className="divide-x-2 divide-black h-6 border-t-2 border-black text-center">
-                        <td colSpan={4}></td>
-                        <td className="px-1 text-right">{invoice.subtotal.toFixed(2)}</td>
-                        <td colSpan={2} className="px-1 text-right">{(invoice.totalCgst || (invoice.totalIgst / 2) || 0).toFixed(2)}</td>
-                        <td colSpan={2} className="px-1 text-right">{(invoice.totalSgst || (invoice.totalIgst / 2) || 0).toFixed(2)}</td>
-                        <td className="px-2 text-right">{invoice.totalAmount.toFixed(2)}</td>
-                      </tr>
-                    </tfoot>
                   </table>
+                  {/* Space filler to push footer down */}
+                  <div className="flex-1 bg-transparent"></div>
+
+                  <div className="border-t-[1.5px] border-black font-black uppercase text-[9px] relative z-10 flex shrink-0 h-6">
+                    <div className="w-[6%]"></div>
+                    <div className="flex-1"></div>
+                    <div className="w-[12%]"></div>
+                    <div className="w-[8%]"></div>
+                    <div className="w-[12%] flex items-center justify-end px-1">{invoice.subtotal.toFixed(2)}</div>
+                    <div className="w-[6%]"></div>
+                    <div className="w-[10%] flex items-center justify-end px-1">{(invoice.totalCgst || (invoice.totalIgst / 2) || 0).toFixed(2)}</div>
+                    <div className="w-[6%]"></div>
+                    <div className="w-[10%] flex items-center justify-end px-1">{(invoice.totalSgst || (invoice.totalIgst / 2) || 0).toFixed(2)}</div>
+                    <div className="w-[12%] flex items-center justify-end px-2">{invoice.totalAmount.toFixed(2)}</div>
+                  </div>
                 </div>
 
                 {/* Amount In Words Row */}
