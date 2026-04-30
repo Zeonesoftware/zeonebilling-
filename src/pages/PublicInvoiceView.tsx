@@ -152,16 +152,20 @@ export default function PublicInvoiceView() {
          {/* Invoice Layout */}
          <div id="invoice-print-area" className="flex flex-col min-h-[297mm]">
             {invoice.pdfStyle === 'Modern' ? (
-              <div className="flex flex-col h-full text-[11px] text-black border-[3px] border-black m-0 md:m-2 font-sans">
+              <div 
+                className="flex flex-col h-full bg-white box-border shrink-0 text-[10px] text-black font-sans"
+                style={{ padding: "10mm 10mm" }}
+              >
+                <div className="flex flex-col flex-1 border border-black relative overflow-hidden bg-white">
                 {/* Modern / Industrial Header */}
-                <div className="p-6 md:p-8 flex justify-between items-start gap-4">
-                  <div className="flex-1 space-y-4 text-left">
-                    <div className="text-4xl md:text-5xl font-black tracking-tighter text-black leading-none uppercase">
+                <div className="p-4 flex justify-between items-start gap-4 border-b border-black/10">
+                  <div className="flex-1 space-y-2 text-left">
+                    <div className="text-3xl font-black tracking-tighter text-black leading-none uppercase">
                       {settings.companyName}
                     </div>
-                    <div className="flex flex-col gap-1 text-[10px] md:text-sm font-bold text-black pt-2">
-                       <div className="max-w-[400px] leading-relaxed italic uppercase font-medium">{settings.address}</div>
-                       <div className="flex flex-wrap gap-x-6 gap-y-1 mt-2 border-t border-black/10 pt-2 text-[11px] md:text-xs">
+                    <div className="flex flex-col gap-0.5 text-xs font-bold text-black pt-1">
+                       <div className="max-w-[400px] leading-relaxed italic uppercase font-medium text-[10px]">{settings.address}</div>
+                       <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 border-t border-black/10 pt-1 text-[10px]">
                           <div className="flex items-center gap-1.5 font-black text-black">
                             <span className="opacity-40 text-[9px]">TEL:</span> {settings.phone}
                           </div>
@@ -178,7 +182,7 @@ export default function PublicInvoiceView() {
                       <Logo className="h-16 w-16" />
                     )}
                     {(invoice.irn || invoice.ackNo) && (
-                      <div className="flex items-start gap-4 border-[2px] border-black p-3 bg-white w-[260px] rounded-sm shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                      <div className="flex items-start gap-4 border border-black p-3 bg-white w-[260px] rounded-sm shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
                         {invoice.signedQrCode ? (
                           <div className="bg-white p-1">
                             <QRCodeCanvas value={invoice.signedQrCode} size={64} level="M" />
@@ -190,7 +194,7 @@ export default function PublicInvoiceView() {
                            <div className="text-black font-black text-xs md:text-sm leading-none uppercase border-b border-black/20 pb-1">E-INVOICE</div>
                            <div className="flex flex-col mt-1">
                               <span className="text-[7px] font-black uppercase text-slate-500">IRN / ACK NO</span>
-                              <span className="text-[9px] font-mono font-bold leading-tight break-all uppercase text-black border-l-2 border-black pl-2 leading-none py-1">
+                              <span className="text-[9px] font-mono font-bold leading-tight break-all uppercase text-black border-l border-black pl-2 leading-none py-1">
                                 {invoice.irn || invoice.ackNo}
                               </span>
                            </div>
@@ -201,56 +205,56 @@ export default function PublicInvoiceView() {
                 </div>
 
                 {/* PAN Bar */}
-                <div className="border-y-2 border-black bg-slate-50 flex items-center justify-between px-4 py-2 font-black text-[10px] md:text-xs uppercase tracking-wider text-black">
+                <div className="border-y border-black bg-slate-50 flex items-center justify-between px-4 py-2 font-black text-xs uppercase tracking-wider text-black">
                   <div>PAN : <span className="font-mono">{settings.pan || '-'}</span></div>
                   <div className="flex flex-col items-center">
-                    <div className="text-sm md:text-lg tracking-tighter font-black underline underline-offset-4">{invoice.type?.toUpperCase()}</div>
+                    <div className="text-lg tracking-tighter font-black underline underline-offset-4">{invoice.type?.toUpperCase()}</div>
                   </div>
                   <div>ORIGINAL FOR RECIPIENT</div>
                 </div>
 
                 {/* Info Grid */}
                 <div className="grid grid-cols-2 border-b border-slate-300 divide-x divide-slate-300">
-                  <div className="p-4 space-y-2 text-left">
-                    <div className="bg-slate-50 -mx-4 -mt-4 mb-2 py-1 px-4 border-b border-slate-300 text-center font-bold text-[10px] uppercase tracking-widest text-slate-600">Customer Detail</div>
-                    <div className="grid grid-cols-[80px,1fr] gap-x-2 gap-y-1 mt-2">
-                      <div className="font-bold opacity-60">M/S</div>
-                      <div className="font-bold">{invoice.clientName}</div>
-                      <div className="font-bold opacity-60">Address</div>
-                      <div className="leading-snug text-[10px]">{invoice.clientAddress}</div>
-                      <div className="font-bold opacity-60">Phone</div>
-                      <div className="font-mono">{invoice.clientPhone || '-'}</div>
-                      <div className="font-bold opacity-60">GSTIN</div>
-                      <div className="font-mono font-bold">{invoice.clientGstin}</div>
-                      <div className="font-bold opacity-60 text-[9px]">Place of Supply</div>
-                      <div>State Code: {invoice.clientStateCode}</div>
+                  <div className="p-3 space-y-1.5 text-left">
+                    <div className="bg-slate-50 -mx-3 -mt-3 mb-1.5 py-1 px-4 border-b border-slate-300 text-center font-bold text-[9px] uppercase tracking-widest text-slate-600">Customer Detail</div>
+                    <div className="grid grid-cols-[80px,1fr] gap-x-2 gap-y-0.5 mt-1">
+                      <div className="font-bold opacity-60 text-[8px] uppercase">M/S</div>
+                      <div className="font-black text-[11px] uppercase">{invoice.clientName}</div>
+                      <div className="font-bold opacity-60 text-[8px] uppercase">Address</div>
+                      <div className="leading-tight text-[9px] font-bold">{invoice.clientAddress}</div>
+                      <div className="font-bold opacity-60 text-[8px] uppercase">Phone</div>
+                      <div className="font-mono text-[9px] uppercase">{invoice.clientPhone || '-'}</div>
+                      <div className="font-bold opacity-60 text-[8px] uppercase">GSTIN</div>
+                      <div className="font-mono font-black text-[9px]">{invoice.clientGstin}</div>
+                      <div className="font-bold opacity-60 text-[8px] uppercase">Place</div>
+                      <div className="text-[9px] font-bold">State Code: {invoice.clientStateCode}</div>
                     </div>
                   </div>
-                  <div className="p-4 space-y-2 text-left">
-                    <div className="bg-slate-50 -mx-4 -mt-4 mb-2 py-1 px-4 border-b border-slate-300 text-center font-bold text-[10px] uppercase tracking-widest text-slate-600">Invoice Info</div>
-                    <div className="grid grid-cols-2 gap-4 mt-2">
-                       <div className="space-y-1">
-                          <div className="grid grid-cols-[80px,1fr] gap-x-2 text-[9px]">
-                            <span className="opacity-60">Invoice No.</span>
-                            <span className="font-bold font-mono">{invoice.invoiceNumber}</span>
+                  <div className="p-3 space-y-1.5 text-left">
+                    <div className="bg-slate-50 -mx-3 -mt-3 mb-1.5 py-1 px-4 border-b border-slate-300 text-center font-bold text-[9px] uppercase tracking-widest text-slate-600">Invoice Info</div>
+                    <div className="grid grid-cols-2 gap-3 mt-1">
+                       <div className="space-y-1 text-[9px]">
+                          <div className="grid grid-cols-[70px,1fr] gap-x-2">
+                            <span className="opacity-60 text-[7px] uppercase font-bold">No.</span>
+                            <span className="font-black font-mono text-[10px]">{invoice.invoiceNumber}</span>
                           </div>
-                          <div className="grid grid-cols-[80px,1fr] gap-x-2 text-[9px]">
-                            <span className="opacity-60">Challan No</span>
-                            <span className="font-bold font-mono text-[8px]">{invoice.challanNo || '-'}</span>
+                          <div className="grid grid-cols-[70px,1fr] gap-x-2">
+                            <span className="opacity-60 text-[7px] uppercase font-bold">Challan</span>
+                            <span className="font-bold font-mono text-[9px]">{invoice.challanNo || '-'}</span>
                           </div>
-                          <div className="grid grid-cols-[80px,1fr] gap-x-2 text-[9px]">
-                            <span className="opacity-60">E-Way No.</span>
-                            <span className="font-bold font-mono text-[8px]">{invoice.ewayBillNo || '-'}</span>
+                          <div className="grid grid-cols-[70px,1fr] gap-x-2">
+                            <span className="opacity-60 text-[7px] uppercase font-bold">E-Way</span>
+                            <span className="font-bold font-mono text-[9px]">{invoice.ewayBillNo || '-'}</span>
                           </div>
                        </div>
-                       <div className="space-y-1">
-                          <div className="grid grid-cols-[80px,1fr] gap-x-2 text-[9px]">
-                            <span className="opacity-60">Invoice Date</span>
-                            <span className="font-bold">{format(new Date(invoice.date), 'dd-MMM-yyyy')}</span>
+                       <div className="space-y-1 text-[9px]">
+                          <div className="grid grid-cols-[70px,1fr] gap-x-2">
+                            <span className="opacity-60 text-[7px] uppercase font-bold">Date</span>
+                            <span className="font-bold text-[10px]">{format(new Date(invoice.date), 'dd-MMM-yyyy')}</span>
                           </div>
-                          <div className="grid grid-cols-[80px,1fr] gap-x-2 text-[9px]">
-                            <span className="opacity-60">Challan Date</span>
-                            <span className="font-bold text-[8px]">{invoice.challanDate ? format(new Date(invoice.challanDate), 'dd-MMM-yyyy') : '-'}</span>
+                          <div className="grid grid-cols-[70px,1fr] gap-x-2">
+                            <span className="opacity-60 text-[7px] uppercase font-bold">DC Date</span>
+                            <span className="font-bold text-[9px]">{invoice.challanDate ? format(new Date(invoice.challanDate), 'dd-MMM-yyyy') : '-'}</span>
                           </div>
                        </div>
                     </div>
@@ -258,59 +262,55 @@ export default function PublicInvoiceView() {
                 </div>
 
                 {/* Items Table */}
-                <div className="flex-1 border-b border-slate-300">
+                <div className="flex-1 flex flex-col border-b border-slate-300 bg-white">
                   <table className="w-full text-[10px]">
                     <thead>
                       <tr className="bg-slate-50 text-[9px] font-bold uppercase tracking-widest text-slate-600 divide-x divide-slate-300 border-b border-slate-300">
                         <th className="py-2 px-2 text-center w-10">Sr.</th>
-                        <th className="py-2 px-4 text-left">Description</th>
-                        <th className="py-2 px-2 text-center">HSN</th>
-                        <th className="py-2 px-2 text-center">Qty</th>
-                        <th className="py-2 px-2 text-right">Rate</th>
-                        <th className="py-2 px-2 text-right">Taxable</th>
-                        <th className="py-2 px-2 text-center" colSpan={2}>IGST</th>
-                        <th className="py-2 px-2 text-right">Total</th>
+                        <th className="py-2 px-4 text-left min-w-[120px]">Description</th>
+                        <th className="py-2 px-2 text-center w-16">HSN</th>
+                        <th className="py-2 px-2 text-center w-12">Qty</th>
+                        <th className="py-2 px-2 text-right w-20">Rate</th>
+                        <th className="py-2 px-2 text-right w-24">Taxable</th>
+                        <th className="py-2 px-2 text-center border-b border-slate-300" colSpan={2}>IGST</th>
+                        <th className="py-2 px-2 text-right w-36 whitespace-nowrap">Total</th>
                       </tr>
                       <tr className="bg-slate-50 text-[8px] font-bold uppercase text-slate-500 divide-x divide-slate-300 border-b border-slate-300 text-center">
                         <th colSpan={6}></th>
                         <th className="w-8">%</th>
-                        <th className="min-w-[50px] text-right px-1">Amount</th>
-                        <th className=""></th>
+                        <th className="py-1 px-1 text-right min-w-[50px]">Amount</th>
+                        <th className="py-1 px-3 text-right whitespace-nowrap">TOTAL</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200">
                       {invoice.items.map((item, idx) => (
                         <tr key={idx} className="divide-x divide-slate-300 align-top">
-                          <td className="py-3 px-2 text-center">{idx + 1}</td>
-                          <td className="py-3 px-4 text-left">
-                            <div className="font-bold">{item.name}</div>
+                          <td className="py-2 px-2 text-center">{idx + 1}</td>
+                          <td className="py-2 px-4 text-left">
+                            <div className="font-bold leading-tight">{item.name}</div>
                           </td>
-                          <td className="py-3 px-2 text-center font-mono">{item.hsn}</td>
-                          <td className="py-3 px-2 text-center font-bold">{item.quantity} NOS</td>
-                          <td className="py-3 px-2 text-right font-mono">{formatCurrency(item.price, invoice.currency)}</td>
-                          <td className="py-3 px-2 text-right font-mono font-bold">{formatCurrency(item.quantity * item.price, invoice.currency)}</td>
-                          <td className="py-3 px-2 text-center font-mono">{item.gstRate}%</td>
-                          <td className="py-3 px-2 text-right font-mono">{formatCurrency(item.igst || 0, invoice.currency)}</td>
-                          <td className="py-3 px-2 text-right font-bold font-mono">{formatCurrency(item.total, invoice.currency)}</td>
+                          <td className="py-2 px-2 text-center font-mono">{item.hsn}</td>
+                          <td className="py-2 px-2 text-center font-bold">{item.quantity} {item.unit || 'NOS'}</td>
+                          <td className="py-2 px-2 text-right font-mono">{formatCurrency(item.price, invoice.currency)}</td>
+                          <td className="py-2 px-2 text-right font-mono font-bold">{formatCurrency(item.quantity * item.price, invoice.currency)}</td>
+                          <td className="py-2 px-2 text-center font-mono">{item.gstRate}%</td>
+                          <td className="py-2 px-2 text-right font-mono text-[9px]">
+                             <div className="leading-tight">{formatCurrency(item.igst || (item.total - item.quantity * item.price), invoice.currency)}</div>
+                          </td>
+                          <td className="py-2 px-3 text-right font-bold font-mono text-[11px] whitespace-nowrap">{formatCurrency(item.total, invoice.currency)}</td>
                         </tr>
-                      ))}
-                      {/* Empty rows to fill height */}
-                      {Array.from({ length: 8 }).map((_, i) => (
-                         <tr key={`empty-${i}`} className="divide-x-slate-300 h-8">
-                            {Array.from({ length: 9 }).map((__, j) => <td key={j}></td>)}
-                         </tr>
                       ))}
                     </tbody>
                     <tfoot className="border-t border-slate-300 font-bold bg-slate-50">
                        <tr className="divide-x divide-slate-300">
                           <td colSpan={2} className="py-2 px-4 text-right uppercase tracking-widest text-[#008080]">Total</td>
-                          <td></td>
-                          <td className="text-center">{invoice.items.reduce((acc, item) => acc + item.quantity, 0)} NOS</td>
-                          <td></td>
-                          <td className="text-right font-mono">{formatCurrency(invoice.subtotal, invoice.currency)}</td>
-                          <td></td>
-                          <td className="text-right font-mono">{formatCurrency(invoice.totalIgst || (invoice.totalCgst + invoice.totalSgst), invoice.currency)}</td>
-                          <td className="text-right font-mono">{formatCurrency(invoice.totalAmount, invoice.currency)}</td>
+                          <td className="w-16"></td>
+                          <td className="w-12 text-center">{invoice.items.reduce((acc, item) => acc + item.quantity, 0)} NOS</td>
+                          <td className="w-20"></td>
+                          <td className="w-24 text-right font-mono">{formatCurrency(invoice.subtotal, invoice.currency)}</td>
+                          <td className="w-8"></td>
+                          <td className="min-w-[50px] text-right font-mono">{formatCurrency(invoice.totalIgst || (invoice.totalCgst + invoice.totalSgst), invoice.currency)}</td>
+                          <td className="w-36 text-right font-mono whitespace-nowrap">{formatCurrency(invoice.totalAmount, invoice.currency)}</td>
                        </tr>
                     </tfoot>
                   </table>
@@ -318,58 +318,73 @@ export default function PublicInvoiceView() {
 
                 {/* Footer Section */}
                 <div className="grid grid-cols-12 divide-x divide-slate-300 border-b border-slate-300">
-                   <div className="col-span-8 p-4 text-left">
-                      <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-2">Total in words</div>
-                      <div className="text-[10px] font-black uppercase tracking-tight text-slate-700 italic leading-snug">
-                        {amountToWords(invoice.totalAmount, invoice.currency)} ONLY
+                   <div className="col-span-8 p-3 text-left flex flex-col justify-between">
+                      <div>
+                        <div className="text-[8px] font-bold uppercase tracking-widest text-slate-400 mb-1">Total in words</div>
+                        <div className="text-[10px] font-black uppercase tracking-tight text-slate-700 italic leading-snug">
+                          {amountToWords(invoice.totalAmount, invoice.currency)} ONLY
+                        </div>
                       </div>
-                      <div className="mt-8">
-                         <div className="text-[9px] font-bold uppercase tracking-widest text-[#008080] mb-2">Bank Details</div>
-                         <div className="grid grid-cols-[100px,1fr] gap-x-2 gap-y-0.5 text-[10px]">
-                            <div className="opacity-60">Bank Name</div>
-                            <div className="font-bold">{settings.bankName}</div>
-                            <div className="opacity-60">Branch</div>
-                            <div>{settings.bankBranch || '-'}</div>
-                            <div className="opacity-60">A/C No.</div>
-                            <div className="font-mono font-bold">{settings.accountNumber}</div>
-                            <div className="opacity-60">IFSC Code</div>
-                            <div className="font-mono font-bold">{settings.ifscCode}</div>
+                      <div className="mt-4 flex gap-6 items-center">
+                         <div className="flex-1">
+                            <div className="text-[8px] font-bold uppercase tracking-widest text-[#008080] mb-1">Bank Details</div>
+                            <div className="grid grid-cols-2 gap-x-6 gap-y-0.5 text-[9px]">
+                               <div className="flex justify-between border-b border-slate-100 pb-0.5">
+                                  <span className="opacity-60 text-[7px] uppercase font-bold">Bank</span>
+                                  <span className="font-bold">{settings.bankName}</span>
+                               </div>
+                               <div className="flex justify-between border-b border-slate-100 pb-0.5">
+                                  <span className="opacity-60 text-[7px] uppercase font-bold">A/C No.</span>
+                                  <span className="font-mono font-bold">{settings.accountNumber}</span>
+                               </div>
+                               <div className="flex justify-between border-b border-slate-100 pb-0.5">
+                                  <span className="opacity-60 text-[7px] uppercase font-bold">IFSC</span>
+                                  <span className="font-mono font-bold">{settings.ifscCode}</span>
+                               </div>
+                               <div className="flex justify-between border-b border-slate-100 pb-0.5">
+                                  <span className="opacity-60 text-[7px] uppercase font-bold">Branch</span>
+                                  <span className="font-bold">{settings.bankBranch || '-'}</span>
+                               </div>
+                            </div>
                          </div>
-                      </div>
-                   </div>
-                   <div className="col-span-4 flex flex-col">
-                      <div className="p-4 space-y-2 border-b border-slate-300 bg-slate-50">
-                         <div className="flex justify-between text-[10px]">
-                            <span className="opacity-60 font-bold uppercase">Subtotal</span>
-                            <span className="font-mono">{formatCurrency(invoice.subtotal, invoice.currency)}</span>
-                         </div>
-                         <div className="flex justify-between text-[10px]">
-                            <span className="opacity-60 font-bold uppercase">Tax Total</span>
-                            <span className="font-mono">{formatCurrency(invoice.totalAmount - invoice.subtotal, invoice.currency)}</span>
-                         </div>
-                         <div className="flex justify-between text-xs font-black border-t border-slate-300 pt-2 text-[#008080]">
-                            <span>TOTAL</span>
-                            <span>{formatCurrency(invoice.totalAmount, invoice.currency)}</span>
-                         </div>
-                      </div>
-                      <div className="flex-1 p-4 flex flex-col justify-between items-center bg-white">
-                         <div className="font-black text-[10px] uppercase tracking-wider mb-8">For {settings.companyName}</div>
-                         {settings.signatureUrl ? (
-                           <div className="flex flex-col items-center gap-2">
-                             <img src={settings.signatureUrl} alt="Signature" className="h-12 w-auto mix-blend-multiply opacity-80" />
-                             <div className="text-[9px] font-bold uppercase tracking-widest border-t border-slate-300 pt-1 w-full text-center">Authorised Signatory</div>
+                         {settings.upiId && (
+                           <div className="flex flex-col items-center gap-1 p-1 border border-slate-200 bg-white rounded shadow-sm">
+                             <QRCodeCanvas value={`upi://pay?pa=${settings.upiId}&pn=${settings.companyName}&am=${invoice.totalAmount}&cu=INR`} size={60} level="M" />
+                             <span className="text-[7px] font-black uppercase text-slate-400">Scan to Pay</span>
                            </div>
-                         ) : (
-                           <div className="text-[8px] text-slate-300 italic text-center border-t border-slate-100 pt-4 w-full">Digitally Verified Document</div>
                          )}
                       </div>
                    </div>
+                   <div className="col-span-4 flex flex-col divide-y divide-slate-300">
+                      <div className="p-3 space-y-1 bg-slate-900 text-white">
+                         <div className="flex justify-between text-[9px] opacity-60">
+                            <span className="font-bold uppercase text-[8px]">Taxable Amount</span>
+                            <span className="font-mono">{formatCurrency(invoice.subtotal, invoice.currency)}</span>
+                         </div>
+                         <div className="flex justify-between text-[11px] font-black pt-1.5 text-[#4ade80]">
+                            <span>TOTAL AMOUNT</span>
+                            <span>{formatCurrency(invoice.totalAmount, invoice.currency)}</span>
+                         </div>
+                      </div>
+                      <div className="flex-1 p-3 flex flex-col justify-between bg-white">
+                         <div className="space-y-1">
+                            <div className="text-[7px] font-bold uppercase tracking-widest text-[#008080]">Terms & Conditions</div>
+                            <div className="text-[7px] text-slate-500 italic leading-tight whitespace-pre-wrap">{settings.terms}</div>
+                         </div>
+                         <div className="mt-4 flex flex-col items-center text-center">
+                            {settings.signatureUrl ? (
+                              <>
+                                <img src={settings.signatureUrl} alt="Signature" className="h-10 w-auto mix-blend-multiply opacity-80" />
+                                <div className="text-[8px] font-bold uppercase tracking-widest border-t border-slate-300 pt-1 w-full opacity-60">Authorised Signatory</div>
+                              </>
+                            ) : (
+                              <div className="text-[8px] text-slate-300 italic uppercase">Computer Generated</div>
+                            )}
+                         </div>
+                      </div>
+                   </div>
                 </div>
-
-                <div className="p-4 bg-slate-50/50 text-[9px] text-slate-500 italic text-left">
-                   <div className="font-bold uppercase text-[8px] mb-1 opacity-60">Terms & Conditions:</div>
-                   <div className="whitespace-pre-wrap leading-relaxed">{settings.terms}</div>
-                </div>
+               </div>
               </div>
             ) : invoice.pdfStyle === 'Simple' ? (
               <div className="flex flex-col text-[10px] text-black bg-white border-[1.5px] border-black m-2" style={{ fontFamily: '"Times New Roman", Times, serif' }}>

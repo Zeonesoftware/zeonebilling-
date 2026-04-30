@@ -195,6 +195,49 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     borderTop: 1,
     borderTopColor: '#f3f4f6',
+  },
+  // Boxed Modern styles
+  modernContainer: {
+    border: 1,
+    borderColor: '#000',
+    flex: 1,
+  },
+  modernSection: {
+    borderBottom: 1,
+    borderColor: '#000',
+    padding: 10,
+  },
+  modernHeaderInner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 15,
+    borderBottom: 1,
+    borderColor: '#000',
+  },
+  modernTable: {
+    flex: 1,
+  },
+  modernTableHeader: {
+    flexDirection: 'row',
+    backgroundColor: '#f9fafb',
+    borderBottom: 1,
+    borderColor: '#000',
+    fontSize: 7,
+    fontWeight: 700,
+    textTransform: 'uppercase',
+  },
+  modernTableRow: {
+    flexDirection: 'row',
+    borderBottom: 1,
+    borderColor: '#eee',
+    fontSize: 8,
+    minHeight: 20,
+  },
+  modernCol: {
+    padding: 4,
+    borderRight: 1,
+    borderColor: '#000',
+    justifyContent: 'center',
   }
 });
 
@@ -295,8 +338,175 @@ const SimpleLayout = ({ invoice, settings }: { invoice: Invoice, settings: Busin
   </View>
 );
 
-const ModernLayout = ({ invoice, settings, currentStyle = 'Professional' }: { invoice: Invoice, settings: BusinessSettings, currentStyle?: string }) => {
+const ModernLayout = ({ invoice, settings, currentStyle = 'Professional', qrCodeDataUrl, upiQrCodeDataUrl }: { invoice: Invoice, settings: BusinessSettings, currentStyle?: string, qrCodeDataUrl?: string, upiQrCodeDataUrl?: string }) => {
+  const isModern = currentStyle === 'Modern';
   const isProfessional = currentStyle === 'Professional';
+  
+  if (isModern) {
+    return (
+      <View style={styles.modernContainer}>
+        {/* Header */}
+        <View style={styles.modernHeaderInner}>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 20, fontWeight: 900 }}>{settings.companyName.toUpperCase()}</Text>
+            <Text style={{ fontSize: 7, marginTop: 4, fontStyle: 'italic', maxWidth: 300, color: '#444' }}>{settings.address}</Text>
+            <View style={{ flexDirection: 'row', gap: 15, marginTop: 10, borderTop: 0.5, borderTopColor: '#000', paddingTop: 6 }}>
+              <Text style={{ fontSize: 7, fontWeight: 700 }}>MOBILE: {settings.phone}</Text>
+              <Text style={{ fontSize: 7, fontWeight: 700 }}>GSTIN: {settings.gstin}</Text>
+              {settings.pan && <Text style={{ fontSize: 7, fontWeight: 700 }}>PAN: {settings.pan}</Text>}
+            </View>
+          </View>
+          <View style={{ alignItems: 'flex-end', gap: 5 }}>
+            {settings.logoUrl ? (
+              <Image src={settings.logoUrl} style={{ width: 50, height: 40, objectFit: 'contain' }} />
+            ) : null}
+            {(invoice.irn || invoice.ackNo) && qrCodeDataUrl && (
+               <View style={{ border: 0.5, padding: 3, flexDirection: 'row', gap: 8, width: 180, backgroundColor: '#fff' }}>
+                 <Image src={qrCodeDataUrl} style={{ width: 45, height: 45 }} />
+                 <View style={{ justifyContent: 'center' }}>
+                   <Text style={{ fontSize: 7, fontWeight: 900, color: '#000' }}>GST E-INVOICE</Text>
+                   <Text style={{ fontSize: 5, color: '#444', marginTop: 2 }}>IRN: {invoice.irn?.substring(0, 18)}...</Text>
+                 </View>
+               </View>
+            )}
+          </View>
+        </View>
+
+        {/* Type Bar */}
+        <View style={{ backgroundColor: '#f3f4f6', borderBottom: 1, borderColor: '#000', padding: 4, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Text style={{ fontSize: 7, fontWeight: 700 }}>{format(new Date(invoice.date), 'dd-MM-yyyy')}</Text>
+          <Text style={{ fontSize: 10, fontWeight: 900, letterSpacing: 1 }}>{invoice.type?.toUpperCase() || 'TAX INVOICE'}</Text>
+          <Text style={{ fontSize: 7, fontWeight: 700 }}>ORIGINAL COPY</Text>
+        </View>
+
+        {/* Info Grid */}
+        <View style={{ flexDirection: 'row', borderBottom: 1, borderColor: '#000', minHeight: 80 }}>
+          <View style={{ flex: 1.2, padding: 8, borderRight: 1, borderColor: '#000' }}>
+            <Text style={{ fontSize: 6, fontWeight: 700, color: '#008080', marginBottom: 4 }}>BILL TO (RECIPIENT)</Text>
+            <View style={{ gap: 2 }}>
+              <Text style={{ fontSize: 10, fontWeight: 900 }}>{invoice.clientName.toUpperCase()}</Text>
+              <Text style={{ fontSize: 7, color: '#333', lineHeight: 1.3 }}>{invoice.clientAddress}</Text>
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
+                <Text style={{ fontSize: 7, fontWeight: 700 }}>GSTIN: {invoice.clientGstin}</Text>
+                <Text style={{ fontSize: 7, fontWeight: 700 }}>PH: {invoice.clientPhone}</Text>
+              </View>
+            </View>
+          </View>
+          <View style={{ flex: 0.8, padding: 8 }}>
+            <Text style={{ fontSize: 6, fontWeight: 700, color: '#008080', marginBottom: 4 }}>INVOICE DETAILS</Text>
+            <View style={{ gap: 4 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text style={{ fontSize: 6, color: '#666' }}>INVOICE NO.</Text>
+                <Text style={{ fontSize: 8, fontWeight: 900 }}>{invoice.invoiceNumber}</Text>
+              </View>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text style={{ fontSize: 6, color: '#666' }}>DATE</Text>
+                <Text style={{ fontSize: 8, fontWeight: 700 }}>{format(new Date(invoice.date), 'dd/MM/yyyy')}</Text>
+              </View>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text style={{ fontSize: 6, color: '#666' }}>CHALLAN NO.</Text>
+                <Text style={{ fontSize: 7, fontWeight: 700 }}>{invoice.challanNo || '-'}</Text>
+              </View>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text style={{ fontSize: 6, color: '#666' }}>TRANSPORT</Text>
+                <Text style={{ fontSize: 7, fontWeight: 700 }}>{invoice.transporterName || '-'}</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Table */}
+        <View style={styles.modernTable}>
+          <View style={styles.modernTableHeader}>
+            <View style={{ ...styles.modernCol, width: '5%', textAlign: 'center' }}><Text>SR.</Text></View>
+            <View style={{ ...styles.modernCol, width: '25%' }}><Text>ITEM DESCRIPTION</Text></View>
+            <View style={{ ...styles.modernCol, width: '10%', textAlign: 'center' }}><Text>HSN</Text></View>
+            <View style={{ ...styles.modernCol, width: '8%', textAlign: 'center' }}><Text>QTY</Text></View>
+            <View style={{ ...styles.modernCol, width: '10%', textAlign: 'right' }}><Text>RATE</Text></View>
+            <View style={{ ...styles.modernCol, width: '10%', textAlign: 'right' }}><Text>TAXABLE</Text></View>
+            <View style={{ ...styles.modernCol, width: '7%', textAlign: 'center' }}><Text>GST%</Text></View>
+            <View style={{ ...styles.modernCol, width: '25%', borderRight: 0, textAlign: 'right', paddingRight: 5 }}><Text>TOTAL</Text></View>
+          </View>
+          {invoice.items.map((item, idx) => (
+            <View key={idx} style={{ ...styles.modernTableRow, borderBottomColor: idx === invoice.items.length - 1 ? '#000' : '#eee' }}>
+              <View style={{ ...styles.modernCol, width: '5%', textAlign: 'center' }}><Text>{idx + 1}</Text></View>
+              <View style={{ ...styles.modernCol, width: '25%' }}><Text style={{ fontWeight: 700 }}>{item.name}</Text></View>
+              <View style={{ ...styles.modernCol, width: '10%', textAlign: 'center' }}><Text>{item.hsn}</Text></View>
+              <View style={{ ...styles.modernCol, width: '8%', textAlign: 'center' }}><Text>{item.quantity} {item.unit || 'NOS'}</Text></View>
+              <View style={{ ...styles.modernCol, width: '10%', textAlign: 'right' }}><Text>{item.price.toFixed(2)}</Text></View>
+              <View style={{ ...styles.modernCol, width: '10%', textAlign: 'right' }}><Text>{(item.quantity * item.price).toFixed(2)}</Text></View>
+              <View style={{ ...styles.modernCol, width: '7%', textAlign: 'center' }}><Text>{item.gstRate}%</Text></View>
+              <View style={{ ...styles.modernCol, width: '25%', borderRight: 0, textAlign: 'right', paddingRight: 5 }}><Text style={{ fontWeight: 700 }}>{item.total.toFixed(2)}</Text></View>
+            </View>
+          ))}
+          <View style={{ flexDirection: 'row', backgroundColor: '#f9fafb', fontSize: 8, fontWeight: 700, borderBottom: 1, borderColor: '#000' }}>
+            <View style={{ ...styles.modernCol, width: '40%', textAlign: 'right' }}><Text>TOTAL</Text></View>
+            <View style={{ ...styles.modernCol, width: '8%', textAlign: 'center' }}><Text>{invoice.items.reduce((acc, i) => acc + i.quantity, 0)}</Text></View>
+            <View style={{ ...styles.modernCol, width: '10%' }}></View>
+            <View style={{ ...styles.modernCol, width: '10%', textAlign: 'right' }}><Text>{invoice.subtotal.toFixed(2)}</Text></View>
+            <View style={{ ...styles.modernCol, width: '7%' }}></View>
+            <View style={{ ...styles.modernCol, width: '25%', borderRight: 0, textAlign: 'right', paddingRight: 5 }}><Text>{invoice.totalAmount.toFixed(2)}</Text></View>
+          </View>
+        </View>
+
+        {/* Footer */}
+        <View style={{ flexDirection: 'row' }}>
+          <View style={{ flex: 1, padding: 8, borderRight: 1, borderColor: '#000' }}>
+            <Text style={{ fontSize: 6, color: '#666', marginBottom: 2 }}>TOTAL AMOUNT IN WORDS</Text>
+            <Text style={{ fontSize: 8, fontWeight: 700, fontStyle: 'italic', marginBottom: 10 }}>RUPEES {amountToWords(invoice.totalAmount, invoice.currency)} ONLY</Text>
+            
+            <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 7, fontWeight: 700, color: '#008080', marginBottom: 4 }}>BANK DETAILS & PAYMENT</Text>
+                <View style={{ gap: 2 }}>
+                  <Text style={{ fontSize: 7 }}>BANK: {settings.bankName}</Text>
+                  <Text style={{ fontSize: 7 }}>A/C: {settings.accountNumber}</Text>
+                  <Text style={{ fontSize: 7 }}>IFSC: {settings.ifscCode}</Text>
+                  <Text style={{ fontSize: 7 }}>UPI: {settings.upiId}</Text>
+                </View>
+              </View>
+              {upiQrCodeDataUrl && (
+                <View style={{ padding: 4, border: 0.5, borderColor: '#ccc', borderRadius: 2, alignItems: 'center', backgroundColor: '#fff' }}>
+                  <Image src={upiQrCodeDataUrl} style={{ width: 50, height: 50 }} />
+                  <Text style={{ fontSize: 4, marginTop: 2, fontWeight: 700 }}>SCAN TO PAY</Text>
+                </View>
+              )}
+            </View>
+          </View>
+          <View style={{ width: '35%' }}>
+            <View style={{ padding: 10, backgroundColor: '#f3f4f6', borderBottom: 1, borderColor: '#000' }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', fontSize: 7, marginBottom: 3 }}>
+                <Text style={{ color: '#666' }}>TAXABLE AMOUNT</Text>
+                <Text style={{ fontWeight: 700 }}>{formatCurrency(invoice.subtotal, invoice.currency)}</Text>
+              </View>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', fontSize: 7, marginBottom: 3 }}>
+                <Text style={{ color: '#666' }}>CGST / SGST</Text>
+                <Text style={{ fontWeight: 700 }}>{formatCurrency(invoice.totalAmount - invoice.subtotal, invoice.currency)}</Text>
+              </View>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', fontSize: 10, fontWeight: 900, color: '#000', marginTop: 5, borderTop: 1, borderTopColor: '#000', paddingTop: 5 }}>
+                <Text>GRAND TOTAL</Text>
+                <Text>{formatCurrency(invoice.totalAmount, invoice.currency)}</Text>
+              </View>
+            </View>
+            <View style={{ padding: 8, flex: 1 }}>
+               <View style={{ flex: 1 }}>
+                 <Text style={{ fontSize: 6, fontWeight: 700, color: '#008080', marginBottom: 2 }}>TERMS & CONDITIONS</Text>
+                 <Text style={{ fontSize: 5, color: '#444', fontStyle: 'italic', lineHeight: 1.4 }}>{settings.terms}</Text>
+               </View>
+               <View style={{ alignItems: 'center', marginTop: 10 }}>
+                 <Text style={{ fontSize: 7, fontWeight: 700, marginBottom: 15 }}>For {settings.companyName.toUpperCase()}</Text>
+                 {settings.signatureUrl ? (
+                   <Image src={settings.signatureUrl} style={{ width: 60, height: 25, objectFit: 'contain' }} />
+                 ) : null}
+                 <Text style={{ fontSize: 6, borderTop: 0.5, borderColor: '#ccc', width: '100%', textAlign: 'center', paddingTop: 2, marginTop: 4 }}>Authorised Signatory</Text>
+               </View>
+            </View>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
   const accentColor = isProfessional ? '#237227' : '#1f2937';
   const headerBg = isProfessional ? '#237227' : '#f9fafb';
   const headerColor = isProfessional ? '#fff' : '#1f2937';
@@ -576,7 +786,7 @@ export const InvoicePDFPage = ({ invoice, settings, pdfStyle, qrCodeDataUrl, upi
       ) : currentStyle === 'Standard' ? (
         <StandardLayout invoice={invoice} settings={settings} qrCodeDataUrl={qrCodeDataUrl} upiQrCodeDataUrl={upiQrCodeDataUrl} />
       ) : (
-        <ModernLayout invoice={invoice} settings={settings} currentStyle={currentStyle} />
+        <ModernLayout invoice={invoice} settings={settings} currentStyle={currentStyle} qrCodeDataUrl={qrCodeDataUrl} upiQrCodeDataUrl={upiQrCodeDataUrl} />
       )}
     </Page>
   );
