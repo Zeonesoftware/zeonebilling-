@@ -71,6 +71,8 @@ export default function App() {
             
             {/* Public Route */}
             <Route path="/view-invoice/:id" element={<PublicInvoiceView />} />
+            <Route path="/invoice/:id" element={<PublicInvoiceView />} />
+            <Route path="/public/invoice/:id" element={<PublicInvoiceView />} />
           </Routes>
         </BrowserRouter>
       </LanguageProvider>

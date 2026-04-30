@@ -7,11 +7,16 @@ import dotenv from "dotenv";
 import Stripe from "stripe";
 import puppeteer from "puppeteer";
 import chromium from "@sparticuz/chromium-min";
+import cors from "cors";
 
 dotenv.config();
 
 const app = express();
 const PORT = 3000;
+
+// Enable CORS for all routes to prevent issues in shared views across different contexts
+app.use(cors());
+
 const DATA_DIR = path.join(process.cwd(), "db");
 
 // Stripe initialization helper
@@ -96,6 +101,14 @@ async function startServer() {
   app.use(express.json({ limit: '100mb' }));
   app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
+  // Request logger for debugging 404s
+  app.use((req, res, next) => {
+    if (req.url.includes('pdf')) {
+      console.log(`[DEBUG PDF] ${req.method} ${req.url} from ${req.ip}`);
+    }
+    next();
+  });
+
   // PDF Generation Handler
   const handlePdfGen = async (req: express.Request, res: express.Response) => {
     console.log(`[PDF GEN] Request received: ${req.method} ${req.url} (original: ${req.originalUrl}) - body size: ${JSON.stringify(req.body).length}`);
@@ -168,8 +181,16 @@ async function startServer() {
     }
   };
 
-  // Register PDF route in multiple places to be absolutely sure
-  app.post(["/api/pdf", "/api/pdf/", "/render-invoice-pdf", "/render-invoice-pdf/"], handlePdfGen);
+  // Register PDF routes early and often
+  app.post("/api/pdf", handlePdfGen);
+  app.post("/api/pdf/", handlePdfGen);
+  app.post("/render-invoice-pdf", handlePdfGen);
+  app.post("/api/generate-pdf", handlePdfGen);
+  
+  // Also handle GET to provide help/diagnostics
+  app.get("/api/pdf", (req, res) => {
+    res.status(405).json({ error: "Method Not Allowed. Use POST with JSON body containing 'html' key." });
+  });
 
   // --- API Routes ---
 

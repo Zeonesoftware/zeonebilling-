@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Download, Printer, CreditCard, Loader2, Truck } from 'lucide-react';
 import { toast } from 'sonner';
 import { Logo } from '@/components/Logo';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export default function PublicInvoiceView() {
   const { id } = useParams<{ id: string }>();
@@ -18,20 +20,25 @@ export default function PublicInvoiceView() {
 
   useEffect(() => {
     async function fetchData() {
+      if (!id) return;
       try {
-        const [invRes, setRes] = await Promise.all([
-          fetch(`/api/data/invoices`),
-          fetch(`/api/data/settings`)
-        ]);
-        const invoices = await invRes.json();
-        const settingsArr = await setRes.json();
+        // Fetch invoice from Firestore
+        const invRef = doc(db, 'invoices', id);
+        const invSnap = await getDoc(invRef);
         
-        const found = invoices.find((i: Invoice) => i.id === id);
-        if (found) {
-          setInvoice(found);
-          setSettings(settingsArr[0]);
+        // Fetch settings from Firestore
+        const setRef = doc(db, 'settings', 'config');
+        const setSnap = await getDoc(setRef);
+        
+        if (invSnap.exists()) {
+          setInvoice({ id: invSnap.id, ...invSnap.data() } as Invoice);
+        }
+        
+        if (setSnap.exists()) {
+          setSettings(setSnap.data() as BusinessSettings);
         }
       } catch (err) {
+        console.error('Error fetching public invoice:', err);
         toast.error('Failed to load invoice');
       } finally {
         setLoading(false);
@@ -123,7 +130,7 @@ export default function PublicInvoiceView() {
         </html>
       `;
 
-      const response = await fetch('/api/pdf', {
+      const response = await fetch(`${window.location.origin}/api/pdf`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
