@@ -28,7 +28,7 @@ interface ItemFormProps {
 }
 
 export function ItemForm({ item, isOpen, onClose, onSave }: ItemFormProps) {
-  const [formData, setFormData] = useState<Partial<Item>>(item || {
+  const [formData, setFormData] = React.useState<Partial<Item>>({
     name: '',
     category: 'General',
     hsn: '',
@@ -40,6 +40,23 @@ export function ItemForm({ item, isOpen, onClose, onSave }: ItemFormProps) {
     description: '',
     imageUrl: ''
   });
+
+  React.useEffect(() => {
+    if (isOpen) {
+      setFormData(item || {
+        name: '',
+        category: 'General',
+        hsn: '',
+        price: 0,
+        gstRate: 18,
+        stock: 0,
+        unit: 'Unit',
+        barcode: '',
+        description: '',
+        imageUrl: ''
+      });
+    }
+  }, [item, isOpen]);
 
   const handleSave = () => {
     onSave(formData);

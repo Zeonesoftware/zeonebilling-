@@ -20,7 +20,7 @@ interface ClientFormProps {
 }
 
 export function ClientForm({ client, isOpen, onClose, onSave }: ClientFormProps) {
-  const [formData, setFormData] = useState<Partial<Client>>(client || {
+  const [formData, setFormData] = React.useState<Partial<Client>>({
     name: '',
     gstin: '',
     stateCode: '',
@@ -28,6 +28,19 @@ export function ClientForm({ client, isOpen, onClose, onSave }: ClientFormProps)
     phone: '',
     address: ''
   });
+
+  React.useEffect(() => {
+    if (isOpen) {
+      setFormData(client || {
+        name: '',
+        gstin: '',
+        stateCode: '',
+        email: '',
+        phone: '',
+        address: ''
+      });
+    }
+  }, [client, isOpen]);
 
   const handleSave = () => {
     onSave(formData);
