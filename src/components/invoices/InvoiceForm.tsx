@@ -125,6 +125,65 @@ export function InvoiceForm({ onSave, onCancel, settings, invoices, initialData 
     return () => clearTimeout(timer);
   }, [invoiceItems, selectedClient, invoiceType, notes]);
 
+  const [isDirty, setIsDirty] = useState(false);
+  const isReady = React.useRef(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => { isReady.current = true; }, 1000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!isReady.current) return;
+    setIsDirty(true);
+  }, [
+    selectedClient, invoiceItems, invoiceType, date, dueDate, notes, internalNotes,
+    extraPages, currency, status, pdfStyle, isTaxInclusive, salesmanName,
+    transportMode, distance, vehicleNo, transporterId, transporterName, ewayBillNo, ewayBillStatus
+  ]);
+
+  useEffect(() => {
+    if (!isDirty) return;
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+
+    const handleGlobalClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const a = target.closest('a');
+      
+      if (a && a.href && !a.href.startsWith('javascript:') && !a.href.startsWith('mailto:') && !a.href.startsWith('tel:')) {
+        const url = new URL(a.href);
+        if (url.origin === window.location.origin && url.pathname !== window.location.pathname) {
+          if (!window.confirm("You have unsaved changes. Are you sure you want to discard them?")) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+        }
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('click', handleGlobalClick, { capture: true });
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('click', handleGlobalClick, { capture: true });
+    };
+  }, [isDirty]);
+
+  const handleCancelWrapper = useCallback(() => {
+    if (isDirty) {
+      if (window.confirm("You have unsaved changes. Are you sure you want to discard them?")) {
+        onCancel();
+      }
+    } else {
+      onCancel();
+    }
+  }, [isDirty, onCancel]);
+
   const recalculateItem = useCallback((item: InvoiceItem, quantity: number, price: number, client: Client | null, taxInclusive: boolean) => {
     const isInterState = client ? client.stateCode !== settings.stateCode : false;
     const gstResults = calculateGST(price, quantity, item.gstRate, isInterState, taxInclusive);
@@ -279,6 +338,8 @@ export function InvoiceForm({ onSave, onCancel, settings, invoices, initialData 
     if (!settings.stateCode) return toast.error('Business state code is missing in Settings. Please set it for correct tax calculation.');
     if (invoiceItems.length === 0) return toast.error('Please add at least one item');
 
+    setIsDirty(false); // Clear dirty state before saving
+
     onSave({
       invoiceNumber,
       type: invoiceType,
@@ -329,7 +390,7 @@ export function InvoiceForm({ onSave, onCancel, settings, invoices, initialData 
 
       <div className="flex items-center justify-between border-b border-[#F0F0F0] pb-8">
         <div className="flex items-center gap-6">
-          <Button variant="ghost" size="icon" onClick={onCancel} className="rounded-full bg-slate-50">
+          <Button variant="ghost" size="icon" onClick={handleCancelWrapper} className="rounded-full bg-slate-50">
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
@@ -351,7 +412,7 @@ export function InvoiceForm({ onSave, onCancel, settings, invoices, initialData 
           <Button variant="outline" onClick={() => setShowPreview(true)} className="hidden sm:flex gap-2 rounded-lg px-6 font-bold uppercase text-[10px] tracking-widest border-slate-200">
              Preview PDF
           </Button>
-          <Button variant="outline" onClick={onCancel} className="rounded-lg px-6 font-bold uppercase text-[10px] tracking-widest">Discard</Button>
+          <Button variant="outline" onClick={handleCancelWrapper} className="rounded-lg px-6 font-bold uppercase text-[10px] tracking-widest">Discard</Button>
           <Button onClick={handleSave} className="bg-[#237227] text-white hover:bg-[#1B561E] rounded-lg px-8 font-bold uppercase text-[10px] tracking-widest shadow-lg shadow-[#237227]/20 gap-2">
             <Save className="w-4 h-4" /> {initialData ? 'Update Record' : 'Finalize Document'}
           </Button>
