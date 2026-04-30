@@ -136,74 +136,63 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
       setIsExporting(true);
       toast.loading('Generating PDF...', { id: 'pdf-gen' });
       
-      const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
-        .map(node => node.outerHTML)
-        .join('\n');
+      const { toPng } = await import('html-to-image');
+      const { default: jsPDF } = await import('jspdf');
 
-      const clone = element.cloneNode(true) as HTMLElement;
-      clone.classList.remove('dark');
+      // Add a small delay to ensure loading states/UI settles
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      const originalWidth = element.style.width;
+      const originalHeight = element.style.height;
+      const originalTransform = element.style.transform;
       
-      const fullHtml = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>Invoice - ${invoice.invoiceNumber}</title>
-          ${styles}
-          <style>
-             body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-             #invoice-print-area { 
-               width: ${paperSize === 'A5' ? '210mm' : '210mm'};
-               height: ${paperSize === 'A5' ? '148mm' : '297mm'};
-               box-shadow: none !important;
-               margin: 0 !important;
-             }
-             .no-print { display: none !important; }
-             @page {
-               size: ${paperSize === 'A5' ? 'A5 landscape' : paperSize};
-               margin: 0;
-             }
-          </style>
-        </head>
-        <body class="bg-white">
-          <div style="display:flex; justify-content:center;">
-             ${clone.outerHTML}
-          </div>
-        </body>
-        </html>
-      `;
+      // Temporarily set dimensions for a perfect capture based on paper size
+      element.style.width = paperSize === 'A5' ? '210mm' : '210mm';
+      element.style.minHeight = paperSize === 'A5' ? '148mm' : '297mm';
+      element.style.transform = 'none';
 
-      const response = await fetch('/api/pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          html: fullHtml,
-          filename: `Invoice-${invoice.invoiceNumber}.pdf`,
-          paperSize: paperSize === 'A5' ? 'A5' : 'A4',
-          landscape: paperSize === 'A5'
-        })
+      // Hide elements not meant for print
+      const noPrintElements = element.querySelectorAll('.no-print');
+      noPrintElements.forEach(el => (el as HTMLElement).style.display = 'none');
+
+      const dataUrl = await toPng(element, {
+        quality: 1,
+        pixelRatio: 2,
+        backgroundColor: '#ffffff',
+        style: {
+          transform: 'none',
+          boxShadow: 'none'
+        }
       });
 
-      if (!response.ok) {
-        let errorMessage = 'PDF generation failed';
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-          const errorData = await response.json();
-          errorMessage = errorData.error || errorMessage;
-        } else {
-          errorMessage = `Server Error (${response.status}): ${response.statusText}`;
-        }
-        throw new Error(errorMessage);
-      }
+      // Restore elements
+      noPrintElements.forEach(el => (el as HTMLElement).style.display = '');
+      element.style.width = originalWidth;
+      element.style.minHeight = originalHeight;
+      element.style.transform = originalTransform;
 
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Invoice-${invoice.invoiceNumber}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      const pdf = new jsPDF({
+        orientation: paperSize === 'A5' ? 'landscape' : 'portrait',
+        unit: 'mm',
+        format: paperSize === 'A5' ? 'a5' : 'a4'
+      });
+
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const idealHeight = paperSize === 'A5' ? 148 : 297;
+      const pdfHeight = (element.offsetHeight * pdfWidth) / element.offsetWidth;
+
+      if (pdfHeight > idealHeight && (pdfHeight - idealHeight > 20)) {
+        const extendPdf = new jsPDF({
+          orientation: paperSize === 'A5' ? 'landscape' : 'portrait',
+          unit: 'mm',
+          format: [pdfWidth, Math.max(idealHeight, pdfHeight + 10)]
+        });
+        extendPdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        extendPdf.save(`Invoice-${invoice.invoiceNumber}.pdf`);
+      } else {
+        pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, Math.min(idealHeight, pdfHeight));
+        pdf.save(`Invoice-${invoice.invoiceNumber}.pdf`);
+      }
       
       toast.success('Professional PDF Downloaded', { id: 'pdf-gen' });
     } catch (err) {

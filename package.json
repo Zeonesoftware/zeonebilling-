@@ -30,6 +30,7 @@
     "express": "^4.21.2",
     "firebase": "^11.3.1",
     "framer-motion": "^12.4.7",
+    "html-to-image": "^1.11.13",
     "html2canvas": "^1.4.1",
     "html2pdf.js": "^0.14.0",
     "jspdf": "^2.5.2",

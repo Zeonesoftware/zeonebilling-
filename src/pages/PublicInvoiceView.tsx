@@ -62,74 +62,64 @@ export default function PublicInvoiceView() {
     try {
       setIsExporting(true);
       
-      const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
-        .map(el => el.outerHTML)
-        .join('\n');
-      
-      const clone = element.cloneNode(true) as HTMLElement;
-      clone.classList.remove('dark');
-      
-      const fullHtml = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>Invoice - ${invoice.invoiceNumber}</title>
-          ${styles}
-          <style>
-             body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-             #invoice-print-area { 
-               width: 210mm;
-               height: 297mm;
-               box-shadow: none !important;
-               margin: 0 !important;
-             }
-             .no-print { display: none !important; }
-             @page {
-               size: A4;
-               margin: 0;
-             }
-          </style>
-        </head>
-        <body class="bg-white">
-          <div style="display:flex; justify-content:center;">
-             ${clone.outerHTML}
-          </div>
-        </body>
-        </html>
-      `;
+      const { toPng } = await import('html-to-image');
+      const { default: jsPDF } = await import('jspdf');
 
-      const response = await fetch('/api/pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          html: fullHtml,
-          filename: `Invoice-${invoice.invoiceNumber}.pdf`,
-          paperSize: 'A4',
-          landscape: false
-        })
+      // Add a small delay to ensure loading states/UI settles
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      const originalWidth = element.style.width;
+      const originalHeight = element.style.height;
+      const originalTransform = element.style.transform;
+      
+      // Temporarily set dimensions for a perfect A4 capture
+      element.style.width = '210mm';
+      element.style.minHeight = '297mm';
+      element.style.transform = 'none';
+
+      // Hide elements not meant for print
+      const noPrintElements = element.querySelectorAll('.no-print');
+      noPrintElements.forEach(el => (el as HTMLElement).style.display = 'none');
+
+      const dataUrl = await toPng(element, {
+        quality: 1,
+        pixelRatio: 2,
+        backgroundColor: '#ffffff',
+        style: {
+          transform: 'none',
+          boxShadow: 'none'
+        }
       });
 
-      if (!response.ok) {
-        let errorMessage = 'PDF generation failed';
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-          const errorData = await response.json();
-          errorMessage = errorData.error || errorMessage;
-        } else {
-          errorMessage = `Server Error (${response.status}): ${response.statusText}`;
-        }
-        throw new Error(errorMessage);
+      // Restore elements
+      noPrintElements.forEach(el => (el as HTMLElement).style.display = '');
+      element.style.width = originalWidth;
+      element.style.minHeight = originalHeight;
+      element.style.transform = originalTransform;
+
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (element.offsetHeight * pdfWidth) / element.offsetWidth;
+
+      // Instead of multiple pages, if it exceeds slightly just scale it, or if it exceeds a lot, use a custom format
+      if (pdfHeight > 297 && (pdfHeight - 297 > 20)) {
+        // Very long, use custom format so everything fits on one continuous page (typical for modern digital invoices)
+        const extendPdf = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: [pdfWidth, Math.max(297, pdfHeight + 10)]
+        });
+        extendPdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        extendPdf.save(`Invoice-${invoice.invoiceNumber}.pdf`);
+      } else {
+        pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, Math.min(297, pdfHeight));
+        pdf.save(`Invoice-${invoice.invoiceNumber}.pdf`);
       }
-      
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Invoice-${invoice.invoiceNumber}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
       
       toast.success('Professional PDF Downloaded');
     } catch (err) {
