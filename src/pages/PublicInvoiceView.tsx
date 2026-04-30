@@ -62,80 +62,50 @@ export default function PublicInvoiceView() {
     try {
       setIsExporting(true);
       
-      // Get all styles to include in Puppeteer
       const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
         .map(el => el.outerHTML)
         .join('\n');
       
-      // Clone the element to manipulate it for printing without affecting the UI
       const clone = element.cloneNode(true) as HTMLElement;
       clone.classList.remove('dark');
       
-      const baseUrl = window.location.origin;
-
-      // Create a full HTML document for Puppeteer
       const fullHtml = `
         <!DOCTYPE html>
         <html>
         <head>
-          <meta charset="UTF-8">
-          <base href="${baseUrl}">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Invoice - ${invoice.invoiceNumber}</title>
           ${styles}
           <style>
-             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-             
-             :root {
-               --background: #ffffff !important;
-               --foreground: #000000 !important;
-               --primary: #0077C2 !important;
-               --primary-foreground: #ffffff !important;
-               --card: #ffffff !important;
-               --card-foreground: #1e293b !important;
-               --border: #e2e8f0 !important;
-               --muted: #f1f5f9 !important;
-               --muted-foreground: #64748b !important;
-             }
-
-             body { 
-               background: white !important; 
-               color: black !important;
-               margin: 0; 
-               padding: 20px; 
-               -webkit-print-color-adjust: exact !important;
-               print-color-adjust: exact !important;
-               font-family: 'Inter', sans-serif !important;
-             }
-             
-             #invoice-render-wrapper { 
-               width: 210mm; 
-               margin: 0 auto; 
+             body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+             #invoice-print-area { 
+               width: 210mm;
+               height: 297mm;
                box-shadow: none !important;
-               background: white !important;
+               margin: 0 !important;
              }
-
              .no-print { display: none !important; }
-             
              @page {
                size: A4;
                margin: 0;
              }
           </style>
         </head>
-        <body>
-          <div id="invoice-render-wrapper">
+        <body class="bg-white">
+          <div style="display:flex; justify-content:center;">
              ${clone.outerHTML}
           </div>
         </body>
         </html>
       `;
 
-      const response = await fetch(`${window.location.origin}/api/pdf`, {
+      const response = await fetch('/api/pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           html: fullHtml,
-          filename: `Invoice-${invoice.invoiceNumber}.pdf`
+          filename: `Invoice-${invoice.invoiceNumber}.pdf`,
+          paperSize: 'A4',
+          landscape: false
         })
       });
 
@@ -150,7 +120,7 @@ export default function PublicInvoiceView() {
         }
         throw new Error(errorMessage);
       }
-
+      
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');

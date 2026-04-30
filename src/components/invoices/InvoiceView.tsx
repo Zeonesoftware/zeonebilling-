@@ -134,89 +134,51 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
 
     try {
       setIsExporting(true);
+      toast.loading('Generating PDF...', { id: 'pdf-gen' });
       
-      // Get all styles to include in Puppeteer
       const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
-        .map(el => el.outerHTML)
+        .map(node => node.outerHTML)
         .join('\n');
-      
-      // Clone the element to manipulate it for printing without affecting the UI
+
       const clone = element.cloneNode(true) as HTMLElement;
       clone.classList.remove('dark');
       
-      const baseUrl = window.location.origin;
-
-      // Create a full HTML document for Puppeteer
       const fullHtml = `
         <!DOCTYPE html>
         <html>
         <head>
-          <meta charset="UTF-8">
-          <base href="${baseUrl}">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Invoice - ${invoice.invoiceNumber}</title>
           ${styles}
           <style>
-             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-             
-             :root {
-               --background: #ffffff !important;
-               --foreground: #000000 !important;
-               --primary: #0077C2 !important;
-               --primary-foreground: #ffffff !important;
-               --card: #ffffff !important;
-               --card-foreground: #1e293b !important;
-               --border: #e2e8f0 !important;
-               --muted: #f1f5f9 !important;
-               --muted-foreground: #64748b !important;
-             }
-
-             body { 
-               background: white !important; 
-               color: black !important;
-               margin: 0; 
-               padding: 0; 
-               -webkit-print-color-adjust: exact !important;
-               print-color-adjust: exact !important;
-               font-family: 'Inter', sans-serif !important;
-             }
-             
-             #invoice-render-wrapper { 
-               width: ${paperSize === 'A5' ? '210mm' : '210mm'}; 
+             body { margin: 0; padding: 0; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+             #invoice-print-area { 
+               width: ${paperSize === 'A5' ? '210mm' : '210mm'};
                height: ${paperSize === 'A5' ? '148mm' : '297mm'};
-               margin: 0 auto; 
                box-shadow: none !important;
-               background: white !important;
-               overflow: hidden !important;
+               margin: 0 !important;
              }
-
-             /* Ensure standard tailwind colors work in print */
-             .bg-slate-50 { background-color: #f8fafc !important; }
-             .bg-slate-900 { background-color: #0f172a !important; }
-             .text-white { color: #ffffff !important; }
-             
              .no-print { display: none !important; }
-             
              @page {
                size: ${paperSize === 'A5' ? 'A5 landscape' : paperSize};
                margin: 0;
              }
           </style>
         </head>
-        <body>
-          <div id="invoice-render-wrapper">
+        <body class="bg-white">
+          <div style="display:flex; justify-content:center;">
              ${clone.outerHTML}
           </div>
         </body>
         </html>
       `;
 
-      const response = await fetch(`${window.location.origin}/api/pdf`, {
+      const response = await fetch('/api/pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           html: fullHtml,
           filename: `Invoice-${invoice.invoiceNumber}.pdf`,
-          paperSize: paperSize,
+          paperSize: paperSize === 'A5' ? 'A5' : 'A4',
           landscape: paperSize === 'A5'
         })
       });
@@ -243,10 +205,10 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
       
-      toast.success('Professional PDF Generated');
+      toast.success('Professional PDF Downloaded', { id: 'pdf-gen' });
     } catch (err) {
       console.error('PDF Generation Error:', err);
-      toast.error(err instanceof Error ? err.message : 'Failed to generate PDF.');
+      toast.error(err instanceof Error ? err.message : 'Failed to generate PDF.', { id: 'pdf-gen' });
     } finally {
       setIsExporting(false);
     }
