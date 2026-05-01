@@ -78,7 +78,7 @@ service cloud.firestore {
       allow list, get: if isBilling();
       allow create: if isBilling() && isValidId(clientId) && isValidClient(incoming());
       allow update: if isBilling() && isValidClient(incoming());
-      allow delete: if isAdmin();
+      allow delete: if isBilling();
     }
 
     match /items/{itemId} {
@@ -89,7 +89,7 @@ service cloud.firestore {
       allow list, get: if isBilling();
       allow create: if isBilling() && isValidId(itemId) && isValidItem(incoming());
       allow update: if isBilling() && isValidItem(incoming());
-      allow delete: if isAdmin();
+      allow delete: if isBilling();
     }
 
     match /invoices/{invoiceId} {
@@ -111,7 +111,7 @@ service cloud.firestore {
           ])
         )
       ) && isValidInvoice(incoming());
-      allow delete: if isAdmin();
+      allow delete: if isBilling();
     }
 
     match /expenses/{expenseId} {
