@@ -1,4 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
+import { jsPDF } from 'jspdf';
+import { toPng } from 'html-to-image';
 import { useParams } from 'react-router-dom';
 import { Invoice, BusinessSettings } from '@/types';
 import { QRCodeCanvas } from 'qrcode.react';
@@ -62,9 +64,6 @@ export default function PublicInvoiceView() {
     try {
       setIsExporting(true);
       
-      const { toPng } = await import('html-to-image');
-      const { default: jsPDF } = await import('jspdf');
-
       // Add a small delay to ensure loading states/UI settles
       await new Promise(resolve => setTimeout(resolve, 100));
 

@@ -20,7 +20,7 @@ import Purchases from '@/pages/Purchases';
 import Payment from '@/pages/Payment';
 import GSTReturns from '@/pages/GSTReturns';
 
-function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode, allowedRoles?: string[] }) {
+function ProtectedRoute({ children, allowedRoles, requiredPermission }: { children: React.ReactNode, allowedRoles?: string[], requiredPermission?: string }) {
   const { user, profile, loading } = useAuth();
 
   if (loading) return (
@@ -33,6 +33,10 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode,
   
   if (allowedRoles && profile && !allowedRoles.includes(profile.role)) {
     return <Navigate to="/" />; // Or a custom 403 page
+  }
+
+  if (requiredPermission && profile && profile.role !== 'admin' && !profile.permissions?.includes(requiredPermission)) {
+    return <Navigate to="/" />;
   }
 
   return <>{children}</>;
@@ -52,16 +56,52 @@ export default function App() {
               </ProtectedRoute>
             }>
               <Route path="/" element={<Dashboard />} />
-              <Route path="/invoices" element={<Invoices />} />
-              <Route path="/purchases" element={<Purchases />} />
-              <Route path="/products" element={<Products />} />
-              <Route path="/clients" element={<Clients />} />
-              <Route path="/expenses" element={<Expenses />} />
-              <Route path="/pos" element={<POS />} />
+              <Route path="/invoices" element={
+                <ProtectedRoute requiredPermission="invoices">
+                  <Invoices />
+                </ProtectedRoute>
+              } />
+              <Route path="/purchases" element={
+                <ProtectedRoute requiredPermission="purchases">
+                  <Purchases />
+                </ProtectedRoute>
+              } />
+              <Route path="/products" element={
+                <ProtectedRoute requiredPermission="inventory">
+                  <Products />
+                </ProtectedRoute>
+              } />
+              <Route path="/clients" element={
+                <ProtectedRoute requiredPermission="clients">
+                  <Clients />
+                </ProtectedRoute>
+              } />
+              <Route path="/expenses" element={
+                <ProtectedRoute requiredPermission="expenses">
+                  <Expenses />
+                </ProtectedRoute>
+              } />
+              <Route path="/pos" element={
+                <ProtectedRoute requiredPermission="pos">
+                  <POS />
+                </ProtectedRoute>
+              } />
               <Route path="/payment/:id" element={<Payment />} />
-              <Route path="/reconciliation" element={<Reconciliation />} />
-              <Route path="/gst-returns" element={<GSTReturns />} />
-              <Route path="/reports" element={<Reports />} />
+              <Route path="/reconciliation" element={
+                <ProtectedRoute requiredPermission="reconciliation">
+                  <Reconciliation />
+                </ProtectedRoute>
+              } />
+              <Route path="/gst-returns" element={
+                <ProtectedRoute requiredPermission="gst_returns">
+                  <GSTReturns />
+                </ProtectedRoute>
+              } />
+              <Route path="/reports" element={
+                <ProtectedRoute requiredPermission="reports">
+                  <Reports />
+                </ProtectedRoute>
+              } />
               <Route path="/settings" element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <Settings />

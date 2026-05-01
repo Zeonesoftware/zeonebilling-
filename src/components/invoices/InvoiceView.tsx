@@ -1,4 +1,6 @@
 import React, { useRef, useState } from 'react';
+import { jsPDF } from 'jspdf';
+import { toPng } from 'html-to-image';
 import { 
   Download, 
   Printer, 
@@ -141,9 +143,6 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
       setIsExporting(true);
       toast.loading('Generating PDF...', { id: 'pdf-gen' });
       
-      const { toPng } = await import('html-to-image');
-      const { default: jsPDF } = await import('jspdf');
-
       // Add a small delay to ensure loading states/UI settles
       await new Promise(resolve => setTimeout(resolve, 100));
 
