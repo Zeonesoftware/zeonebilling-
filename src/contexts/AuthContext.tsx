@@ -71,31 +71,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               }).catch(console.error);
             }
 
-            let permissions = data.permissions || [];
+            let permissions = data.permissions;
             
-            // Migration: Ensure base permissions are present for existing users
-            const billingPermissions = ['einvoice', 'pos', 'invoices', 'inventory', 'purchases', 'clients', 'expenses', 'quick_actions'];
-            const adminPermissions = [...billingPermissions, 'reconciliation', 'reports', 'gst_returns'];
-            
-            let hasChanged = false;
-            
-            if (role === 'admin') {
-              adminPermissions.forEach(p => {
-                if (!permissions.includes(p)) {
-                  permissions.push(p);
-                  hasChanged = true;
-                }
-              });
-            } else if (role === 'billing') {
-              billingPermissions.forEach(p => {
-                if (!permissions.includes(p)) {
-                  permissions.push(p);
-                  hasChanged = true;
-                }
-              });
-            }
-            
-            if (hasChanged) {
+            // Migration: Ensure base permissions are present for existing users who predate the permissions feature
+            if (permissions === undefined) {
+              const billingPermissions = ['einvoice', 'pos', 'invoices', 'inventory', 'purchases', 'clients', 'expenses', 'quick_actions'];
+              const adminPermissions = [...billingPermissions, 'reconciliation', 'reports', 'gst_returns'];
+              
+              permissions = role === 'admin' ? adminPermissions : billingPermissions;
               await setDoc(docRef, { permissions }, { merge: true });
             }
 
