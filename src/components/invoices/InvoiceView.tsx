@@ -1124,9 +1124,9 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                       </div>
                       <div className="border-r border-black p-1.5 flex flex-col">
                          <div className="font-bold mb-0.5 text-[9.5pt]">Consignee (Ship to)</div>
-                         <div className="font-bold text-[#000080] text-[10pt] leading-tight">{invoice.shippingName || invoice.clientName}</div>
-                         <div className="whitespace-pre-wrap flex-1 mt-0.5 leading-snug">{invoice.shippingAddress || invoice.clientAddress}</div>
-                         <div className="mt-1">State Name : {invoice.shippingState || invoice.clientState || '-'} <span className="ml-2">Code : {invoice.shippingStateCode || invoice.clientStateCode || '27'}</span></div>
+                         <div className="font-bold text-[#000080] text-[10pt] leading-tight">{(invoice as any).shippingName || invoice.clientName}</div>
+                         <div className="whitespace-pre-wrap flex-1 mt-0.5 leading-snug">{(invoice as any).shippingAddress || invoice.clientAddress}</div>
+                         <div className="mt-1">State Name : {(invoice as any).shippingState || invoice.clientState || '-'} <span className="ml-2">Code : {(invoice as any).shippingStateCode || invoice.clientStateCode || '27'}</span></div>
                          <div>GSTIN No : {invoice.clientGstin || '-'}</div>
                       </div>
                       <div className="p-0 flex flex-col">
@@ -1135,8 +1135,8 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                              <tr><td className="p-1 px-1.5 min-w-[100px] align-top">Invoice No</td><td className="p-1 px-1.5 font-bold align-top">: {invoice.invoiceNumber}</td></tr>
                              <tr><td className="p-1 px-1.5 align-top">Date</td><td className="p-1 px-1.5 font-bold align-top">: {format(new Date(invoice.date), 'd-MMM-yy')}</td></tr>
                              <tr><td className="p-1 px-1.5 align-top">E-Way Bill No.</td><td className="p-1 px-1.5 font-bold align-top">: {invoice.ewayBillNo || ''}</td></tr>
-                             <tr><td className="p-1 px-1.5 align-top">Delivery Note No.</td><td className="p-1 px-1.5 font-bold align-top">: {invoice.deliveryNote || ''}</td></tr>
-                             <tr><td className="p-1 px-1.5 align-top">Buyer Order No.</td><td className="p-1 px-1.5 font-bold align-top">: {invoice.orderNo || ''}</td></tr>
+                             <tr><td className="p-1 px-1.5 align-top">Delivery Note No.</td><td className="p-1 px-1.5 font-bold align-top">: {(invoice as any).deliveryNote || ''}</td></tr>
+                             <tr><td className="p-1 px-1.5 align-top">Buyer Order No.</td><td className="p-1 px-1.5 font-bold align-top">: {(invoice as any).orderNo || ''}</td></tr>
                            </tbody>
                          </table>
                       </div>
@@ -1199,7 +1199,7 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                            </div>
                            <table className="font-bold text-[10pt] align-top">
                              <tbody>
-                               <tr><td className="pr-3 font-normal pb-0.5 whitespace-nowrap align-top">Account Name</td><td className="align-top">: {settings.accountName || settings.companyName}</td></tr>
+                               <tr><td className="pr-3 font-normal pb-0.5 whitespace-nowrap align-top">Account Name</td><td className="align-top">: {(settings as any).accountName || settings.companyName}</td></tr>
                                <tr><td className="pr-3 font-normal pb-0.5 whitespace-nowrap align-top">Bank Name</td><td className="align-top">: {settings.bankName || 'Axis Bank Ltd'}</td></tr>
                                <tr><td className="pr-3 font-normal pb-0.5 whitespace-nowrap align-top">A/c No.</td><td className="align-top">: {settings.accountNumber || '452145214547'}</td></tr>
                                <tr><td className="pr-3 font-normal pb-0.5 whitespace-nowrap align-top">IFSC Code</td><td className="align-top leading-tight">: {settings.ifscCode || 'IFSCODE452'}</td></tr>
@@ -1275,7 +1275,7 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                     </div>
                   </div>
                   <div className="mt-1 flex flex-col items-center justify-center text-[9pt] font-semibold text-black w-full bg-white pb-2 text-center absolute -bottom-10 left-0 h-[30px]">
-                     <span className="uppercase tracking-widest text-[8.5pt] leading-snug">SUBJECT TO {settings.city?.toUpperCase() || 'MUMBAI'} JURISDICTION</span>
+                     <span className="uppercase tracking-widest text-[8.5pt] leading-snug">SUBJECT TO {(settings as any).city?.toUpperCase() || 'MUMBAI'} JURISDICTION</span>
                      <span className="font-normal text-[8pt] italic text-slate-600 block leading-tight">This is a Computer Generated Invoice</span>
                   </div>
                 </div>
