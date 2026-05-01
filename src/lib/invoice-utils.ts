@@ -60,10 +60,18 @@ export function amountToWords(amount: number, currency: string = 'INR'): string 
 }
 
 export function formatCurrency(amount: number, currency: string = 'INR') {
-  return new Intl.NumberFormat(currency === 'INR' ? 'en-IN' : 'en-US', {
-    style: 'currency',
-    currency: currency,
-  }).format(amount);
+  const safeCurrency = (currency && typeof currency === 'string' && currency.length === 3) ? currency : 'INR';
+  try {
+    return new Intl.NumberFormat(safeCurrency === 'INR' ? 'en-IN' : 'en-US', {
+      style: 'currency',
+      currency: safeCurrency,
+    }).format(amount);
+  } catch (err) {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+    }).format(amount);
+  }
 }
 
 export function calculateGST(price: number, quantity: number, rate: number, isInterState: boolean, isTaxInclusive: boolean = false) {
@@ -116,34 +124,42 @@ export function getFiscalYear(date: string | Date, format: 'YYYY' | 'YYYY-YY' | 
   }
 }
 
+export function extractSequence(invoiceNumber: string): number {
+  const match = String(invoiceNumber || '').match(/(\d+)$/);
+  return match ? parseInt(match[1], 10) : 0;
+}
+
 export function generateNextInvoiceNumber(invoices: any[], settings: any, date: string = new Date().toISOString()) {
   const targetDate = new Date(date);
-  const useFiscal = settings.useFiscalYear !== false; // Default to true if not specified
-  const fyFormat = settings.fiscalYearFormat || 'YYYY';
+  const safeSettings = settings || {};
+  const useFiscal = safeSettings.useFiscalYear !== false; // Default to true if not specified
+  const fyFormat = safeSettings.fiscalYearFormat || 'YYYY';
+  const prefix = safeSettings.invoicePrefix || 'INV';
+  const sep = safeSettings.invoiceSeparator || '-';
   
   const targetFY = getFiscalYear(targetDate, fyFormat);
   
-  // Filter invoices that match the same fiscal year logic
+  // Filter invoices that match the same fiscal year logic AND same prefix
   const sameFYInvoices = invoices.filter(inv => {
     const invDate = new Date(inv.date);
     if (isNaN(invDate.getTime())) return false;
-    return getFiscalYear(invDate, fyFormat) === targetFY;
+    const isSameFY = getFiscalYear(invDate, fyFormat) === targetFY;
+    const invNumber = String(inv.invoiceNumber || '');
+    const startsWithPrefix = invNumber.startsWith(prefix + sep) || invNumber.startsWith(prefix);
+    return isSameFY && startsWithPrefix;
   });
 
-  let nextSequence = 1;
+  let nextSequence = safeSettings.invoiceStartingNumber || 1;
 
   if (sameFYInvoices.length > 0) {
-    const numbers = sameFYInvoices.map(inv => {
-      // Find the sequence number at the end of the string
-      const match = inv.invoiceNumber.match(/(\d+)$/);
-      return match ? parseInt(match[1], 10) : 0;
-    });
-    nextSequence = Math.max(...numbers, 0) + 1;
+    const numbers = sameFYInvoices.map(inv => extractSequence(inv.invoiceNumber));
+    const maxNumber = Math.max(...numbers, 0);
+    if (maxNumber >= nextSequence) {
+      nextSequence = maxNumber + 1;
+    }
   }
 
-  const prefix = settings.invoicePrefix || 'INV';
-  const sep = settings.invoiceSeparator || '-';
-  const pad = settings.invoicePadding || 4;
+  const pad = safeSettings.invoicePadding || 4;
   
   if (useFiscal) {
     return `${prefix}${sep}${targetFY}${sep}${nextSequence.toString().padStart(pad, '0')}`;

@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { generateNextInvoiceNumber, formatCurrency, calculateGST, extractSequence } from '@/lib/invoice-utils';
 import { 
   Dialog,
   DialogContent,
@@ -33,15 +34,14 @@ import {
 } from "@/components/ui/dialog"
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { formatCurrency, calculateGST } from '@/lib/invoice-utils';
 import { InvoiceView } from '@/components/invoices/InvoiceView';
 
 export default function POS() {
   const { profile } = useRBAC();
   const { data: items, updateItem: updateProduct } = useData<Item>('items');
   const { data: clients } = useData<Client>('clients');
-  const { addItem: addInvoice } = useData<Invoice>('invoices');
-  const { settings } = useSettings();
+  const { data: invoices, addItem: addInvoice } = useData<Invoice>('invoices');
+  const { settings, updateSettings } = useSettings();
   const [lastInvoice, setLastInvoice] = useState<Invoice | null>(null);
   const [showInvoicePreview, setShowInvoicePreview] = useState(false);
   const [showQuickDialog, setShowQuickDialog] = useState(false);
@@ -168,10 +168,14 @@ export default function POS() {
       return 'User';
     };
 
+    const invoiceDate = new Date().toISOString().split('T')[0];
+    
+    // Check if user has explicitly set an invoice format, otherwise we can still let POS be its own format or standard.
+    // If we use standard logic, it will follow the configured invoice starting number.
     const invoice: Partial<Invoice> = {
-      invoiceNumber: `POS-${Date.now().toString().slice(-6)}`,
+      invoiceNumber: generateNextInvoiceNumber(invoices, settings, new Date().toISOString()),
       type: 'Tax Invoice',
-      date: new Date().toISOString().split('T')[0],
+      date: invoiceDate,
       dueDate: '',
       clientId: client.id,
       clientName: client.name || 'Walk-in Customer',
@@ -198,6 +202,15 @@ export default function POS() {
     try {
       const newInvoice = await addInvoice(invoice);
       setLastInvoice(newInvoice as Invoice);
+      
+      // Sync the invoice starting number in settings
+      if (invoice.invoiceNumber) {
+        const usedSequence = extractSequence(invoice.invoiceNumber);
+        const currentStart = settings?.invoiceStartingNumber || 1;
+        if (usedSequence >= currentStart) {
+          updateSettings({ ...settings, invoiceStartingNumber: usedSequence + 1 });
+        }
+      }
       
       // Update Stock
       for (const cartItem of cart) {

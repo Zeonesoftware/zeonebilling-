@@ -61,16 +61,15 @@ import { InvoiceForm } from '@/components/invoices/InvoiceForm';
 import { InvoiceView } from '@/components/invoices/InvoiceView';
 import { BulkEInvoiceManager } from '@/components/invoices/BulkEInvoiceManager';
 import { toast } from 'sonner';
-import { formatCurrency, generateNextInvoiceNumber } from '@/lib/invoice-utils';
+import { formatCurrency, generateNextInvoiceNumber, extractSequence } from '@/lib/invoice-utils';
 
 export default function Invoices() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { profile } = useRBAC();
-  const { canCreate, canEdit, canDelete, isBilling } = useRBAC();
+  const { canCreate, canEdit, canDelete, isBilling, canGenerateEInvoice, profile } = useRBAC();
   const { data: invoices, loading, addItem, updateItem, deleteItem } = useData<Invoice>('invoices');
   const { data: items, updateItem: updateProduct } = useData<Item>('items');
-  const { settings } = useSettings();
+  const { settings, updateSettings } = useSettings();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
@@ -212,11 +211,19 @@ export default function Invoices() {
       } else if (typeof aValue === 'number' && typeof bValue === 'number') {
         comparison = aValue - bValue;
       } else if (sortKey === 'date' || sortKey === 'dueDate' || sortKey === 'createdAt' || sortKey === 'updatedAt') {
-        comparison = new Date(aValue as string).getTime() - new Date(bValue as string).getTime();
+        const getDate = (val: any) => {
+          if (!val) return new Date(0);
+          if (typeof val === 'string') return new Date(val);
+          if (val && typeof val === 'object' && val.toDate) return val.toDate();
+          if (val && val.seconds) return new Date(val.seconds * 1000);
+          return new Date(val);
+        };
+        
+        comparison = getDate(aValue).getTime() - getDate(bValue).getTime();
         
         // Fallback to createdAt for items on the same day for more precise sorting
         if (comparison === 0 && a.createdAt && b.createdAt) {
-          comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          comparison = getDate(a.createdAt).getTime() - getDate(b.createdAt).getTime();
         }
       }
 
@@ -262,6 +269,16 @@ export default function Invoices() {
           } : undefined
         };
         const newInvoice = await addItem(fullInvoiceData as Partial<Invoice>);
+        
+        // Sync the invoice starting number in settings for all users to follow
+        if (invoiceData.invoiceNumber) {
+          const usedSequence = extractSequence(invoiceData.invoiceNumber);
+          const currentStart = settings?.invoiceStartingNumber || 1;
+          if (usedSequence >= currentStart) {
+            updateSettings({ ...settings, invoiceStartingNumber: usedSequence + 1 });
+          }
+        }
+
         // Deduct stock
         if (invoiceData.items) {
           for (const invoiceItem of invoiceData.items) {
@@ -287,11 +304,20 @@ export default function Invoices() {
 
   const handleConvertToInvoice = async (inv: Invoice) => {
     try {
+      const nextNum = generateNextInvoiceNumber(invoices, settings, inv.date);
       await updateItem(inv.id, { 
         type: 'Tax Invoice', 
         status: 'Pending',
-        invoiceNumber: generateNextInvoiceNumber(invoices, settings, inv.date)
+        invoiceNumber: nextNum
       });
+      
+      // Update global sequence
+      const usedSequence = extractSequence(nextNum);
+      const currentStart = settings?.invoiceStartingNumber || 1;
+      if (usedSequence >= currentStart) {
+        await updateSettings({ ...settings, invoiceStartingNumber: usedSequence + 1 });
+      }
+
       toast.success('Converted to Tax Invoice');
     } catch (err) {
       toast.error('Failed to convert');
@@ -359,7 +385,7 @@ export default function Invoices() {
     }
   };
 
-  if (isCreating || editingInvoice) {
+  if ((isCreating || editingInvoice) && settings) {
     return (
       <InvoiceForm 
         settings={settings} 
@@ -481,9 +507,11 @@ export default function Invoices() {
                   <DropdownMenuItem className="gap-3 py-2.5 cursor-pointer font-bold text-xs uppercase tracking-wider" onClick={() => handleBulkExport('zip')}>
                     <Archive className="w-4 h-4 text-blue-600" /> ZIP Archive
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="gap-3 py-2.5 cursor-pointer font-bold text-xs uppercase tracking-wider text-orange-600 focus:text-orange-600" onClick={() => handleBulkEInvoice()}>
-                    <Zap className="w-4 h-4 fill-orange-600" /> Bulk E-Invoice (IRN)
-                  </DropdownMenuItem>
+                  {canGenerateEInvoice && (
+                    <DropdownMenuItem className="gap-3 py-2.5 cursor-pointer font-bold text-xs uppercase tracking-wider text-orange-600 focus:text-orange-600" onClick={() => handleBulkEInvoice()}>
+                      <Zap className="w-4 h-4 fill-orange-600" /> Bulk E-Invoice (IRN)
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem className="gap-3 py-2.5 cursor-pointer font-bold text-xs uppercase tracking-wider text-emerald-600 focus:text-emerald-600" onClick={() => handleBulkStatusUpdate('Paid')}>
                     <CheckCircle2 className="w-4 h-4" /> Mark Selected as Paid
                   </DropdownMenuItem>

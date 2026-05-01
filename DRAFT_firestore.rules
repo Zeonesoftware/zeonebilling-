@@ -8,34 +8,29 @@ service cloud.firestore {
 
     // --- Helper Functions ---
     function isSignedIn() {
-      return request.auth != null;
+      return request.auth != null && request.auth.token.email_verified == true;
     }
 
     function getUserData() {
-      let path = /databases/$(database)/documents/users/$(request.auth.uid);
-      return exists(path) ? get(path).data : {"role": "none"};
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
     function isAdmin() {
       return isSignedIn() && (
-        request.auth.token.email.lower() == 'zeonesoftware@gmail.com' ||
-        getUserData().get('role', 'none') == 'admin'
+        request.auth.token.email == 'zeonesoftware@gmail.com' ||
+        getUserData().role == 'admin'
       );
     }
 
     function isBilling() {
       return isSignedIn() && (
-        request.auth.token.email.lower() == 'zeonesoftware@gmail.com' ||
-        getUserData().get('role', 'none') in ['admin', 'billing']
+        request.auth.token.email == 'zeonesoftware@gmail.com' ||
+        getUserData().role in ['admin', 'billing']
       );
     }
 
-    match /test/connection {
-      allow read: if isSignedIn();
-    }
-
     function isValidId(id) {
-      return id is string && id.size() <= 128;
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
     function incoming() {
@@ -49,20 +44,23 @@ service cloud.firestore {
     // --- Users ---
     match /users/{userId} {
       function isValidUser(data) {
-        return data.get('role', 'none') in ['admin', 'billing', 'removed'] &&
-               (data.get('createdAt', '') is timestamp || data.get('createdAt', '') is string);
+        return data.keys().hasAll(['email', 'name', 'role', 'createdAt']) &&
+               data.keys().size() >= 4 && // Role is strictly checked. phone/permissions are optional.
+               data.email is string && data.email.size() <= 256 &&
+               data.name is string && data.name.size() <= 128 &&
+               data.role in ['admin', 'billing', 'removed'] &&
+               data.createdAt is string;
       }
 
       allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
       
       allow create: if isSignedIn() && request.auth.uid == userId && 
                     isValidUser(incoming()) &&
-                    (incoming().role == (request.auth.token.email.lower() == 'zeonesoftware@gmail.com' ? 'admin' : 'billing'));
+                    (incoming().role == (request.auth.token.email == 'zeonesoftware@gmail.com' ? 'admin' : 'billing'));
       
       allow update: if isSignedIn() && (
         isAdmin() || 
-        (request.auth.uid == userId && 
-         incoming().diff(existing()).affectedKeys().hasOnly(['name', 'photoURL', 'phoneNumber', 'role', 'permissions', 'updatedAt']))
+        (request.auth.uid == userId && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'photoURL', 'phoneNumber']))
       ) && isValidUser(incoming());
       
       allow delete: if isAdmin();
@@ -73,7 +71,8 @@ service cloud.firestore {
     
     match /clients/{clientId} {
       function isValidClient(data) {
-        return data.get('name', '') is string && data.get('name', '').size() <= 128;
+        return data.name is string && data.name.size() <= 128 &&
+               data.email is string && data.email.size() <= 128;
       }
       allow list, get: if isBilling();
       allow create: if isBilling() && isValidId(clientId) && isValidClient(incoming());
@@ -83,8 +82,9 @@ service cloud.firestore {
 
     match /items/{itemId} {
       function isValidItem(data) {
-        return data.get('name', '') is string && data.get('name', '').size() <= 128 &&
-               data.get('price', 0) is number && data.get('price', 0) >= 0;
+        return data.name is string && data.name.size() <= 128 &&
+               data.price is number && data.price >= 0 &&
+               data.gstRate is number && data.gstRate >= 0;
       }
       allow list, get: if isBilling();
       allow create: if isBilling() && isValidId(itemId) && isValidItem(incoming());
@@ -94,22 +94,17 @@ service cloud.firestore {
 
     match /invoices/{invoiceId} {
       function isValidInvoice(data) {
-        return data.get('invoiceNumber', '') is string && data.get('invoiceNumber', '').size() <= 64 &&
-               data.get('clientId', '') is string;
+        return data.invoiceNumber is string && data.invoiceNumber.size() <= 64 &&
+               data.clientId is string &&
+               data.totalAmount is number;
       }
-      allow list: if isBilling();
+      allow list: if isBilling() && (isAdmin() || resource.data.createdBy == request.auth.uid);
       allow get: if isBilling();
-      allow create: if isBilling() && isValidId(invoiceId) && isValidInvoice(incoming());
+      allow create: if isBilling() && isValidId(invoiceId) && isValidInvoice(incoming()) &&
+                    incoming().createdAt == request.time;
       allow update: if isBilling() && (
         isAdmin() || 
-        (
-          (existing().status != 'Paid' || incoming().diff(existing()).affectedKeys().hasOnly(['ackNo', 'ackDate', 'irn', 'signedQrCode', 'einvoiceStatus', 'ewayBillNo', 'ewayBillDate', 'ewayBillStatus', 'updatedAt', 'updatedBy'])) && 
-          incoming().diff(existing()).affectedKeys().hasOnly([
-            'status', 'updatedAt', 'updatedBy', 'paymentStatus', 'notes',
-            'ackNo', 'ackDate', 'irn', 'signedQrCode', 'einvoiceStatus',
-            'ewayBillNo', 'ewayBillDate', 'ewayBillStatus'
-          ])
-        )
+        (existing().status != 'Paid' && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']))
       ) && isValidInvoice(incoming());
       allow delete: if isAdmin();
     }
@@ -124,7 +119,7 @@ service cloud.firestore {
 
     match /settings/{settingId} {
       allow read: if isBilling();
-      allow write: if isBilling();
+      allow write: if isAdmin();
     }
   }
 }

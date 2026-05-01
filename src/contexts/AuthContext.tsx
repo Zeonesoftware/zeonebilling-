@@ -11,8 +11,8 @@ import {
   RecaptchaVerifier,
   ConfirmationResult
 } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { auth, db, handleFirestoreError, OperationType } from '@/lib/firebase';
 
 export type UserRole = 'admin' | 'billing';
 
@@ -71,18 +71,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               }).catch(console.error);
             }
 
+            let permissions = data.permissions || [];
+            
+            // Migration: Ensure base permissions are present for existing users
+            const billingPermissions = ['einvoice', 'pos', 'invoices', 'inventory', 'purchases', 'clients', 'expenses', 'quick_actions'];
+            const adminPermissions = [...billingPermissions, 'reconciliation', 'reports', 'gst_returns'];
+            
+            let hasChanged = false;
+            
+            if (role === 'admin') {
+              adminPermissions.forEach(p => {
+                if (!permissions.includes(p)) {
+                  permissions.push(p);
+                  hasChanged = true;
+                }
+              });
+            } else if (role === 'billing') {
+              billingPermissions.forEach(p => {
+                if (!permissions.includes(p)) {
+                  permissions.push(p);
+                  hasChanged = true;
+                }
+              });
+            }
+            
+            if (hasChanged) {
+              await setDoc(docRef, { permissions }, { merge: true });
+            }
+
             setProfile({
               uid: firebaseUser.uid,
-              email: firebaseUser.email || docSnap.data().email || '',
-              displayName: firebaseUser.displayName || docSnap.data().name || 'User',
+              email: firebaseUser.email || data.email || '',
+              displayName: firebaseUser.displayName || data.name || 'User',
               photoURL: firebaseUser.photoURL || '',
               role: role,
-              permissions: docSnap.data().permissions || [],
+              permissions: permissions,
               phoneNumber: firebaseUser.phoneNumber || ''
             });
           } else {
             // Check if we already created it in signUpWithEmail or if this is a first-time login
-            const isOwner = firebaseUser.email === 'zeonesoftware@gmail.com';
+            const isOwner = firebaseUser.email?.toLowerCase() === 'zeonesoftware@gmail.com';
             const newProfile: AuthUserProfile = {
               uid: firebaseUser.uid,
               email: firebaseUser.email || '',
@@ -90,8 +118,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               photoURL: firebaseUser.photoURL || '',
               role: isOwner ? 'admin' : 'billing',
               permissions: isOwner 
-                ? ['pos', 'invoices', 'inventory', 'purchases', 'clients', 'expenses', 'reconciliation', 'reports', 'quick_actions', 'gst_returns'] 
-                : ['invoices', 'purchases', 'inventory', 'clients', 'expenses', 'quick_actions', 'pos'],
+                ? ['pos', 'invoices', 'inventory', 'purchases', 'clients', 'expenses', 'reconciliation', 'reports', 'quick_actions', 'gst_returns', 'einvoice'] 
+                : ['invoices', 'purchases', 'inventory', 'clients', 'expenses', 'quick_actions', 'pos', 'einvoice'],
               phoneNumber: firebaseUser.phoneNumber || ''
             };
             
@@ -101,13 +129,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               role: newProfile.role,
               permissions: newProfile.permissions,
               phoneNumber: newProfile.phoneNumber,
-              createdAt: new Date().toISOString()
+              createdAt: serverTimestamp()
             }, { merge: true });
             
             setProfile(newProfile);
           }
         } catch (error) {
-          console.error("Error fetching/creating profile:", error);
+          try {
+            handleFirestoreError(error, OperationType.GET, `users/${firebaseUser.uid}`);
+          } catch (err) {
+            console.error("Error fetching/creating profile:", err);
+          }
           setLoading(false);
           return;
         }
@@ -140,7 +172,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       displayName: name,
       photoURL: '',
       role: 'billing',
-      permissions: ['invoices', 'purchases', 'inventory', 'clients', 'expenses', 'quick_actions', 'pos']
+      permissions: ['invoices', 'purchases', 'inventory', 'clients', 'expenses', 'quick_actions', 'pos', 'einvoice', 'reconciliation', 'reports', 'gst_returns']
     };
     
     await setDoc(doc(db, 'users', cred.user.uid), {
@@ -148,7 +180,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       name: newProfile.displayName,
       role: newProfile.role,
       permissions: newProfile.permissions,
-      createdAt: new Date().toISOString()
+      createdAt: serverTimestamp()
     });
     
     setProfile(newProfile);

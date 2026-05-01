@@ -54,12 +54,12 @@ export function InvoiceForm({ onSave, onCancel, settings, invoices, initialData 
   const [notes, setNotes] = useState('');
   const [internalNotes, setInternalNotes] = useState('');
   const [extraPages, setExtraPages] = useState('');
-  const [currency, setCurrency] = useState(settings.currency || 'INR');
+  const [currency, setCurrency] = useState(settings?.currency || 'INR');
   const [barcodeInput, setBarcodeInput] = useState('');
   const [status, setStatus] = useState<Invoice['status']>('Pending');
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
-  const [pdfStyle, setPdfStyle] = useState<Invoice['pdfStyle']>(settings.defaultPdfStyle || 'Standard');
+  const [pdfStyle, setPdfStyle] = useState<Invoice['pdfStyle']>(settings?.defaultPdfStyle || 'Standard');
   const [isTaxInclusive, setIsTaxInclusive] = useState(false);
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
   const [salesmanName, setSalesmanName] = useState('');
@@ -185,7 +185,7 @@ export function InvoiceForm({ onSave, onCancel, settings, invoices, initialData 
   }, [isDirty, onCancel]);
 
   const recalculateItem = useCallback((item: InvoiceItem, quantity: number, price: number, client: Client | null, taxInclusive: boolean) => {
-    const isInterState = client ? client.stateCode !== settings.stateCode : false;
+    const isInterState = client ? client.stateCode !== settings?.stateCode : false;
     const gstResults = calculateGST(price, quantity, item.gstRate, isInterState, taxInclusive);
     
     return {

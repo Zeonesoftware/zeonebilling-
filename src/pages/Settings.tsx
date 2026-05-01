@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { Save, Download, Upload, Cloud, Check, Building, Trash2, Loader2, Image as ImageIcon, Truck, Eraser, PenTool } from 'lucide-react';
+import { Save, Download, Upload, Cloud, Check, Building, Trash2, Loader2, Image as ImageIcon, Truck, Eraser, PenTool, Zap, ShieldCheck } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import SignatureCanvas from 'react-signature-canvas';
 import {
@@ -376,11 +376,11 @@ export default function Settings() {
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label className="text-xs uppercase font-bold text-[#666666]">Company Name</Label>
-                  <Input value={formData.companyName} onChange={e => setFormData({ ...formData, companyName: e.target.value })} />
+                  <Input value={formData.companyName || ""} onChange={e => setFormData({ ...formData, companyName: e.target.value })} />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs uppercase font-bold text-[#666666]">GSTIN</Label>
-                  <Input value={formData.gstin} onChange={e => setFormData({ ...formData, gstin: e.target.value })} />
+                  <Input value={formData.gstin || ""} onChange={e => setFormData({ ...formData, gstin: e.target.value })} />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs uppercase font-bold text-[#666666]">PAN No.</Label>
@@ -392,22 +392,22 @@ export default function Settings() {
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs uppercase font-bold text-[#666666]">State Code</Label>
-                  <Input value={formData.stateCode} onChange={e => setFormData({ ...formData, stateCode: e.target.value })} placeholder="e.g. 27" />
+                  <Input value={formData.stateCode || ""} onChange={e => setFormData({ ...formData, stateCode: e.target.value })} placeholder="e.g. 27" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-xs uppercase font-bold text-[#666666]">Email</Label>
-                  <Input value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
+                  <Input value={formData.email || ""} onChange={e => setFormData({ ...formData, email: e.target.value })} />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs uppercase font-bold text-[#666666]">Phone</Label>
-                  <Input value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
+                  <Input value={formData.phone || ""} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label className="text-xs uppercase font-bold text-[#666666]">Full Address</Label>
-                <Textarea value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} />
+                <Textarea value={formData.address || ""} onChange={e => setFormData({ ...formData, address: e.target.value })} />
               </div>
             </CardContent>
           </Card>
@@ -434,15 +434,35 @@ export default function Settings() {
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs uppercase font-bold text-[#666666]">Invoice Prefix</Label>
-                  <Input value={formData.invoicePrefix} onChange={e => setFormData({ ...formData, invoicePrefix: e.target.value })} />
+                  <Input value={formData.invoicePrefix || ""} onChange={e => setFormData({ ...formData, invoicePrefix: e.target.value })} />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs uppercase font-bold text-[#666666]">Separator</Label>
-                  <Input value={formData.invoiceSeparator} onChange={e => setFormData({ ...formData, invoiceSeparator: e.target.value })} />
+                  <Input value={formData.invoiceSeparator || ""} onChange={e => setFormData({ ...formData, invoiceSeparator: e.target.value })} />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs uppercase font-bold text-[#666666]">Zero Padding</Label>
-                  <Input type="number" value={formData.invoicePadding} onChange={e => setFormData({ ...formData, invoicePadding: Number(e.target.value) })} />
+                  <Input type="number" value={formData.invoicePadding || 0} onChange={e => setFormData({ ...formData, invoicePadding: Number(e.target.value) })} />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs uppercase font-bold text-[#666666]">Starting Number</Label>
+                  <div className="flex items-center gap-2">
+                    <Input 
+                      type="number" 
+                      min="1"
+                      value={formData.invoiceStartingNumber || 1} 
+                      onChange={e => setFormData({ ...formData, invoiceStartingNumber: Number(e.target.value) })} 
+                    />
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => setFormData({ ...formData, invoiceStartingNumber: 1 })}
+                      className="px-3"
+                      title="Reset starting number to 1"
+                    >
+                      Reset
+                    </Button>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs uppercase font-bold text-[#666666]">Fiscal Year</Label>
@@ -500,7 +520,7 @@ export default function Settings() {
                   <div className="flex items-center gap-4">
                     <Input 
                       type="number" 
-                      value={formData.lowStockThreshold} 
+                      value={formData.lowStockThreshold || 0} 
                       onChange={e => setFormData({ ...formData, lowStockThreshold: Number(e.target.value) })} 
                       className="max-w-[120px]"
                     />
@@ -520,7 +540,7 @@ export default function Settings() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-xs uppercase font-bold text-[#666666]">Bank Name</Label>
-                  <Input value={formData.bankName} onChange={e => setFormData({ ...formData, bankName: e.target.value })} />
+                  <Input value={formData.bankName || ""} onChange={e => setFormData({ ...formData, bankName: e.target.value })} />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs uppercase font-bold text-[#666666]">Branch Name</Label>
@@ -528,16 +548,84 @@ export default function Settings() {
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs uppercase font-bold text-[#666666]">Account Number</Label>
-                  <Input value={formData.accountNumber} onChange={e => setFormData({ ...formData, accountNumber: e.target.value })} />
+                  <Input value={formData.accountNumber || ""} onChange={e => setFormData({ ...formData, accountNumber: e.target.value })} />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs uppercase font-bold text-[#666666]">IFSC Code</Label>
-                  <Input value={formData.ifscCode} onChange={e => setFormData({ ...formData, ifscCode: e.target.value })} />
+                  <Input value={formData.ifscCode || ""} onChange={e => setFormData({ ...formData, ifscCode: e.target.value })} />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs uppercase font-bold text-[#666666]">UPI ID (Optional)</Label>
-                  <Input value={formData.upiId} onChange={e => setFormData({ ...formData, upiId: e.target.value })} />
+                  <Input value={formData.upiId || ""} onChange={e => setFormData({ ...formData, upiId: e.target.value })} />
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-[#E5E5E5] shadow-none">
+            <CardHeader>
+              <CardTitle className="text-sm font-semibold uppercase tracking-wider flex items-center gap-2">
+                <Zap className="w-4 h-4 text-amber-500" /> GST E-Invoice Credentials
+              </CardTitle>
+              <CardDescription>Direct API integration for IRN generation (v1.1)</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs uppercase font-bold text-[#666666]">GSP Client ID</Label>
+                  <Input 
+                    value={formData.einvoiceClientId || ""} 
+                    onChange={e => setFormData({ ...formData, einvoiceClientId: e.target.value })} 
+                    placeholder="From GST Portal / GSP"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs uppercase font-bold text-[#666666]">GSP Client Secret</Label>
+                  <Input 
+                    type="password"
+                    value={formData.einvoiceClientSecret || ""} 
+                    onChange={e => setFormData({ ...formData, einvoiceClientSecret: e.target.value })} 
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs uppercase font-bold text-[#666666]">API Username</Label>
+                  <Input 
+                    value={formData.einvoiceUsername || ""} 
+                    onChange={e => setFormData({ ...formData, einvoiceUsername: e.target.value })} 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs uppercase font-bold text-[#666666]">API Password</Label>
+                  <Input 
+                    type="password"
+                    value={formData.einvoicePassword || ""} 
+                    onChange={e => setFormData({ ...formData, einvoicePassword: e.target.value })} 
+                  />
+                </div>
+              </div>
+              <div className="space-y-2 pt-2 border-t border-slate-50">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-sm font-bold">Production Mode</Label>
+                    <p className="text-xs text-[#666666]">Enable for real GSTN filings (Sandbox if disabled)</p>
+                  </div>
+                  <Switch 
+                    checked={formData.einvoiceIsProduction || false} 
+                    onCheckedChange={(checked) => setFormData({ 
+                      ...formData, 
+                      einvoiceIsProduction: checked,
+                      einvoiceApiUrl: checked ? 'https://api.gst.gov.in/gsp/einvoice' : 'https://api.sandbox.gst.gov.in/gsp/einvoice'
+                    })} 
+                  />
+                </div>
+              </div>
+              <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl">
+                 <div className="flex items-center gap-2 text-blue-700 font-bold text-[10px] uppercase tracking-widest mb-1">
+                   <ShieldCheck className="w-3 h-3" /> Certificate Status
+                 </div>
+                 <p className="text-[10px] text-blue-600 font-medium">No active DSC/P12 certificate linked. Using GSP-based authentication.</p>
               </div>
             </CardContent>
           </Card>
@@ -610,7 +698,7 @@ export default function Settings() {
             <CardContent>
               <Textarea 
                 rows={4} 
-                value={formData.terms} 
+                value={formData.terms || ""} 
                 onChange={e => setFormData({ ...formData, terms: e.target.value })} 
                 className="font-mono text-xs"
               />

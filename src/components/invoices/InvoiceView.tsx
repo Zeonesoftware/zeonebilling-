@@ -25,6 +25,7 @@ import { EWayBillForm } from './EWayBillForm';
 import { EInvoiceManager } from './EInvoiceManager';
 import { Logo } from '../Logo';
 import { useData } from '@/hooks/useData';
+import { useRBAC } from '@/hooks/useRBAC';
 import { Item } from '@/types';
 
 interface InvoiceViewProps {
@@ -35,6 +36,7 @@ interface InvoiceViewProps {
 }
 
 export function InvoiceView({ invoice: initialInvoice, settings, onClose, initialStyle }: InvoiceViewProps) {
+  const { canGenerateEInvoice } = useRBAC();
   const { data: catalogItems } = useData<Item>('items');
   const printRef = useRef<HTMLDivElement>(null);
   const thermalRef = useRef<HTMLDivElement>(null);
@@ -335,7 +337,7 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
               </div>
             )}
 
-            {invoice.id !== 'draft' && invoice.status !== 'Draft' && !invoice.irn && (
+            {invoice.id !== 'draft' && invoice.status !== 'Draft' && !invoice.irn && canGenerateEInvoice && (
               <Button 
                 onClick={() => setIsEInvoiceModalOpen(true)}
                 className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2 rounded-full px-6 flex-shrink-0 shadow-lg shadow-indigo-100"
@@ -349,14 +351,16 @@ export function InvoiceView({ invoice: initialInvoice, settings, onClose, initia
                 <Badge className="bg-indigo-600 text-white font-black uppercase text-[10px] px-2 py-0.5 rounded-md flex items-center gap-1.5 ring-2 ring-indigo-100">
                   <CheckCircle2 className="w-3 h-3" /> E-Invoice Generated
                 </Badge>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-7 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 gap-1 font-bold rounded-full px-3"
-                  onClick={() => setIsEInvoiceModalOpen(true)}
-                >
-                  <X className="w-3 h-3" /> Cancel
-                </Button>
+                {canGenerateEInvoice && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-7 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 gap-1 font-bold rounded-full px-3"
+                    onClick={() => setIsEInvoiceModalOpen(true)}
+                  >
+                    <X className="w-3 h-3" /> Cancel
+                  </Button>
+                )}
               </div>
             )}
 

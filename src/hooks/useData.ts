@@ -7,27 +7,14 @@ import {
   updateDoc, 
   deleteDoc, 
   doc,
-  setDoc
+  setDoc,
+  serverTimestamp
 } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db, handleFirestoreError, OperationType } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
-export enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
-}
-
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  console.error(`Firestore Error [${operationType}] on ${path}:`, error);
-  if (error instanceof Error && error.message.includes('permission-denied')) {
-    toast.error(`Permission Denied: You don't have access to ${operationType} this data.`);
-  }
-}
+export { OperationType };
 
 export function useData<T>(collectionName: string) {
   const [data, setData] = useState<T[]>([]);
@@ -50,8 +37,11 @@ export function useData<T>(collectionName: string) {
         setLoading(false);
       },
       (err) => {
-        handleFirestoreError(err, OperationType.LIST, collectionName);
-        setError(err.message);
+        try {
+          handleFirestoreError(err, OperationType.LIST, collectionName);
+        } catch (wrappedError: any) {
+          setError(wrappedError.message);
+        }
         setLoading(false);
       }
     );
@@ -63,8 +53,11 @@ export function useData<T>(collectionName: string) {
     try {
       const docRef = await addDoc(collection(db, collectionName), {
         ...item,
-        createdAt: new Date().toISOString(),
-        createdBy: profile?.uid
+        createdAt: serverTimestamp(),
+        createdBy: profile ? {
+          uid: profile.uid,
+          name: profile.displayName || 'User'
+        } : null
       });
       return { id: docRef.id, ...item };
     } catch (err) {
@@ -79,8 +72,8 @@ export function useData<T>(collectionName: string) {
       const docRef = doc(db, collectionName, id);
       await updateDoc(docRef, {
         ...cleanUpdates,
-        updatedAt: new Date().toISOString(),
-        updatedBy: profile?.uid
+        updatedAt: serverTimestamp(),
+        updatedBy: profile?.uid || null
       });
     } catch (err) {
       handleFirestoreError(err, OperationType.UPDATE, `${collectionName}/${id}`);
@@ -101,9 +94,31 @@ export function useData<T>(collectionName: string) {
   return { data, loading, error, addItem, updateItem, deleteItem, refresh: () => {} };
 }
 
+const DEFAULT_SETTINGS = {
+  companyName: 'Zeone Business',
+  gstin: '',
+  address: '',
+  stateCode: '27',
+  phone: '',
+  email: '',
+  bankName: '',
+  accountNumber: '',
+  ifscCode: '',
+  terms: '1. Please pay within 7 days.\n2. Goods once sold will be charged.',
+  currency: 'INR',
+  invoicePrefix: 'INV',
+  invoiceSeparator: '-',
+  invoicePadding: 4,
+  useFiscalYear: true,
+  fiscalYearFormat: 'YYYY',
+  lowStockThreshold: 10,
+  autoUploadToDrive: false
+};
+
 export function useSettings() {
-  const [settings, setSettings] = useState<any>(null);
+  const [settings, setSettings] = useState<any>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { profile } = useAuth();
 
   useEffect(() => {
@@ -114,27 +129,16 @@ export function useSettings() {
       if (docSnap.exists()) {
         setSettings(docSnap.data());
       } else {
-        const defaultSettings = {
-          companyName: 'Zeone Business',
-          gstin: '',
-          address: '',
-          stateCode: '27',
-          phone: '',
-          email: '',
-          bankName: '',
-          accountNumber: '',
-          ifscCode: '',
-          terms: '1. Please pay within 7 days.\n2. Goods once sold will be charged.',
-          currency: 'INR',
-          invoicePrefix: 'INV',
-          invoiceSeparator: '-',
-          invoicePadding: 4,
-          useFiscalYear: true,
-          fiscalYearFormat: 'YYYY',
-          lowStockThreshold: 10,
-          autoUploadToDrive: false
-        };
-        setSettings(defaultSettings);
+        setSettings(DEFAULT_SETTINGS);
+      }
+      setLoading(false);
+    }, (err) => {
+      console.error("Settings fetch error:", err);
+      try {
+        handleFirestoreError(err, OperationType.GET, 'settings/config');
+      } catch (wrappedError: any) {
+        // We don't necessarily want to toast here as it might be default behavior
+        setError(wrappedError.message);
       }
       setLoading(false);
     });
@@ -153,5 +157,5 @@ export function useSettings() {
     }
   };
 
-  return { settings, loading, updateSettings };
+  return { settings, loading, error, updateSettings };
 }

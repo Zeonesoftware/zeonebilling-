@@ -46,6 +46,7 @@ export function UserManagement() {
     { id: 'reconciliation', name: 'Reconciliation' },
     { id: 'reports', name: 'Reports' },
     { id: 'gst_returns', name: 'GST Returns' },
+    { id: 'einvoice', name: 'E-Invoice' },
     { id: 'quick_actions', name: 'Quick Actions' },
   ];
 
@@ -191,7 +192,7 @@ export function UserManagement() {
                       <div key={feature.id} className="flex items-center gap-1.5">
                         <Checkbox 
                           id={`${user.id}-${feature.id}`}
-                          checked={user.permissions?.includes(feature.id)}
+                          checked={!!user.permissions?.includes(feature.id)}
                           onCheckedChange={(checked) => handleTogglePermission(user.id, feature.id, !!checked)}
                           className="w-3.5 h-3.5 border-slate-300 data-[state=checked]:bg-slate-900 data-[state=checked]:border-slate-900"
                         />

@@ -15,8 +15,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Invoice, BusinessSettings } from '@/types';
 import { generateEInvoiceJSON } from '@/lib/einvoice-generator';
 import { toast } from 'sonner';
-import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { db, handleFirestoreError, OperationType, auth } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
 
 interface BulkEInvoiceManagerProps {
@@ -81,11 +81,19 @@ export function BulkEInvoiceManager({ selectedInvoices, settings, onComplete, on
             ackDate: response.ackDate || response.AckDt || response.irnDate || '',
             irn: response.irn || response.Irn || '',
             signedQrCode: response.signedQrCode || response.SignedQrCode || '',
-            einvoiceStatus: 'Generated'
+            einvoiceStatus: 'Generated',
+            updatedAt: new Date().toISOString(),
+            updatedBy: auth.currentUser?.email || 'System'
           };
 
-          await updateDoc(doc(db, 'invoices', matchedInvoice.id), updates);
-          successCount++;
+          try {
+            await updateDoc(doc(db, 'invoices', matchedInvoice.id), updates);
+            successCount++;
+          } catch (error) {
+            console.error(`Failed to update invoice ${matchedInvoice.id}:`, error);
+            failedCount++;
+            // We don't call handleFirestoreError here to avoid breaking the bulk loop, but we log it
+          }
         } else {
           console.warn('No matching invoice found for response:', invoiceNum);
           failedCount++;

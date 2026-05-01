@@ -12,6 +12,12 @@ export function useRBAC() {
   const canDelete = isAdmin || isBilling; 
   const canManageUsers = isAdmin;
 
+  const hasPermission = (permission: string) => {
+    return isAdmin || profile?.permissions?.includes(permission);
+  };
+
+  const canGenerateEInvoice = hasPermission('einvoice');
+
   return { 
     isAdmin, 
     isBilling, 
@@ -20,6 +26,8 @@ export function useRBAC() {
     canEdit, 
     canDelete, 
     canManageUsers,
+    canGenerateEInvoice,
+    hasPermission,
     role: profile?.role,
     profile
   };

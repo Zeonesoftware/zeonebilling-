@@ -55,31 +55,31 @@ export function ClientForm({ client, isOpen, onClose, onSave }: ClientFormProps)
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
             <Label htmlFor="name" className="text-xs uppercase font-bold text-[#666666]">Client / Business Name</Label>
-            <Input id="name" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
+            <Input id="name" value={formData.name || ""} onChange={e => setFormData({ ...formData, name: e.target.value })} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
               <Label htmlFor="gstin" className="text-xs uppercase font-bold text-[#666666]">GSTIN</Label>
-              <Input id="gstin" value={formData.gstin} onChange={e => setFormData({ ...formData, gstin: e.target.value })} className="font-mono" />
+              <Input id="gstin" value={formData.gstin || ""} onChange={e => setFormData({ ...formData, gstin: e.target.value })} className="font-mono" />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="stateCode" className="text-xs uppercase font-bold text-[#666666]">State Code</Label>
-              <Input id="stateCode" value={formData.stateCode} onChange={e => setFormData({ ...formData, stateCode: e.target.value })} placeholder="e.g. 27" />
+              <Input id="stateCode" value={formData.stateCode || ""} onChange={e => setFormData({ ...formData, stateCode: e.target.value })} placeholder="e.g. 27" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
               <Label htmlFor="email" className="text-xs uppercase font-bold text-[#666666]">Email</Label>
-              <Input id="email" type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
+              <Input id="email" type="email" value={formData.email || ""} onChange={e => setFormData({ ...formData, email: e.target.value })} />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="phone" className="text-xs uppercase font-bold text-[#666666]">Phone</Label>
-              <Input id="phone" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
+              <Input id="phone" value={formData.phone || ""} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
             </div>
           </div>
           <div className="grid gap-2">
             <Label htmlFor="address" className="text-xs uppercase font-bold text-[#666666]">Billing Address</Label>
-            <Textarea id="address" value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} />
+            <Textarea id="address" value={formData.address || ""} onChange={e => setFormData({ ...formData, address: e.target.value })} />
           </div>
         </div>
         <DialogFooter>

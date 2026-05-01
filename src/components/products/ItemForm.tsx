@@ -82,13 +82,13 @@ export function ItemForm({ item, isOpen, onClose, onSave }: ItemFormProps) {
             )}
             <div className="grid gap-2">
               <Label htmlFor="name" className="text-xs uppercase font-bold text-[#666666]">Product Name</Label>
-              <Input id="name" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
+              <Input id="name" value={formData.name || ""} onChange={e => setFormData({ ...formData, name: e.target.value })} />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="imageUrl" className="text-xs uppercase font-bold text-[#666666]">Product Image URL</Label>
               <Input 
                 id="imageUrl" 
-                value={formData.imageUrl} 
+                value={formData.imageUrl || ""} 
                 onChange={e => setFormData({ ...formData, imageUrl: e.target.value })} 
                 placeholder="https://example.com/image.jpg"
               />
@@ -96,22 +96,22 @@ export function ItemForm({ item, isOpen, onClose, onSave }: ItemFormProps) {
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="category" className="text-xs uppercase font-bold text-[#666666]">Category</Label>
-                <Input id="category" value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} />
+                <Input id="category" value={formData.category || ""} onChange={e => setFormData({ ...formData, category: e.target.value })} />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="unit" className="text-xs uppercase font-bold text-[#666666]">Unit</Label>
-                <Input id="unit" value={formData.unit} onChange={e => setFormData({ ...formData, unit: e.target.value })} />
+                <Input id="unit" value={formData.unit || ""} onChange={e => setFormData({ ...formData, unit: e.target.value })} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="hsn" className="text-xs uppercase font-bold text-[#666666]">HSN/SAC</Label>
-                <Input id="hsn" value={formData.hsn} onChange={e => setFormData({ ...formData, hsn: e.target.value })} />
+                <Input id="hsn" value={formData.hsn || ""} onChange={e => setFormData({ ...formData, hsn: e.target.value })} />
               </div>
               <div className="grid gap-2">
               <Label htmlFor="barcode" className="text-xs uppercase font-bold text-[#666666]">Barcode</Label>
               <div className="flex gap-2">
-                <Input id="barcode" value={formData.barcode} onChange={e => setFormData({ ...formData, barcode: e.target.value })} placeholder="Scan or enter barcode" />
+                <Input id="barcode" value={formData.barcode || ""} onChange={e => setFormData({ ...formData, barcode: e.target.value })} placeholder="Scan or enter barcode" />
                 <Button 
                   type="button" 
                   variant="outline" 
@@ -127,12 +127,12 @@ export function ItemForm({ item, isOpen, onClose, onSave }: ItemFormProps) {
             <div className="grid grid-cols-3 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="price" className="text-xs uppercase font-bold text-[#666666]">Price (₹)</Label>
-                <Input id="price" type="number" value={formData.price === 0 ? '' : formData.price} onChange={e => setFormData({ ...formData, price: Number(e.target.value) })} />
+                <Input id="price" type="number" value={formData.price === undefined || formData.price === 0 ? '' : formData.price} onChange={e => setFormData({ ...formData, price: Number(e.target.value) })} />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="gstRate" className="text-xs uppercase font-bold text-[#666666]">GST (%)</Label>
                 <Select 
-                  value={formData.gstRate?.toString()} 
+                  value={formData.gstRate?.toString() || "18"} 
                   onValueChange={(v) => setFormData({ ...formData, gstRate: Number(v) })}
                 >
                   <SelectTrigger id="gstRate">
@@ -149,12 +149,12 @@ export function ItemForm({ item, isOpen, onClose, onSave }: ItemFormProps) {
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="stock" className="text-xs uppercase font-bold text-[#666666]">Stock</Label>
-                <Input id="stock" type="number" value={formData.stock === 0 ? '' : formData.stock} onChange={e => setFormData({ ...formData, stock: Number(e.target.value) })} />
+                <Input id="stock" type="number" value={formData.stock === undefined || formData.stock === 0 ? '' : formData.stock} onChange={e => setFormData({ ...formData, stock: Number(e.target.value) })} />
               </div>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="description" className="text-xs uppercase font-bold text-[#666666]">Description</Label>
-              <Input id="description" value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} />
+              <Input id="description" value={formData.description || ""} onChange={e => setFormData({ ...formData, description: e.target.value })} />
             </div>
           </div>
         </ScrollArea>

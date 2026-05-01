@@ -22,10 +22,17 @@ export interface BusinessSettings {
   invoicePrefix: string;
   invoiceSeparator: string;
   invoicePadding: number;
+  invoiceStartingNumber?: number;
   useFiscalYear?: boolean;
   fiscalYearFormat?: 'YYYY' | 'YYYY-YY' | 'YY-YY';
   lowStockThreshold: number;
   defaultPdfStyle?: 'Standard' | 'Professional' | 'Modern' | 'Simple' | 'Thermal';
+  einvoiceClientId?: string;
+  einvoiceClientSecret?: string;
+  einvoiceUsername?: string;
+  einvoicePassword?: string;
+  einvoiceApiUrl?: string;
+  einvoiceIsProduction?: boolean;
 }
 
 export interface Client {
@@ -123,6 +130,7 @@ export interface Invoice {
   transportMode?: 'Road' | 'Rail' | 'Air' | 'Ship';
   createdAt?: string;
   updatedAt?: string;
+  updatedBy?: string;
 }
 
 export interface Expense {

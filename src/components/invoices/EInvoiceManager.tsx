@@ -19,8 +19,8 @@ import { BusinessSettings, Invoice } from '@/types';
 import { generateEInvoiceJSON } from '@/lib/einvoice-generator';
 import { EInvoiceService } from '@/services/einvoice-api';
 import { toast } from 'sonner';
-import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { db, handleFirestoreError, OperationType, auth } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
 
 interface EInvoiceManagerProps {
@@ -68,10 +68,17 @@ export function EInvoiceManager({ invoice, settings, onUpdate, onClose }: EInvoi
           ackDate: response.ackDate || '',
           irn: response.irn || '',
           signedQrCode: response.signedQrCode || '',
-          einvoiceStatus: 'Generated'
+          einvoiceStatus: 'Generated',
+          updatedAt: new Date().toISOString(), // Use string to match component expectations, but rule checks for keys
+          updatedBy: auth.currentUser?.email || 'System'
         };
 
-        await updateDoc(doc(db, 'invoices', invoice.id), updates);
+        const docRef = doc(db, 'invoices', invoice.id);
+        try {
+          await updateDoc(docRef, updates);
+        } catch (error) {
+          handleFirestoreError(error, OperationType.UPDATE, `invoices/${invoice.id}`);
+        }
         onUpdate({ ...invoice, ...updates });
         toast.success('E-Invoice registered successfully via API');
         onClose();
@@ -100,7 +107,8 @@ export function EInvoiceManager({ invoice, settings, onUpdate, onClose }: EInvoi
     setIsCancelling(true);
     try {
       const response = await EInvoiceService.cancelInvoice(
-        invoice.irn,
+        invoice,
+        settings,
         cancelReason,
         cancelRemarks || 'Cancelled by user'
       );
@@ -111,10 +119,17 @@ export function EInvoiceManager({ invoice, settings, onUpdate, onClose }: EInvoi
           irn: '', // Clear IRN on cancellation as it's no longer valid
           signedQrCode: '',
           ackNo: '',
-          ackDate: ''
+          ackDate: '',
+          updatedAt: new Date().toISOString(),
+          updatedBy: auth.currentUser?.email || 'System'
         };
 
-        await updateDoc(doc(db, 'invoices', invoice.id), updates);
+        const docRef = doc(db, 'invoices', invoice.id);
+        try {
+          await updateDoc(docRef, updates);
+        } catch (error) {
+          handleFirestoreError(error, OperationType.UPDATE, `invoices/${invoice.id}`);
+        }
         onUpdate({ ...invoice, ...updates });
         toast.success('E-Invoice cancelled successfully');
         onClose();
@@ -145,14 +160,21 @@ export function EInvoiceManager({ invoice, settings, onUpdate, onClose }: EInvoi
         ackDate: portalResponse.ackDate || portalResponse.AckDt || portalResponse.irnDate || '',
         irn: portalResponse.irn || portalResponse.Irn || '',
         signedQrCode: portalResponse.signedQrCode || portalResponse.SignedQrCode || '',
-        einvoiceStatus: 'Generated'
+        einvoiceStatus: 'Generated',
+        updatedAt: new Date().toISOString(),
+        updatedBy: auth.currentUser?.email || 'System'
       };
 
       if (!updates.irn) {
         throw new Error('Invalid JSON: IRN not found in the uploaded file');
       }
 
-      await updateDoc(doc(db, 'invoices', invoice.id), updates);
+      const docRef = doc(db, 'invoices', invoice.id);
+      try {
+        await updateDoc(docRef, updates);
+      } catch (error) {
+        handleFirestoreError(error, OperationType.UPDATE, `invoices/${invoice.id}`);
+      }
       onUpdate({ ...invoice, ...updates });
       toast.success('E-Invoice details updated from portal file');
       onClose();

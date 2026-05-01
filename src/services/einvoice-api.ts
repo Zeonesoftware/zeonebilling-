@@ -23,11 +23,16 @@ export class EInvoiceService {
    * Registers an invoice with the GST Network
    */
   static async registerInvoice(invoice: Invoice, settings: BusinessSettings): Promise<EInvoiceApiResponse> {
+    // Determine credentials: Prefer settings, fallback to ENV
+    const clientId = settings.einvoiceClientId || this.CLIENT_ID;
+    const clientSecret = settings.einvoiceClientSecret || this.CLIENT_SECRET;
+    const apiEndpoint = settings.einvoiceApiUrl || this.API_ENDPOINT;
+
     // 1. Map to Schema v1.1
     const payload = generateEInvoiceJSON(invoice, settings);
 
     // If no credentials, simulate a portal delay and success
-    if (!this.CLIENT_ID) {
+    if (!clientId) {
       console.warn('GST API Credentials missing. Running in Simulation Mode.');
       return new Promise((resolve) => {
         setTimeout(() => {
@@ -43,12 +48,12 @@ export class EInvoiceService {
     }
 
     try {
-      const response = await fetch(`${this.API_ENDPOINT}/generate`, {
+      const response = await fetch(`${apiEndpoint}/generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'client-id': this.CLIENT_ID,
-          'client-secret': this.CLIENT_SECRET,
+          'client-id': clientId,
+          'client-secret': clientSecret,
           'Authorization': `Bearer ${await this.getAuthToken()}`
         },
         body: JSON.stringify(payload)
@@ -83,9 +88,17 @@ export class EInvoiceService {
   /**
    * Cancels a registered E-Invoice
    */
-  static async cancelInvoice(irn: string, reason: string, remarks: string): Promise<{ success: boolean; error?: string }> {
+  static async cancelInvoice(invoice: Invoice, settings: BusinessSettings, reason: string, remarks: string): Promise<{ success: boolean; error?: string }> {
+    const irn = invoice.irn;
+    if (!irn) return { success: false, error: 'IRN missing' };
+
+    // Determine credentials: Prefer settings, fallback to ENV
+    const clientId = settings.einvoiceClientId || this.CLIENT_ID;
+    const clientSecret = settings.einvoiceClientSecret || this.CLIENT_SECRET;
+    const apiEndpoint = settings.einvoiceApiUrl || this.API_ENDPOINT;
+
     // If no credentials, simulate success
-    if (!this.CLIENT_ID) {
+    if (!clientId) {
       console.warn('GST API Credentials missing. Running in Simulation Mode.');
       return new Promise((resolve) => {
         setTimeout(() => {
@@ -95,12 +108,12 @@ export class EInvoiceService {
     }
 
     try {
-      const response = await fetch(`${this.API_ENDPOINT}/cancel`, {
+      const response = await fetch(`${apiEndpoint}/cancel`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'client-id': this.CLIENT_ID,
-          'client-secret': this.CLIENT_SECRET,
+          'client-id': clientId,
+          'client-secret': clientSecret,
           'Authorization': `Bearer ${await this.getAuthToken()}`
         },
         body: JSON.stringify({
