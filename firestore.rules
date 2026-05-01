@@ -103,7 +103,7 @@ service cloud.firestore {
       allow update: if isBilling() && (
         isAdmin() || 
         (
-          (existing().status != 'Paid' || incoming().diff(existing()).affectedKeys().hasOnly(['ackNo', 'ackDate', 'irn', 'signedQrCode', 'einvoiceStatus', 'ewayBillNo', 'ewayBillDate', 'ewayBillStatus', 'updatedAt', 'updatedBy'])) && 
+          (existing().get('status', '') != 'Paid' || incoming().diff(existing()).affectedKeys().hasOnly(['ackNo', 'ackDate', 'irn', 'signedQrCode', 'einvoiceStatus', 'ewayBillNo', 'ewayBillDate', 'ewayBillStatus', 'updatedAt', 'updatedBy'])) && 
           incoming().diff(existing()).affectedKeys().hasOnly([
             'status', 'updatedAt', 'updatedBy', 'paymentStatus', 'notes',
             'ackNo', 'ackDate', 'irn', 'signedQrCode', 'einvoiceStatus',

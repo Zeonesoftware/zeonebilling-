@@ -397,7 +397,11 @@ export function InvoiceForm({ onSave, onCancel, settings, invoices, initialData 
           <div>
             <h3 className="text-2xl font-black tracking-tight text-slate-900">{initialData ? 'Edit' : 'Create'} {invoiceType}</h3>
             <div className="flex items-center gap-2 mt-1">
-               <span className="text-xs text-slate-400 font-mono uppercase tracking-widest bg-slate-50 px-2 py-0.5 rounded border">{invoiceNumber}</span>
+               <Input 
+                 value={invoiceNumber}
+                 onChange={(e) => setInvoiceNumber(e.target.value)}
+                 className="h-7 w-48 text-xs font-mono uppercase tracking-widest bg-slate-50" 
+               />
                <Badge className={cn(
                  "font-bold text-[8px] tracking-widest uppercase border-none hover:opacity-80",
                  status === 'Paid' ? "bg-green-100 text-green-700" : 

@@ -143,21 +143,15 @@ export function generateNextInvoiceNumber(invoices: any[], settings: any, date: 
   const sameFYInvoices = invoices.filter(inv => {
     const invDate = new Date(inv.date);
     if (isNaN(invDate.getTime())) return false;
-    const isSameFY = getFiscalYear(invDate, fyFormat) === targetFY;
-    const invNumber = String(inv.invoiceNumber || '');
-    const startsWithPrefix = invNumber.startsWith(prefix + sep) || invNumber.startsWith(prefix);
-    return isSameFY && startsWithPrefix;
+    // We intentionally do not use this to override nextSequence
+    return false; // disabled filtering
   });
 
   let nextSequence = safeSettings.invoiceStartingNumber || 1;
 
-  if (sameFYInvoices.length > 0) {
-    const numbers = sameFYInvoices.map(inv => extractSequence(inv.invoiceNumber));
-    const maxNumber = Math.max(...numbers, 0);
-    if (maxNumber >= nextSequence) {
-      nextSequence = maxNumber + 1;
-    }
-  }
+  // We no longer override nextSequence with maxNumber.
+  // This allows the user to manually control the sequence in settings,
+  // which will then auto-increment.
 
   const pad = safeSettings.invoicePadding || 4;
   
