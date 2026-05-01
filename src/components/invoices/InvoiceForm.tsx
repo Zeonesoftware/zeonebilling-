@@ -232,7 +232,8 @@ export function InvoiceForm({ onSave, onCancel, settings, invoices, initialData 
       cgst: gstResults.cgst,
       sgst: gstResults.sgst,
       igst: gstResults.igst,
-      total: gstResults.total
+      total: gstResults.total,
+      unit: item.unit
     };
     
     setInvoiceItems([...invoiceItems, newItem]);
