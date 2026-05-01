@@ -4,10 +4,11 @@ import { useRBAC } from '@/hooks/useRBAC';
 import { Client } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Users, MoreHorizontal, FileEdit, Trash2, Upload } from 'lucide-react';
+import { Plus, Users, MoreHorizontal, FileEdit, Trash2, Upload, Search } from 'lucide-react';
 import { ClientForm } from '@/components/clients/ClientForm';
 import { toast } from 'sonner';
 import Papa from 'papaparse';
+import { Input } from '@/components/ui/input';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -22,6 +23,7 @@ export default function Clients() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleCsvImport = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -73,6 +75,15 @@ export default function Clients() {
   };
 
   const filteredClients = clients
+    .filter(client => {
+      if (!searchQuery.trim()) return true;
+      const lowerQuery = searchQuery.toLowerCase();
+      return (
+        client.name?.toLowerCase().includes(lowerQuery) ||
+        client.gstin?.toLowerCase().includes(lowerQuery) ||
+        client.phone?.toLowerCase().includes(lowerQuery)
+      );
+    })
     .sort((a, b) => a.name.localeCompare(b.name));
 
   return (
@@ -94,6 +105,18 @@ export default function Clients() {
               </Button>
             </>
           )}
+        </div>
+      </div>
+
+      <div className="flex items-center gap-4">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
+          <Input 
+            placeholder="Search clients by name, GSTIN, or phone..." 
+            className="pl-9 bg-white"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
       </div>
 
