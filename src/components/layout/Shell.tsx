@@ -107,6 +107,7 @@ export function Shell() {
             <Logo className="w-10 h-10" />
             <div className="flex flex-col">
               <h1 className="text-xl font-black text-white tracking-tighter leading-none">ZEONE</h1>
+              <h3 className="text-[10px] font-bold text-[#FFAA00] tracking-wider uppercase mt-1">Gst Billing</h3>
             </div>
           </div>
         </div>
@@ -257,7 +258,10 @@ export function Shell() {
             <div className="p-8 pb-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Logo className="w-8 h-8" />
-                <div className="font-bold text-xl text-white tracking-tight">ZEONE</div>
+                <div className="flex flex-col">
+                  <div className="font-bold text-xl text-white tracking-tight leading-none">ZEONE</div>
+                  <h3 className="text-[10px] font-bold text-[#FFAA00] tracking-wider uppercase mt-1">Gst Billing</h3>
+                </div>
               </div>
               <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(false)} className="text-white/60 hover:bg-sidebar-accent">
                 <X className="w-5 h-5" />
