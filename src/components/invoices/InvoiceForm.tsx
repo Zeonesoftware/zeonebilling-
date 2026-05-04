@@ -719,16 +719,7 @@ export function InvoiceForm({ onSave, onCancel, settings, invoices, initialData 
                  )}
               </div>
 
-              <div className="pt-8 space-y-4">
-                 <div className="p-4 bg-white/5 rounded-xl border border-white/10 space-y-2">
-                    <div className="flex justify-between items-center">
-                       <span className="text-[9px] font-black uppercase text-white/40 tracking-widest flex items-center gap-2">
-                         <Globe className="w-3 h-3" /> Exchange Rate
-                       </span>
-                       <span className="text-[10px] font-mono text-white/60">1.00 USD = 83.45 INR</span>
-                    </div>
-                 </div>
-              </div>
+
 
               <div className="pt-4">
                  <Button 
